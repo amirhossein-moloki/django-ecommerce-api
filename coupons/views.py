@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from cart.cart import Cart
 from coupons.models import Coupon
 from coupons.serializers import CouponSerializer
+from . import services
 
 logger = getLogger(__name__)
 
@@ -75,17 +76,12 @@ class CouponViewSet(viewsets.ModelViewSet):
         Prevent modification of the `code` field.
         """
         try:
-            partial = kwargs.pop('partial', False)
             instance = self.get_object()
-            if 'code' in request.data and request.data['code'] != instance.code:
-                return Response(
-                    {"detail": "Coupon code cannot be modified."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
+            services.update_coupon(instance, request.data)
+            serializer = self.get_serializer(instance)
             return Response(serializer.data)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Error updating coupon: {e}", exc_info=True)
             raise
@@ -96,8 +92,7 @@ class CouponViewSet(viewsets.ModelViewSet):
         """
         try:
             instance = self.get_object()
-            instance.active = False
-            instance.save()
+            services.deactivate_coupon(instance)
             return Response(
                 {"detail": "Coupon has been marked as inactive."},
                 status=status.HTTP_200_OK
@@ -118,45 +113,19 @@ class CouponViewSet(viewsets.ModelViewSet):
         Apply a coupon by its code.
         """
         try:
-            cart = Cart(request)
             code = request.data.get('code')
             if not code:
                 return Response(
                     {"detail": "Coupon code is required."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
-            try:
-                coupon = Coupon.objects.get(code__iexact=code, active=True)
-            except Coupon.DoesNotExist:
-                return Response(
-                    {"detail": "Invalid or inactive coupon code."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            if not coupon.is_valid():
-                return Response(
-                    {"detail": "Coupon is not valid at this time."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if coupon.usage_count >= coupon.max_usage:
-                return Response(
-                    {"detail": "This coupon has reached its usage limit."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if cart.get_total_price() < coupon.min_purchase_amount:
-                return Response(
-                    {"detail": f"A minimum purchase of {coupon.min_purchase_amount} is required to use this coupon."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            request.session['coupon_id'] = coupon.id
+            coupon = services.apply_coupon(request, code)
             return Response(
                 {"detail": "Coupon applied successfully.", "discount": coupon.discount},
                 status=status.HTTP_200_OK
             )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Error applying coupon: {e}", exc_info=True)
             raise

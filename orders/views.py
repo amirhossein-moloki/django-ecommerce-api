@@ -7,6 +7,7 @@ from .models import Order
 from .permissions import IsAdminOrOwner
 from .serializers import OrderSerializer, OrderCreateSerializer
 from .tasks import send_order_confirmation_email
+from . import services
 
 
 @extend_schema_view(
@@ -66,22 +67,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         Filter orders to only show the user's own orders unless they are staff.
         """
-        qs = super().get_queryset()
-        if not self.request.user.is_staff:
-            return qs.filter(user=self.request.user)
-        return qs
+        return services.get_user_orders(self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
         Create a new order.
-        The logic is handled by the OrderCreateSerializer.
+        The logic is handled by the OrderService.
         """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        order = serializer.save()
-        # After saving, serialize the created order object for the response
+        order = services.create_order(user=request.user, validated_data=request.data)
         response_serializer = OrderSerializer(order, context={'request': request})
-        # Optionally, trigger post-creation tasks
-        send_order_confirmation_email.delay(order.order_id)
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)

@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from shop.models import Product
 from .cart import Cart
 from .serializers import CartSerializer, AddToCartSerializer
+from . import services
 
 logger = getLogger(__name__)
 
@@ -84,19 +85,8 @@ class CartViewSet(viewsets.ViewSet):
         Returns:
             Response: A JSON response containing the cart details and total price.
         """
-        cart = Cart(request)
-        cart_data = {
-            'items': [
-                {
-                    'product': item['product'],
-                    'quantity': item['quantity'],
-                    'total_price': item['total_price'],
-                }
-                for item in cart
-            ],
-            'total_price': cart.get_total_price(),
-        }
-        serializer = serializer = CartSerializer(cart_data, context={'request': request})
+        cart_data = services.get_cart_data(request)
+        serializer = CartSerializer(cart_data, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='add')
@@ -122,16 +112,14 @@ class CartViewSet(viewsets.ViewSet):
         Returns:
             Response: A JSON response indicating success or failure.
         """
-        cart = Cart(request)
-        product = get_object_or_404(Product, product_id=product_id)
         serializer = AddToCartSerializer(data=request.data)
-
         if serializer.is_valid():
             data = serializer.validated_data
-            cart.add(
-                product=product,
-                quantity=data.get('quantity', 1),
-                override_quantity=data.get('override', False)
+            services.add_to_cart(
+                request,
+                product_id,
+                data.get('quantity', 1),
+                data.get('override', False)
             )
             return Response(
                 {'message': 'Product added/updated in cart'},
@@ -162,10 +150,8 @@ class CartViewSet(viewsets.ViewSet):
         Returns:
             Response: A JSON response indicating success or failure.
         """
-        cart = Cart(request)
-        product = get_object_or_404(Product, product_id=product_id)
         try:
-            cart.remove(product)
+            services.remove_from_cart(request, product_id)
             return Response(
                 {'message': 'Product removed from cart'},
                 status=status.HTTP_200_OK
@@ -193,6 +179,5 @@ class CartViewSet(viewsets.ViewSet):
         Returns:
             Response: An empty response with a 204 status code.
         """
-        cart = Cart(request)
-        cart.clear()
+        services.clear_cart(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
