@@ -12,14 +12,21 @@ from .utils import product_upload_to_unique
 
 
 class SluggedModel(models.Model):
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=100, unique=True)
+    """
+    An abstract base model that provides 'name' and 'slug' fields.
+    The 'slug' field is automatically generated from the 'name' field.
+    """
+    name = models.CharField(max_length=100, help_text="The name of the item.")
+    slug = models.SlugField(max_length=100, unique=True, help_text="A URL-friendly version of the name.")
 
     class Meta:
         abstract = True
 
 
 class Category(SluggedModel):
+    """
+    Represents a product category.
+    """
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "Categories"
@@ -31,12 +38,16 @@ class Category(SluggedModel):
 
     def save(self, *args, **kwargs):
         """
-        Auto-generate slug if not set or if name has changed.
+        Overrides the default save method to auto-generate the slug from the name.
+        This ensures that the slug is always in sync with the name.
         """
         self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        """
+        Returns the absolute URL for a category instance.
+        """
         return reverse('api-v1:category-detail', kwargs={'slug': self.slug})
 
     def __str__(self):
@@ -44,41 +55,50 @@ class Category(SluggedModel):
 
 
 class InStockManager(models.Manager):
+    """
+    A custom manager that returns only products that are in stock (stock > 0).
+    """
     def get_queryset(self):
         return super().get_queryset().filter(stock__gt=0)
 
 
 class Product(SluggedModel):
-    product_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)])
-    stock = models.IntegerField(validators=[MinValueValidator(0)])
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+    """
+    Represents a product in the e-commerce store.
+    """
+    product_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, help_text="The unique identifier for the product.")
+    description = models.TextField(help_text="A detailed description of the product.")
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)], help_text="The price of the product.")
+    stock = models.IntegerField(validators=[MinValueValidator(0)], help_text="The number of items in stock.")
+    created = models.DateTimeField(auto_now_add=True, help_text="The date and time when the product was created.")
+    updated = models.DateTimeField(auto_now=True, help_text="The date and time when the product was last updated.")
     thumbnail = models.ImageField(
         null=True,
         blank=True,
-        upload_to=product_upload_to_unique
+        upload_to=product_upload_to_unique,
+        help_text="A thumbnail image for the product."
     )
     category = models.ForeignKey(
         Category,
         related_name="products",
         on_delete=models.CASCADE,
+        help_text="The category to which the product belongs."
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="products",
         on_delete=models.CASCADE,
+        help_text="The user who created the product."
     )
-    objects = models.Manager()
-    in_stock = InStockManager()
-    tags = TaggableManager(through=CustomTaggedItem)
-    weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
-    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
-    width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
-    height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
-    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
-    reviews_count = models.IntegerField(default=0)
+    objects = models.Manager()  # The default manager.
+    in_stock = InStockManager()  # The custom 'in_stock' manager.
+    tags = TaggableManager(through=CustomTaggedItem, help_text="Tags for the product.")
+    weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The weight of the product.")
+    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The length of the product.")
+    width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The width of the product.")
+    height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The height of the product.")
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, help_text="The average rating of the product.")
+    reviews_count = models.IntegerField(default=0, help_text="The number of reviews for the product.")
 
     class Meta:
         verbose_name = "Product"
@@ -92,13 +112,15 @@ class Product(SluggedModel):
 
     def save(self, *args, **kwargs):
         """
-        Auto-generate slug if not set or if name has changed.
-        Includes the current date to ensure uniqueness.
-        Handles duplicate slugs by appending a unique identifier.
+        Overrides the default save method to auto-generate a unique slug.
+        The slug is based on the product's name and the current date.
+        If a slug already exists, a random string is appended to ensure uniqueness.
+        This strategy helps prevent slug collisions and improves SEO.
         """
         from datetime import date
         from django.utils.crypto import get_random_string
 
+        # Generate a base slug from the product name and the current date.
         base_slug = f"{slugify(self.name)}-{date.today().strftime('%Y-%m-%d')}"
         if not self.slug:
             self.slug = base_slug
@@ -110,16 +132,23 @@ class Product(SluggedModel):
             if existing and self.name != existing.name:
                 self.slug = base_slug
 
-        # Ensure slug uniqueness
+        # If the generated slug is already in use, append a random string to make it unique.
         while self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
             self.slug = f"{base_slug}-{get_random_string(6)}"
 
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        """
+        Returns the absolute URL for a product instance.
+        """
         return reverse('api-v1:product-detail', kwargs={'slug': self.slug})
 
     def update_rating_and_reviews_count(self):
+        """
+        Calculates and updates the average rating and review count for the product.
+        This method is typically called after a new review is added or an existing one is deleted.
+        """
         from django.db.models import Avg, Count
         reviews = self.reviews.all()
         if reviews.exists():
@@ -136,25 +165,31 @@ class Product(SluggedModel):
 
 
 class Review(models.Model):
+    """
+    Represents a review for a product.
+    """
     product = models.ForeignKey(
         Product,
         related_name="reviews",
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        help_text="The product that this review is for."
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="reviews",
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        help_text="The user who wrote the review."
     )
     rating = models.PositiveSmallIntegerField(
         validators=[
             MinValueValidator(1),
             MaxValueValidator(5),
-        ]
+        ],
+        help_text="The rating given by the user, from 1 to 5."
     )
-    comment = models.TextField(blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+    comment = models.TextField(blank=True, null=True, help_text="The comment left by the user.")
+    created = models.DateTimeField(auto_now_add=True, help_text="The date and time when the review was created.")
+    updated = models.DateTimeField(auto_now=True, help_text="The date and time when the review was last updated.")
 
     class Meta:
         verbose_name = "Review"
@@ -173,13 +208,17 @@ class Review(models.Model):
         ]
 
     def save(self, *args, **kwargs):
+        """
+        Overrides the default save method to validate that a user can only review a product
+        they have purchased. This is a crucial business rule to ensure the authenticity of reviews.
+        """
         from django.core.exceptions import ValidationError
 
-        # Allow skipping validation when saving from view (where validation already happened)
+        # This check can be skipped, for example, when creating reviews from a fixture or a management command.
         skip_validation = kwargs.pop('skip_validation', False)
 
-        if not skip_validation and not self.product.order_items.filter(order__user=self.user).exists():
-            raise ValidationError("You can only review products you have purchased.")
+        if not skip_validation and not self.product.order_items.filter(order__user=self.user, order__status=Order.Status.PAID).exists():
+            raise ValidationError("You can only review products you have purchased and the order must be paid.")
 
         super().save(*args, **kwargs)
 

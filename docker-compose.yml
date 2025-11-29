@@ -20,6 +20,8 @@ services:
     depends_on:
       - database
       - cache
+    networks:
+      - default
 
   database:
     image: postgres:17-alpine
@@ -37,12 +39,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
 
   cache:
     image: redis:8.0-alpine
     container_name: cache
     ports:
       - "6379:6379"
+    networks:
+      - default
 
   celery_worker:
     build: .
@@ -55,6 +61,8 @@ services:
     depends_on:
       - cache
       - database
+    networks:
+      - default
 
   celery_beat:
     build: .
@@ -67,6 +75,8 @@ services:
     depends_on:
       - cache
       - database
+    networks:
+      - default
 
   flower:
     build: .
@@ -79,6 +89,8 @@ services:
     depends_on:
       - cache
       - celery_worker
+    networks:
+      - default
 
   nginx:
     image: nginx:1.27-alpine
@@ -91,8 +103,14 @@ services:
       - media_volume:/code/media
     depends_on:
       - web
+    networks:
+      - default
 
 volumes:
   database:
   static_volume:
   media_volume:
+
+networks:
+  default:
+    driver: bridge
