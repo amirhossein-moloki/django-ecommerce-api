@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -300,14 +301,26 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             logger.error("Error creating product for user id: %s: %s", self.request.user.id, e, exc_info=True)
             raise
 
-    @method_decorator(cache_page(60 * 60, key_prefix=r'user_product_detail'))
+    def list(self, request, *args, **kwargs):
+        cache_key = 'product_list'
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 60 * 5) # 5 minutes
+        return response
+
     def retrieve(self, request, *args, **kwargs):
-        try:
-            logger.info("Retrieving product detail for slug: %s", kwargs.get(r'slug'))
-            return super().retrieve(request, *args, **kwargs)
-        except Exception as e:
-            logger.error("Error retrieving product: %s", e, exc_info=True)
-            raise
+        slug = kwargs.get('slug')
+        cache_key = f'product_detail_{slug}'
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 60 * 60) # 1 hour
+        return response
 
     @action(detail=False, methods=[r'get'], url_path=r'user-products', url_name=r'user-products')
     def list_user_products(self, request):

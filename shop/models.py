@@ -77,6 +77,8 @@ class Product(SluggedModel):
     length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
     width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
     height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)])
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
+    reviews_count = models.IntegerField(default=0)
 
     class Meta:
         verbose_name = "Product"
@@ -116,6 +118,18 @@ class Product(SluggedModel):
 
     def get_absolute_url(self):
         return reverse('api-v1:product-detail', kwargs={'slug': self.slug})
+
+    def update_rating_and_reviews_count(self):
+        from django.db.models import Avg, Count
+        reviews = self.reviews.all()
+        if reviews.exists():
+            aggregation = reviews.aggregate(average_rating=Avg('rating'), count=Count('id'))
+            self.rating = aggregation.get('average_rating', 0.00)
+            self.reviews_count = aggregation.get('count', 0)
+        else:
+            self.rating = 0.00
+            self.reviews_count = 0
+        self.save(update_fields=['rating', 'reviews_count'])
 
     def __str__(self):
         return f"Product: {self.name} (ID: {self.product_id})"
