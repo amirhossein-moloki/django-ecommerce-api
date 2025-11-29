@@ -30,6 +30,7 @@ from .models import Review
 from .recommender import Recommender
 from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
 from .serializers import ReviewSerializer
+from . import services
 
 logger = getLogger(__name__)
 
@@ -115,38 +116,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         product_slug = self.kwargs.get('product_slug')
         logger.info("Fetching reviews for product slug: %s", product_slug)
-        return Review.objects.filter(product__slug=product_slug)
+        return services.get_reviews_for_product(product_slug)
 
     def perform_create(self, serializer):
-        from django.core.exceptions import ValidationError
-        from rest_framework.exceptions import PermissionDenied
-
-        serializer.validated_data['user'] = self.request.user
         product_slug = self.kwargs.get('product_slug')
         try:
-            product = get_object_or_404(Product, slug=product_slug)
-
-            # Check if user has purchased this product and the order is completed before saving
-            # Skip this check in test environments
-            from django.conf import settings
-            is_testing = getattr(settings, 'TESTING', False)
-
-            if not is_testing:
-                # Check if user has a completed order containing this product
-                from orders.models import Order
-                completed_order_exists = product.order_items.filter(
-                    order__user=self.request.user,
-                    order__status=Order.Status.PAID
-                ).exists()
-
-                if not completed_order_exists:
-                    raise ValidationError("You can only review products you have purchased and paid for.")
-
-            serializer.save(product=product)
+            services.create_review(
+                user=self.request.user,
+                product_slug=product_slug,
+                validated_data=serializer.validated_data
+            )
             logger.info("Review created for product slug: %s by user id: %s", product_slug, self.request.user.id)
-        except ValidationError as e:
-            logger.error("Validation error creating review for product slug: %s: %s", product_slug, e)
-            raise PermissionDenied(detail=str(e.message))
         except Exception as e:
             logger.error("Error creating review for product slug: %s: %s", product_slug, e, exc_info=True)
             raise
@@ -311,31 +291,23 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         cache.set(cache_key, response.data, 60 * 5) # 5 minutes
         return response
 
+
     def retrieve(self, request, *args, **kwargs):
         slug = kwargs.get('slug')
-        cache_key = f'product_detail_{slug}'
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data)
+        product = services.get_product_detail(slug)
+        serializer = self.get_serializer(product)
+        return Response(serializer.data)
 
-        response = super().retrieve(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 60 * 60) # 1 hour
-        return response
-
-    @action(detail=False, methods=[r'get'], url_path=r'user-products', url_name=r'user-products')
+    @action(detail=False, methods=['get'], url_path='user-products', url_name='user-products')
     def list_user_products(self, request):
         try:
             logger.info("Listing user products for user id: %s", request.user.id)
             username = request.query_params.get('username')
-            if username:
-                logger.info("Filtering products by username: %s", username)
-                queryset = self.queryset.filter(user__username=username)
-            else:
-                if not request.user.is_authenticated:
-                    logger.warning("Unauthenticated user attempted to list their products.")
-                    return Response({"detail": "Authentication required to view your products."}, status=401)
-                user = request.user
-                queryset = self.queryset.filter(user=user)
+            user = request.user if not username else None
+            if not user and not username:
+                return Response({"detail": "Authentication required to view your products."}, status=401)
+
+            queryset = services.get_user_products(user=user, username=username)
             page = self.paginate_queryset(queryset)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
@@ -444,7 +416,14 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
 
             if cached_data is None:
                 # If no cached data, get the response and cache it
-                response = super().list(request, *args, **kwargs)
+                queryset = services.get_category_list()
+                page = self.paginate_queryset(queryset)
+                if page is not None:
+                    serializer = self.get_serializer(page, many=True)
+                    response = self.get_paginated_response(serializer.data)
+                else:
+                    serializer = self.get_serializer(queryset, many=True)
+                    response = Response(serializer.data)
 
                 # Cache the response data for 24 hours
                 cache.set(cache_key, response.data, 60 * 60 * 24)
@@ -460,13 +439,8 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
             raise
 
     def perform_create(self, serializer):
-        from django.db import IntegrityError
-        from rest_framework.exceptions import ValidationError
         try:
-            serializer.save()
-        except IntegrityError as e:
-            logger.error("Integrity error creating category: %s", e, exc_info=True)
-            raise ValidationError({"name": "A category with this name or slug already exists."})
+            services.create_category(serializer.validated_data)
         except Exception as e:
             logger.error("Error creating category: %s", e, exc_info=True)
             raise

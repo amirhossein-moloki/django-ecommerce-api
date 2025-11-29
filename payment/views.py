@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from ecommerce_api.core.api_standard_response import ApiResponse
 from orders.models import Order
-from .gateways import ZibalGateway
+from . import services
 from shipping.tasks import create_postex_shipment_task
 
 logger = getLogger(__name__)
@@ -37,44 +37,15 @@ class PaymentProcessAPIView(APIView):
                 message="Order ID is required.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
-
-        order = get_object_or_404(Order, order_id=order_id, user=request.user)
-
-        if order.payment_status == Order.PaymentStatus.SUCCESS:
-            return ApiResponse.error(
-                message="This order has already been paid.",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check stock before creating payment request
-        for item in order.items.all():
-            if item.product.stock < item.quantity:
-                return ApiResponse.error(
-                    message=f"Insufficient stock for product: {item.product.name}",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-
-        callback_url = request.build_absolute_uri(reverse("payment:verify"))
-
-        gateway = ZibalGateway()
-        response = gateway.create_payment_request(
-            amount=int(order.total_payable * 10),  # Convert Toman to Rial for Zibal API
-            order_id=order.order_id,
-            callback_url=callback_url
-        )
-
-        if response.get('result') == 100:
-            order.payment_gateway = 'zibal'
-            order.payment_track_id = response.get('trackId')
-            order.save()
-            payment_url = f"https://gateway.zibal.ir/start/{response.get('trackId')}"
+        try:
+            payment_url = services.process_payment(request, order_id)
             return ApiResponse.success(
                 data={"payment_url": payment_url},
                 status_code=status.HTTP_201_CREATED
             )
-        else:
+        except ValueError as e:
             return ApiResponse.error(
-                message="Failed to create payment request.",
+                message=str(e),
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
@@ -98,51 +69,19 @@ class PaymentVerifyAPIView(APIView):
                 message="trackId is required.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
-
         try:
-            order = Order.objects.get(payment_track_id=track_id)
+            message = services.verify_payment(track_id)
+            return ApiResponse.success(
+                message=message,
+                status_code=status.HTTP_200_OK
+            )
         except Order.DoesNotExist:
             return ApiResponse.error(
                 message="Order not found.",
                 status_code=status.HTTP_404_NOT_FOUND
             )
-
-        gateway = ZibalGateway()
-        response = gateway.verify_payment(track_id)
-
-        if response.get('result') == 100:
-            # Check stock again before finalizing the order
-            for item in order.items.all():
-                if item.product.stock < item.quantity:
-                    # Handle insufficient stock after payment (e.g., refund or notify admin)
-                    order.payment_status = Order.PaymentStatus.FAILED
-                    order.save()
-                    return ApiResponse.error(
-                        message=f"Insufficient stock for product: {item.product.name}. Payment will be refunded.",
-                        status_code=status.HTTP_400_BAD_REQUEST
-                    )
-
-            # Decrement stock
-            for item in order.items.all():
-                item.product.stock -= item.quantity
-                item.product.save()
-
-            order.payment_status = Order.PaymentStatus.SUCCESS
-            order.payment_ref_id = response.get('refNumber')
-            order.status = Order.Status.PAID
-            order.save()
-
-            # Create shipment asynchronously
-            create_postex_shipment_task.delay(order.order_id)
-
-            return ApiResponse.success(
-                message="Payment verified. Shipment creation is in progress.",
-                status_code=status.HTTP_200_OK
-            )
-        else:
-            order.payment_status = Order.PaymentStatus.FAILED
-            order.save()
+        except ValueError as e:
             return ApiResponse.error(
-                message="Payment verification failed.",
+                message=str(e),
                 status_code=status.HTTP_400_BAD_REQUEST
             )
