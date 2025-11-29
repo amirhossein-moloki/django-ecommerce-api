@@ -6,7 +6,7 @@ set -e
 # Wait for the database to be ready
 # The wait-for-it.sh script is used to ensure the database container is up and running
 # before the web service tries to connect to it.
-./wait-for-it.sh database:5432 --timeout=30 --strict -- echo "Database is up"
+# ./wait-for-it.sh database:5432 --timeout=30 --strict -- echo "Database is up"
 
 # Apply database migrations
 echo "Applying database migrations..."
