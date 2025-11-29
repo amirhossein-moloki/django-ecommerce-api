@@ -104,6 +104,21 @@ class ProductChatAPIViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['data']['messages']), 5)
 
+    def test_unauthorized_user_cannot_access_chat(self):
+        # Create a third user who is not part of the conversation
+        unauthorized_user = get_user_model().objects.create_user(
+            username='unauthorized',
+            email='unauthorized@test.com',
+            password='password'
+        )
+        self.client.force_authenticate(user=unauthorized_user)
+        url = reverse('api-v1:chat', kwargs={'product_id': self.product.product_id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # The user should not see any messages as they are not the sender or recipient
+        self.assertEqual(len(response.data['data']['messages']), 0)
+
+
 class ChatConsumerTest(TestCase):
     async def asyncSetUp(self):
         User = get_user_model()
