@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, extend_schema_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -39,7 +40,14 @@ class ProductChatAPIView(PaginationMixin, APIView):
             return Response({"error": "Product not found."}, status=404)
 
         try:
-            messages = Message.objects.filter(product_id=product.product_id).select_related("sender", "recipient").order_by("-id")
+            # Security fix: Filter messages to only include those where the
+            # current user is either the sender or the recipient.
+            user = request.user
+            messages = Message.objects.filter(
+                product_id=product.product_id
+            ).filter(
+                Q(sender=user) | Q(recipient=user)
+            ).select_related("sender", "recipient").order_by("-id")
             paginator = self.pagination_class()
             paginated_messages = paginator.paginate_queryset(messages, request)
             messages_data = [
