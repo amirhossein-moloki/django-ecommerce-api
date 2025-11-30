@@ -25,23 +25,19 @@ def get_user_products(user, username: str = None):
 
 
 def get_reviews_for_product(product_slug: str):
-    return Review.objects.filter(product__slug=product_slug)
+    return Review.objects.filter(product__slug=product_slug).select_related('user')
 
 
 def create_review(user, product_slug: str, validated_data: dict):
     product = get_object_or_404(Product, slug=product_slug)
 
-    from django.conf import settings
-    is_testing = getattr(settings, 'TESTING', False)
+    completed_order_exists = product.order_items.filter(
+        order__user=user,
+        order__status=Order.Status.PAID
+    ).exists()
 
-    if not is_testing:
-        completed_order_exists = product.order_items.filter(
-            order__user=user,
-            order__status=Order.Status.PAID
-        ).exists()
-
-        if not completed_order_exists:
-            raise PermissionDenied("You can only review products you have purchased and paid for.")
+    if not completed_order_exists:
+        raise PermissionDenied("You can only review products you have purchased and paid for.")
 
     review = Review.objects.create(
         user=user,

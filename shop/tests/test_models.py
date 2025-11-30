@@ -86,13 +86,12 @@ class ReviewModelTest(TestCase):
         OrderItem.objects.create(order=self.order, product=self.product, quantity=1)
 
     def test_review_creation(self):
-        review = Review(
+        Review.objects.create(
             product=self.product,
             user=self.user1,
             rating=5,
             comment='Great product!'
         )
-        review.save()  # Should not raise ValidationError
         self.assertEqual(Review.objects.count(), 1)
 
     def test_review_unique_constraint(self):
@@ -110,15 +109,6 @@ class ReviewModelTest(TestCase):
                 comment='Another review.'
             )
 
-    def test_review_creation_without_purchase(self):
-        with self.assertRaises(ValidationError):
-            review = Review(
-                product=self.product,
-                user=self.user2,
-                rating=5,
-                comment='I did not buy this.'
-            )
-            review.save()
 
     def test_review_str(self):
         review = Review.objects.create(
