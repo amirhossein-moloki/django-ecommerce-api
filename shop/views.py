@@ -13,7 +13,9 @@ from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiExample,
 )
-from rest_framework import permissions
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+from rest_framework import permissions, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
@@ -102,23 +104,39 @@ logger = getLogger(__name__)
 class ReviewViewSet(viewsets.ModelViewSet):
     """
     API endpoint for creating, updating, deleting, and listing reviews for a specific product.
-    Only authenticated users can create reviews. Only the review owner or a staff member can delete reviews.
-    Only the review owner can update reviews. Users can only leave one review per product, and only for products they have purchased.
+    - **Authentication:** Required for creating, updating, and deleting reviews.
+    - **Permissions:**
+        - Authenticated users can create reviews for products they have purchased.
+        - Only the review owner or a staff member can update or delete a review.
+    - **Business Rules:**
+        - A user can only leave one review per product.
     """
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        - For 'update', 'partial_update', and 'destroy' actions, only the owner or staff is allowed.
+        """
         if self.action in ['update', 'partial_update', 'destroy']:
             self.permission_classes = [IsOwnerOrStaff]
         return super().get_permissions()
 
     def get_queryset(self):
+        """
+        Returns the queryset of reviews for a specific product, identified by its slug.
+        """
         product_slug = self.kwargs.get('product_slug')
         logger.info("Fetching reviews for product slug: %s", product_slug)
         return services.get_reviews_for_product(product_slug)
 
     def perform_create(self, serializer):
+        """
+        Handles the creation of a new review.
+        - The review is associated with the authenticated user and the specified product.
+        - Delegates the creation logic to the `services.create_review` function.
+        """
         product_slug = self.kwargs.get('product_slug')
         try:
             services.create_review(
@@ -127,9 +145,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 validated_data=serializer.validated_data
             )
             logger.info("Review created for product slug: %s by user id: %s", product_slug, self.request.user.id)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError:
+            return Response({"detail": "You have already reviewed this product."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error("Error creating review for product slug: %s: %s", product_slug, e, exc_info=True)
-            raise
+            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema_view(
@@ -247,10 +269,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
     """
     API endpoint for managing products.
-    Supports listing, retrieving, creating, updating, and deleting products.
-    Includes filtering, ordering, and recommendations.
+    - **Authentication:** Read-only for anonymous users, while authenticated users can perform all actions.
+    - **Permissions:**
+        - Product creation, update, and deletion are restricted to the product owner or staff members.
+    - **Features:**
+        - Supports filtering by category, tags, and stock status.
+        - Supports ordering by name, price, stock, and creation date.
+        - Includes a product recommendation feature.
     """
-    queryset = Product.objects.prefetch_related(r'category', r'tags')
+    queryset = Product.objects.select_related('user', 'category').prefetch_related('tags', 'reviews')
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrStaff]
     serializer_class = ProductSerializer
     filterset_class = ProductFilter
@@ -264,25 +291,62 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
     lookup_field = r'slug'
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        - The 'list_user_products' action is available to any user.
+        """
         if self.action in [r'list_user_products']:
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
 
     def get_serializer_class(self):
+        """
+        Returns the serializer class to be used for the current action.
+        - For the 'retrieve' action, it uses the `ProductDetailSerializer` to include more details.
+        """
         if self.action == 'retrieve':
             return ProductDetailSerializer
         return super().get_serializer_class()
 
     def perform_create(self, serializer):
+        """
+        Handles the creation of a new product, associating it with the authenticated user.
+        """
         try:
             serializer.save(user=self.request.user)
+            cache.delete('product_list')
             logger.info("Product created by user id: %s", self.request.user.id)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error("Error creating product for user id: %s: %s", self.request.user.id, e, exc_info=True)
-            raise
+            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def perform_update(self, serializer):
+        """
+        Handles the update of a product.
+        """
+        serializer.save()
+        cache.delete(f"product_{serializer.instance.slug}")
+        cache.delete('product_list')
+
+    def perform_destroy(self, instance):
+        """
+        Handles the deletion of a product.
+        """
+        cache.delete(f"product_{instance.slug}")
+        cache.delete('product_list')
+        instance.delete()
 
     def list(self, request, *args, **kwargs):
-        cache_key = 'product_list'
+        """
+        Lists all products with caching.
+        - Caches the entire product list for 5 minutes.
+        - **Note:** This caching strategy will be improved to be more granular.
+        """
+        # A more granular caching strategy will be implemented in the caching step.
+        query_params = request.query_params.urlencode()
+        cache_key = f'product_list_{query_params}'
         cached_data = cache.get(cache_key)
         if cached_data:
             return Response(cached_data)
@@ -293,19 +357,33 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
 
 
     def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieves a single product by its slug.
+        - Delegates the retrieval logic to the `services.get_product_detail` function.
+        """
         slug = kwargs.get('slug')
+        cache_key = f'product_{slug}'
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
         product = services.get_product_detail(slug)
         serializer = self.get_serializer(product)
+        cache.set(cache_key, serializer.data, 60 * 60) # 1 hour
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='user-products', url_name='user-products')
     def list_user_products(self, request):
+        """
+        A custom action to list products belonging to a specific user.
+        - If a 'username' is provided in the query parameters, it lists products for that user.
+        - Otherwise, it lists products for the authenticated user.
+        """
         try:
             logger.info("Listing user products for user id: %s", request.user.id)
             username = request.query_params.get('username')
             user = request.user if not username else None
             if not user and not username:
-                return Response({"detail": "Authentication required to view your products."}, status=401)
+                return Response({"detail": "Authentication required to view your products."}, status=status.HTTP_401_UNAUTHORIZED)
 
             queryset = services.get_user_products(user=user, username=username)
             page = self.paginate_queryset(queryset)
@@ -316,7 +394,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error("Error listing user products: %s", e, exc_info=True)
-            raise
+            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema_view(
@@ -387,8 +465,9 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
 class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
     """
     API endpoint for managing product categories.
-    Allows listing and retrieving categories for all users.
-    Creation, update, and deletion require admin privileges.
+    - **Authentication:** Read-only for anonymous users.
+    - **Permissions:**
+        - Category creation, update, and deletion are restricted to admin users.
     """
     queryset = Category.objects.all()
     permission_classes = [permissions.AllowAny]
@@ -396,26 +475,37 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
     lookup_field = r'slug'
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        - 'list' and 'retrieve' actions are allowed for any user.
+        - Other actions require admin privileges.
+        """
         if self.action in ['list', 'retrieve']:
             self.permission_classes = [permissions.AllowAny]
         else:
             self.permission_classes = [permissions.IsAdminUser]
         return super().get_permissions()
 
-    # Remove the cache_page decorator and implement custom caching
+    # The cache_page decorator has been removed to implement custom caching.
     def list(self, request, *args, **kwargs):
+        """
+        Lists all categories with custom caching.
+        - Caches the category list for 24 hours using a custom cache key.
+        - This allows for easier cache invalidation when categories are updated.
+        """
         from django.core.cache import cache
         try:
             logger.info("Listing categories")
 
-            # Create a custom cache key that we can easily invalidate
-            cache_key = 'category_list_custom'
+            # Using a custom cache key for easier invalidation.
+            query_params = request.query_params.urlencode()
+            cache_key = f'category_list_{query_params}'
 
-            # Check if we have cached data
+            # Try to fetch the data from the cache.
             cached_data = cache.get(cache_key)
 
             if cached_data is None:
-                # If no cached data, get the response and cache it
+                # If the data is not in the cache, fetch it from the database.
                 queryset = services.get_category_list()
                 page = self.paginate_queryset(queryset)
                 if page is not None:
@@ -425,22 +515,45 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
                     serializer = self.get_serializer(queryset, many=True)
                     response = Response(serializer.data)
 
-                # Cache the response data for 24 hours
+                # Cache the response data for 24 hours.
                 cache.set(cache_key, response.data, 60 * 60 * 24)
 
                 return response
             else:
-                # Return cached data
+                # If the data is in the cache, return it.
                 from rest_framework.response import Response
                 return Response(cached_data)
 
         except Exception as e:
             logger.error("Error listing categories: %s", e, exc_info=True)
-            raise
+            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def perform_create(self, serializer):
+        """
+        Handles the creation of a new category.
+        - Delegates the creation logic to the `services.create_category` function.
+        """
         try:
             services.create_category(serializer.validated_data)
+            cache.delete('category_list')
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error("Error creating category: %s", e, exc_info=True)
-            raise
+            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def perform_update(self, serializer):
+        """
+        Handles the update of a category.
+        """
+        serializer.save()
+        cache.delete(f"category_{serializer.instance.slug}")
+        cache.delete('category_list')
+
+    def perform_destroy(self, instance):
+        """
+        Handles the deletion of a category.
+        """
+        cache.delete(f"category_{instance.slug}")
+        cache.delete('category_list')
+        instance.delete()

@@ -82,7 +82,6 @@ THIRD_PARTY_APPS = [
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
-    'api.apps.ApiConfig',  # API application
     'shop.apps.ShopConfig',  # Shop application for managing products
     'cart.apps.CartConfig',  # Cart application for managing shopping carts
     'orders.apps.OrdersConfig',  # Orders application for managing customer orders
