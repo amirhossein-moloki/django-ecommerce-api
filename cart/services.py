@@ -20,7 +20,7 @@ def get_cart_data(request):
 
 def add_to_cart(request, product_id, quantity=1, override_quantity=False):
     cart = Cart(request)
-    product = get_object_or_404(Product, id=product_id)
+    product = get_object_or_404(Product, product_id=product_id)
     cart.add(
         product=product,
         quantity=quantity,
@@ -30,7 +30,7 @@ def add_to_cart(request, product_id, quantity=1, override_quantity=False):
 
 def remove_from_cart(request, product_id):
     cart = Cart(request)
-    product = get_object_or_404(Product, id=product_id)
+    product = get_object_or_404(Product, product_id=product_id)
     cart.remove(product)
 
 

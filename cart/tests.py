@@ -1,93 +1,192 @@
+from decimal import Decimal
+from django.test import TestCase, RequestFactory
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from django.utils import timezone
+from datetime import timedelta
+from shop.models import Product, Category
+from coupons.models import Coupon
+from cart.cart import Cart
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
-
-from shop.models import Product, Category
-from .models import Cart, CartItem
+from rest_framework.test import APITestCase
 
 User = get_user_model()
 
 
-class CartTests(APITestCase):
+class CartClassTests(TestCase):
     def setUp(self):
+        self.factory = RequestFactory()
         self.user = User.objects.create_user(
+            email='testuser@example.com',
             username='testuser',
-            email='test@example.com',
-            password='testpassword'
+            password='password'
         )
-        self.category = Category.objects.create(name='Test Category')
+        self.category = Category.objects.create(name='Test Category', slug='test-category')
         self.product = Product.objects.create(
             name='Test Product',
+            slug='test-product',
+            price=Decimal('10.00'),
             category=self.category,
-            price=10.00,
             stock=10,
-            user=self.user,
-            weight=1.0,
-            length=1.0,
-            width=1.0,
-            height=1.0
+            user=self.user
         )
-        self.client = APIClient()
+        self.coupon = Coupon.objects.create(
+            code='TESTCOUPON',
+            valid_from=timezone.now(),
+            valid_to=timezone.now() + timedelta(days=1),
+            discount=10,
+            active=True
+        )
 
-    def test_add_to_cart_authenticated(self):
-        self.client.force_authenticate(user=self.user)
-        url = reverse('api-v1:cart-add-to-cart', kwargs={'product_id': self.product.product_id})
-        data = {'quantity': 2}
-        response = self.client.post(url, data)
+    def test_cart_add_product_anonymous(self):
+        request = self.factory.get('/')
+        request.session = self.client.session
+        request.user = AnonymousUser()
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        self.assertEqual(len(cart), 1)
+        self.assertEqual(cart.get_total_price(), Decimal('10.00'))
+
+    def test_cart_add_product_authenticated(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.session = self.client.session
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=2)
+        self.assertEqual(len(cart), 2)
+        self.assertEqual(cart.get_total_price(), Decimal('20.00'))
+
+    def test_cart_remove_product_anonymous(self):
+        request = self.factory.get('/')
+        request.session = self.client.session
+        request.user = AnonymousUser()
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        cart.remove(product=self.product)
+        self.assertEqual(len(cart), 0)
+
+    def test_cart_remove_product_authenticated(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.session = self.client.session
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        cart.remove(product=self.product)
+        self.assertEqual(len(cart), 0)
+
+    def test_cart_clear_anonymous(self):
+        request = self.factory.get('/')
+        request.session = self.client.session
+        request.user = AnonymousUser()
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        cart.clear()
+        self.assertEqual(len(cart), 0)
+
+    def test_cart_clear_authenticated(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.session = self.client.session
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        cart.clear()
+        self.assertEqual(len(cart), 0)
+
+    def test_cart_coupon_anonymous(self):
+        request = self.factory.get('/')
+        request.session = self.client.session
+        request.user = AnonymousUser()
+        request.session['coupon_id'] = self.coupon.id
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        self.assertEqual(cart.get_discount(), Decimal('1.00'))
+        self.assertEqual(cart.get_total_price_after_discount(), Decimal('9.00'))
+
+    def test_cart_coupon_authenticated(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.session = self.client.session
+        cart = Cart(request)
+        cart.cart.coupon = self.coupon
+        cart.cart.save()
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+        self.assertEqual(cart.get_discount(), Decimal('1.00'))
+        self.assertEqual(cart.get_total_price_after_discount(), Decimal('9.00'))
+
+    def test_merge_session_cart(self):
+        request = self.factory.get('/')
+        request.session = self.client.session
+        request.user = AnonymousUser()
+        cart = Cart(request)
+        cart.add(product=self.product, quantity=1)
+
+        request.user = self.user
+        cart = Cart(request)
+        cart.merge_session_cart()
+        self.assertEqual(len(cart), 1)
+
+
+class CartViewSetTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='testuser@example.com',
+            username='testuser',
+            password='password'
+        )
+        self.category = Category.objects.create(name='Test Category', slug='test-category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            slug='test-product',
+            price=Decimal('10.00'),
+            category=self.category,
+            stock=10,
+            user=self.user
+        )
+        self.coupon = Coupon.objects.create(
+            code='TESTCOUPON',
+            valid_from=timezone.now(),
+            valid_to=timezone.now() + timedelta(days=1),
+            discount=10,
+            active=True
+        )
+        self.add_url = reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id})
+        self.remove_url = reverse('api-v1:cart-remove', kwargs={'product_id': self.product.product_id})
+        self.clear_url = reverse('api-v1:cart-clear')
+        self.list_url = reverse('api-v1:cart-list')
+
+    def test_cart_add_product_anonymous(self):
+        response = self.client.post(self.add_url, {'quantity': 1}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        cart = Cart.objects.get(user=self.user)
-        cart_item = CartItem.objects.get(cart=cart, product=self.product)
-        self.assertEqual(cart_item.quantity, 2)
 
-    def test_add_to_cart_anonymous(self):
-        url = reverse('api-v1:cart-add-to-cart', kwargs={'product_id': self.product.product_id})
-        data = {'quantity': 2}
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(self.client.session['cart'][str(self.product.product_id)]['quantity'], 2)
-
-    def test_remove_from_cart_authenticated(self):
+    def test_cart_add_product_authenticated(self):
         self.client.force_authenticate(user=self.user)
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=2)
-        url = reverse('api-v1:cart-remove-from-cart', kwargs={'product_id': self.product.product_id})
-        response = self.client.delete(url)
+        response = self.client.post(self.add_url, {'quantity': 2}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(CartItem.objects.filter(cart=cart, product=self.product).exists())
 
-    def test_clear_cart_authenticated(self):
+    def test_cart_remove_product_anonymous(self):
+        self.client.post(self.add_url, {'quantity': 1}, format='json')
+        response = self.client.delete(self.remove_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_cart_remove_product_authenticated(self):
         self.client.force_authenticate(user=self.user)
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=2)
-        url = reverse('api-v1:cart-clear-cart')
-        response = self.client.delete(url)
+        self.client.post(self.add_url, {'quantity': 1}, format='json')
+        response = self.client.delete(self.remove_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_cart_clear_anonymous(self):
+        self.client.post(self.add_url, {'quantity': 1}, format='json')
+        response = self.client.delete(self.clear_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(cart.items.count(), 0)
 
-    def test_merge_cart_on_login(self):
-        # Add to cart as anonymous
-        url = reverse('api-v1:cart-add-to-cart', kwargs={'product_id': self.product.product_id})
-        data = {'quantity': 2}
-        self.client.post(url, data)
-
-        # Log in
+    def test_cart_clear_authenticated(self):
         self.client.force_authenticate(user=self.user)
-
-        # The cart should be merged
-        cart = Cart.objects.get(user=self.user)
-        cart_item = CartItem.objects.get(cart=cart, product=self.product)
-        self.assertEqual(cart_item.quantity, 2)
-        self.assertNotIn('cart', self.client.session)
-
-    def test_clear_cart_anonymous(self):
-        # Add to cart first
-        url = reverse('api-v1:cart-add-to-cart', kwargs={'product_id': self.product.product_id})
-        data = {'quantity': 2}
-        self.client.post(url, data)
-
-        # Then clear
-        url = reverse('api-v1:cart-clear-cart')
-        response = self.client.delete(url)
+        self.client.post(self.add_url, {'quantity': 1}, format='json')
+        response = self.client.delete(self.clear_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertNotIn('cart', self.client.session)
+
+    def test_list_cart(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

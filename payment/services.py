@@ -55,7 +55,7 @@ def verify_payment(track_id):
             item.product.save()
 
         order.payment_status = Order.PaymentStatus.SUCCESS
-        order.payment_ref_id = response.get('refNumber')
+        order.payment_ref_id = response.get('refNumber', '')
         order.status = Order.Status.PAID
         order.save()
         create_postex_shipment_task.delay(order.order_id)

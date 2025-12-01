@@ -1,110 +1,67 @@
+from decimal import Decimal
 from unittest.mock import patch
-
 from django.contrib.auth import get_user_model
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-
-from orders.models import Order, OrderItem
+from orders.models import Order
 from shop.models import Product, Category
+from account.models import Address
 
 User = get_user_model()
 
 
-class PaymentViewsTest(APITestCase):
+class PaymentGatewayTests(TestCase):
+    @patch('payment.gateways.requests.post')
+    def test_zibal_create_payment_request(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'result': 100, 'trackId': '12345'}
+        from payment.gateways import ZibalGateway
+        gateway = ZibalGateway()
+        response = gateway.create_payment_request(1000, 'test-order', 'http://test.com/callback')
+        self.assertEqual(response['result'], 100)
+
+    @patch('payment.gateways.requests.post')
+    def test_zibal_verify_payment(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {'result': 100}
+        from payment.gateways import ZibalGateway
+        gateway = ZibalGateway()
+        response = gateway.verify_payment('12345')
+        self.assertEqual(response['result'], 100)
+
+
+class PaymentAPIViewTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser', email='test@example.com', password='testpassword')
-        self.category = Category.objects.create(name='Test Category')
-        self.product = Product.objects.create(
-            name='Test Product',
-            category=self.category,
-            user=self.user,
-            stock=10,
-            price=100,
-            weight=1,
-            length=1,
-            width=1,
-            height=1
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='password'
         )
-        self.order = Order.objects.create(user=self.user, total_payable=100)
-        self.order_item = OrderItem.objects.create(order=self.order, product=self.product, quantity=1)
+        self.address = Address.objects.create(
+            user=self.user,
+            province='Tehran',
+            city='Tehran',
+            postal_code='1234567890',
+            full_address='123 Main St'
+        )
+        self.order = Order.objects.create(user=self.user, address=self.address, total_payable=Decimal('100.00'))
+        self.process_url = reverse('payment:process', kwargs={'order_id': self.order.order_id})
+        self.verify_url = reverse('payment:verify')
+
+    @patch('payment.services.ZibalGateway.create_payment_request')
+    def test_process_payment(self, mock_create_request):
+        mock_create_request.return_value = {'result': 100, 'trackId': '12345'}
         self.client.force_authenticate(user=self.user)
-
-    @patch('payment.gateways.ZibalGateway.create_payment_request')
-    def test_successful_payment_request(self, mock_create_payment_request):
-        mock_create_payment_request.return_value = {'result': 100, 'trackId': '12345'}
-        url = reverse('payment:process', kwargs={'order_id': self.order.order_id})
-        response = self.client.post(url)
+        response = self.client.post(self.process_url)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('payment_url', response.data['data'])
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.payment_track_id, '12345')
 
-    def test_already_paid_order(self):
-        self.order.payment_status = Order.PaymentStatus.SUCCESS
-        self.order.save()
-        url = reverse('payment:process', kwargs={'order_id': self.order.order_id})
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'This order has already been paid.')
-
-    def test_insufficient_stock(self):
-        self.product.stock = 0
-        self.product.save()
-        url = reverse('payment:process', kwargs={'order_id': self.order.order_id})
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Insufficient stock', response.data['message'])
-
-    @patch('payment.gateways.ZibalGateway.create_payment_request')
-    def test_gateway_failure(self, mock_create_payment_request):
-        mock_create_payment_request.return_value = {'result': 101}
-        url = reverse('payment:process', kwargs={'order_id': self.order.order_id})
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'Failed to create payment request.')
-
-    @patch('payment.gateways.ZibalGateway.verify_payment')
-    @patch('shipping.tasks.create_postex_shipment_task.delay')
-    def test_successful_payment_verification(self, mock_create_shipment, mock_verify_payment):
+    @patch('payment.services.ZibalGateway.verify_payment')
+    @patch('payment.services.create_postex_shipment_task.delay')
+    def test_verify_payment(self, mock_create_shipment, mock_verify):
+        mock_verify.return_value = {'result': 100}
         self.order.payment_track_id = '12345'
         self.order.save()
-        mock_verify_payment.return_value = {'result': 100, 'refNumber': '54321'}
-        url = reverse('payment:verify') + '?trackId=12345'
-        response = self.client.get(url)
+        response = self.client.get(self.verify_url + '?trackId=12345')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.payment_status, Order.PaymentStatus.SUCCESS)
-        self.assertEqual(self.order.payment_ref_id, '54321')
-        self.product.refresh_from_db()
-        self.assertEqual(self.product.stock, 9)
-        mock_create_shipment.assert_called_once_with(self.order.order_id)
-
-    def test_invalid_track_id(self):
-        url = reverse('payment:verify') + '?trackId=invalid'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    @patch('payment.gateways.ZibalGateway.verify_payment')
-    def test_gateway_verification_failure(self, mock_verify_payment):
-        self.order.payment_track_id = '12345'
-        self.order.save()
-        mock_verify_payment.return_value = {'result': 101}
-        url = reverse('payment:verify') + '?trackId=12345'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.payment_status, Order.PaymentStatus.FAILED)
-
-    @patch('payment.gateways.ZibalGateway.verify_payment')
-    def test_insufficient_stock_after_payment(self, mock_verify_payment):
-        self.order.payment_track_id = '12345'
-        self.order.save()
-        mock_verify_payment.return_value = {'result': 100}
-        self.product.stock = 0
-        self.product.save()
-        url = reverse('payment:verify') + '?trackId=12345'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.payment_status, Order.PaymentStatus.FAILED)

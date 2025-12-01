@@ -1,10 +1,14 @@
 import redis
+import sys
 from django.conf import settings
-
 from .models import Product
 
 # connect to redis
-r = redis.from_url(settings.REDIS_URL)
+if 'test' in sys.argv:
+    from fakeredis import FakeRedis
+    r = FakeRedis()
+else:
+    r = redis.from_url(settings.REDIS_URL)
 
 
 class Recommender:

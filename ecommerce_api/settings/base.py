@@ -1,6 +1,7 @@
 import environ
 from datetime import timedelta
 from pathlib import Path
+import sys
 
 from django.urls import reverse_lazy
 
@@ -315,10 +316,18 @@ SPECTACULAR_SETTINGS = {
 #      │                 Configure Redis Caching                  │
 #      ╰──────────────────────────────────────────────────────────╯
 # ──────────────── Set Up Redis As The Default Cache Backend For Django ────────────────
-REDIS_URL = env('REDIS_URL')
-CACHES = {
-    "default": env.cache('REDIS_URL')
-}
+if 'test' in sys.argv:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+else:
+    REDIS_URL = env('REDIS_URL')
+    CACHES = {
+        "default": env.cache('REDIS_URL')
+    }
 
 #      ╭──────────────────────────────────────────────────────────╮
 #      │           Configure Redis for Django Channels            │
@@ -423,8 +432,11 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+if 'test' in sys.argv:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+else:
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
 
 # Session cookie settings - Fixed for admin compatibility
 SESSION_COOKIE_SAMESITE = 'Lax'
@@ -436,3 +448,17 @@ SESSION_SAVE_EVERY_REQUEST = True  # Ensure sessions are saved on every request
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

@@ -29,7 +29,7 @@ class Cart:
         if self.user.is_authenticated:
             # For authenticated users, use the database cart.
             self.cart, created = CartModel.objects.get_or_create(user=self.user)
-            self.coupon_id = self.cart.coupon_id
+            self.coupon_id = self.cart.coupon.id if self.cart.coupon else None
         else:
             # For anonymous users, use the session cart.
             cart_session = self.session.get(settings.CART_SESSION_ID)
@@ -149,7 +149,7 @@ class Cart:
         if self.user.is_authenticated:
             self.cart.items.all().delete()
         else:
-            del self.session[settings.CART_SESSION_ID]
+            self.cart.clear()
             if 'coupon_id' in self.session:
                 del self.session['coupon_id']
             self.save()

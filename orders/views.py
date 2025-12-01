@@ -74,7 +74,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         Create a new order.
         The logic is handled by the OrderService.
         """
-        order = services.create_order(user=request.user, validated_data=request.data)
+        order = services.create_order(request=request, validated_data=request.data)
         response_serializer = OrderSerializer(order, context={'request': request})
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)

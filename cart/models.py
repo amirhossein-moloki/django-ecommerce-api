@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-
+from coupons.models import Coupon
 from shop.models import Product
 
 
@@ -14,6 +14,7 @@ class Cart(models.Model):
     session_key = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         if self.user:

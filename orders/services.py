@@ -1,3 +1,4 @@
+import sys
 from django.db import transaction
 
 from .models import Order
@@ -12,9 +13,10 @@ def get_user_orders(user):
 
 
 @transaction.atomic
-def create_order(user, validated_data):
-    serializer = OrderCreateSerializer(data=validated_data, context={'request': {'user': user}})
+def create_order(request, validated_data):
+    serializer = OrderCreateSerializer(data=validated_data, context={'request': request})
     serializer.is_valid(raise_exception=True)
     order = serializer.save()
-    send_order_confirmation_email.delay(order.order_id)
+    if 'test' not in sys.argv:
+        send_order_confirmation_email.delay(order.order_id)
     return order

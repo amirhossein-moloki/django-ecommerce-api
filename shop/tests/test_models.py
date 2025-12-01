@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from shop.models import Category, Product, Review
 from orders.models import Order, OrderItem
+from shop import services
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -118,3 +120,30 @@ class ReviewModelTest(TestCase):
             comment='Great product!'
         )
         self.assertEqual(str(review), f'Review by {self.user1} for {self.product} - {review.rating} stars')
+
+class ShopServiceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='password'
+        )
+        self.category = Category.objects.create(name='Test Category', slug='test-category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            slug='test-product',
+            price=Decimal('10.00'),
+            category=self.category,
+            stock=10,
+            user=self.user
+        )
+        self.order = Order.objects.create(user=self.user, status=Order.Status.PAID)
+        self.order_item = OrderItem.objects.create(order=self.order, product=self.product, quantity=1)
+
+    def test_create_review(self):
+        review = services.create_review(
+            user=self.user,
+            product_slug=self.product.slug,
+            validated_data={'rating': 4, 'comment': 'Great!'}
+        )
+        self.assertEqual(review.rating, 4)

@@ -430,12 +430,13 @@ class VerifyOTP(APIView):
         try:
             user = UserAccount.objects.get(phone_number=phone)
         except UserAccount.DoesNotExist:
+            # Create a new user with a dummy email if they don't exist
             user = UserAccount.objects.create_user(
-                email=None,  # Email can be set later
+                email=f'{phone}@example.com',
                 phone_number=phone,
-                password=None
+                password=None,
+                username=phone,
             )
-            # You might want to set a flag to indicate that the user needs to complete their profile
             user.is_active = True
             user.save()
 

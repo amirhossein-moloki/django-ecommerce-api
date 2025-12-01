@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from account.models import Profile, Address
@@ -22,6 +23,10 @@ class UserModelTest(TestCase):
         self.assertEqual(self.user.email, 'testuser@example.com')
         self.assertTrue(self.user.check_password('password123'))
 
+    def test_create_user_without_email(self):
+        with self.assertRaises(ValueError):
+            User.objects.create_user(email=None, password='password123')
+
     def test_create_superuser(self):
         superuser = User.objects.create_superuser(
             email='superuser@example.com',
@@ -36,11 +41,37 @@ class UserModelTest(TestCase):
         self.assertTrue(superuser.is_staff)
         self.assertTrue(superuser.is_active)
 
+    def test_create_superuser_without_staff(self):
+        with self.assertRaises(ValueError):
+            User.objects.create_superuser(
+                email='superuser2@example.com',
+                password='password123',
+                is_staff=False
+            )
+
+    def test_create_superuser_without_superuser(self):
+        with self.assertRaises(ValueError):
+            User.objects.create_superuser(
+                email='superuser3@example.com',
+                password='password123',
+                is_superuser=False
+            )
+
     def test_user_str_representation(self):
         self.assertEqual(str(self.user), 'testuser')
 
     def test_user_name_property(self):
         self.assertEqual(self.user.name, 'Test User')
+
+    def test_username_validator(self):
+        user = User(username='invalid username', email='test@test.com')
+        with self.assertRaises(ValidationError):
+            user.full_clean()
+
+    def test_phone_number_validator(self):
+        user = User(phone_number='123', email='test@test.com', username='testuser')
+        with self.assertRaises(ValidationError):
+            user.full_clean()
 
 
 class ProfileModelTest(TestCase):
