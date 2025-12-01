@@ -1,0 +1,9 @@
+-r requirements.txt
+-r requirements-dev.txt
+
+# CI/CD Tools
+ruff
+black
+bandit
+pip-audit
+pytest

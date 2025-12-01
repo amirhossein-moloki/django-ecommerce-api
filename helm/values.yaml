@@ -1,0 +1,116 @@
+# Default values for ecommerce-api.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/your-repo/ecommerce-api
+  pullPolicy: IfNotPresent
+  # Overridden by CI/CD pipeline
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Additional environment variables to be loaded into the container.
+env:
+  DJANGO_SETTINGS_MODULE: "ecommerce_api.settings.prod"
+  PORT: "8000"
+
+# Secrets to be loaded as environment variables.
+# These should be created in your cluster and referenced here.
+secrets:
+  # Example:
+  # SECRET_KEY:
+  #   name: django-secrets
+  #   key: secret-key
+  # DATABASE_URL:
+  #   name: django-secrets
+  #   key: database-url
+  # REDIS_URL:
+  #   name: django-secrets
+  #   key: redis-url
+  # GOOGLE_OAUTH2_KEY:
+  #   name: django-secrets
+  #   key: google-oauth2-key
+  # GOOGLE_OAUTH2_SECRET:
+  #   name: django-secrets
+  #   key: google-oauth2-secret
+
+# Celery worker configuration
+celeryWorker:
+  enabled: true
+  replicaCount: 1
+  # Additional env vars for the worker
+  env: {}
+
+# Celery beat configuration
+celeryBeat:
+  enabled: true
+  # Additional env vars for the beat
+  env: {}

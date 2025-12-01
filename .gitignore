@@ -1,17 +1,33 @@
+# Environments
+.env*
 .venv
-.idea
-Notes
-data
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.DS_Store
-*.sock
-.env
+venv/
+virtualenv/
 
-# Log files
+# Django
 *.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+/media/
+/staticfiles/
+local_settings.py
+.DS_Store
 
-# Database files
-*.rdb
+# Static files
+/node_modules
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Pytest
+.pytest_cache/
+.coverage
+.coverage.*
+/htmlcov/
+
+# User-uploaded files
+/media/

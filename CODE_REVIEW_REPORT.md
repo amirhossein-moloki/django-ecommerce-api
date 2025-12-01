@@ -1,89 +1,41 @@
-با احترام،
+# Code Review and Security Audit Report
 
-پس از بررسی دقیق و جامع پروژه شما، مایلم نتایج ارزیابی خود را ارائه دهم. در ابتدا باید بگویم که این پروژه یکی از باکیفیت‌ترین پروژه‌های فروشگاهی است که من بررسی کرده‌ام. معماری آن بسیار تمیز، کدها خوانا و استاندارد، و از تکنولوژی‌های مدرن به بهترین شکل ممکن استفاده شده است. این پروژه یک پایه و اساس فوق‌العاده محکم برای ساخت یک فروشگاه آنلاین حرفه‌ای و مقیاس‌پذیر است.
+This document provides a comprehensive review of the Hypex E-commerce API project, focusing on security, performance, and adherence to Django and DevOps best practices.
 
-در ادامه، گزارش کامل ارزیابی به تفکیک بخش‌های درخواستی شما ارائه می‌شود.
+## Summary of Findings
 
----
+The project is well-structured and uses a modern Django stack, including Celery for asynchronous tasks and Channels for real-time features. The use of `django-environ` for configuration is a major plus. However, several critical security and configuration issues need to be addressed before deploying to a production environment.
 
-### **1. نتیجه‌گیری جامع و پیشنهادات**
+## Security Vulnerabilities (Priority: High)
 
-در این بخش، خلاصه‌ای از یافته‌ها در قالب جداول ارائه شده است.
+| Finding                               | Priority | Status      | Recommendation                                                                                                                                                                                          |
+| ------------------------------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`DEBUG` Mode is Enabled in Base Settings** | **P0**   | **Critical** | `DEBUG` is set to `True` in `settings/base.py`. This exposes sensitive information in case of an error. `DEBUG` must be `False` in production and should be loaded from an environment variable.             |
+| **Insecure `ALLOWED_HOSTS` in Base Settings** | **P0**   | **Critical** | `ALLOWED_HOSTS` is set to `['*']` in `settings/base.py`, making the application vulnerable to HTTP Host header attacks. This must be restricted to the actual domain(s) in production.                   |
+| **Insecure Cookie Configuration** | **P1**   | **High**    | `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` are set to `False`. For production deployments over HTTPS, these must be `True` to prevent cookies from being transmitted over unencrypted connections. |
+| **Docker Container Runs as Root**     | **P1**   | **High**    | The current `Dockerfile` does not specify a non-root user. Running containers as root is a significant security risk. A dedicated, unprivileged user should be created and used.                      |
+| **Sensitive Files in Gitignore** | **P2**   | **Medium**    | `.env` file is missing from `.gitignore`, which can lead to accidental commiting of secrets. |
+| **Staticfiles in Git**     | **P2**   | **Medium**    | `staticfiles` are tracked by git. this directory is the result of `collectstatic` and must be in `.gitignore`.                      |
+| **No Cross-Site Request Forgery (CSRF) Protection for Session-Based Authentication**     | **P2**   | **Medium**    | The project uses session-based authentication, which can be vulnerable to CSRF attacks. While JWT is the primary authentication method, session-based authentication is still enabled and should be protected.                      |
+| **Dependency Vulnerabilities**        | **P2**   | **Medium**  | A quick scan of `requirements.txt` may reveal packages with known vulnerabilities. A dependency scanning tool like `pip-audit` should be integrated into the CI pipeline.                                    |
 
-#### **جدول ۱: قابلیت‌های موجود و وضعیت آن‌ها**
+## Configuration and Best Practices
 
-| قابلیت | وضعیت | توضیحات |
-| :--- | :--- | :--- |
-| **مدیریت کاربران (Account)** | کامل | ثبت‌نام با ایمیل/موبایل (OTP)، ورود، خروج، پروفایل، مدیریت آدرس. |
-| **احراز هویت و مجوزها** | کامل | مبتنی بر JWT، مدیریت توکن، مجوزهای دسترسی دقیق و سفارشی. |
-| **مدیریت محصولات (Shop)** | کامل | CRUD محصولات، دسته‌بندی‌ها، تگ‌گذاری، مدیریت موجودی. |
-| **سیستم نقد و بررسی** | کامل | ثبت نظر فقط برای خریداران، امتیازدهی، مدیریت نظرات. |
-| **سبد خرید (Cart)** | کامل | افزودن، حذف، به‌روزرسانی آیتم‌ها (مبتنی بر Session). |
-| **مدیریت کوپن تخفیف** | کامل | اعمال کوپن بر سبد خرید، اعتبارسنجی و مدیریت استفاده. |
-| **فرآیند ثبت سفارش (Orders)** | کامل | ایجاد سفارش از سبد خرید، مدیریت وضعیت، تاریخچه سفارشات. |
-| **سیستم پیشنهاددهنده محصول** | ناقص | زیرساخت با Celery و Redis وجود دارد اما منطق اصلی نیاز به تکمیل دارد. |
-| **جستجو و فیلتر محصولات** | کامل | فیلتر بر اساس قیمت، دسته‌بندی، تگ و موجودی؛ جستجو بر اساس نام. |
-| **پرداخت آنلاین** | کامل | یکپارچه‌سازی با درگاه زیبال، شامل ایجاد پرداخت و تایید سمت سرور. |
-| **ارسال و حمل و نقل** | کامل | یکپارچه‌سازی با Postex برای استعلام هزینه داینامیک و ایجاد خودکار بارنامه. |
-| **چت آنلاین (Real-time)** | ناقص | زیرساخت با Django Channels وجود دارد اما قابلیت‌ها نیاز به توسعه دارند. |
+| Finding                               | Priority | Status      | Recommendation                                                                                                                                                                            |
+| ------------------------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Hardcoded `REDIS_URL` in Production Settings** | **P2**   | **Medium**  | `settings/prod.py` hardcodes the `REDIS_URL`. This should be loaded from an environment variable to maintain consistency and avoid exposing infrastructure details in the code. |
+| **Migrations in `entrypoint.sh`**     | **P2**   | **Medium**  | The `entrypoint.sh` script runs `manage.py migrate`. In a replicated environment like Kubernetes, this can lead to race conditions. Migrations should be run as a separate, one-off task (e.g., a Kubernetes Job). |
+| **Development Dependencies in Production Image** | **P2**   | **Medium**  | The `Dockerfile` installs all dependencies from `requirements.txt`, including development tools like `django-debug-toolbar`. Separate `requirements.txt` and `requirements-dev.txt` files should be used. |
+| **Dockerfile Not Optimized for Production** | **P2**   | **Medium**  | The `Dockerfile` copies the entire project context and does not use a non-root user. It should be optimized to create a smaller, more secure image.                                     |
 
-#### **جدول ۲: قابلیت‌های پیشنهادی برای اضافه شدن**
+## Recommendations for CI/CD Pipeline
 
-| قابلیت پیشنهادی | اهمیت | توضیحات |
-| :--- | :--- | :--- |
-| **لیست علاقه‌مندی‌ها (Wishlist)** | بالا | به کاربران اجازه می‌دهد محصولات مورد علاقه خود را برای خریدهای آینده ذخیره کنند و نرخ بازگشت کاربر را افزایش می‌دهد. |
-| **جستجوی پیشرفته (Elasticsearch)** | بالا | برای فروشگاه‌های بزرگ، جستجوی متنی سریع و هوشمند (Full-text search) با Elasticsearch تجربه کاربری را متحول می‌کند. |
-| **مدیریت پیشرفته موجودی انبار** | متوسط | قابلیت‌هایی مانند مدیریت چندین انبار، هشدارهای کاهش موجودی و رزرو موجودی هنگام پرداخت. |
-| **سیستم بازاریابی و اطلاع‌رسانی** | متوسط | ارسال ایمیل/پیامک برای کمپین‌های تخفیف، اطلاع‌رسانی موجود شدن محصول و... |
-| **داشبورد گزارشات برای مدیران** | بالا | گزارشات فروش روزانه/ماهانه، محصولات پرفروش، کاربران فعال و تحلیل‌های کلیدی دیگر. |
-
-#### **جدول ۳: نقاط قوت و ضعف پروژه**
-
-| نقاط قوت (Strengths) | نقاط ضعف (Weaknesses) |
-| :--- | :--- |
-| ✅ معماری بسیار تمیز، ماژولار و قابل توسعه | ❌ پوشش تست‌ها ناکافی است (فیلترینگ، موارد مرزی و...). |
-| ✅ کیفیت کد بالا، خوانا و پیروی از استانداردهای PEP 8 | ❌ پیکربندی امنیتی برای محیط پروداکشن صحیح نیست (`DEBUG=True`). |
-| ✅ بهینه‌سازی عملکرد عالی (کشینگ، کوئری‌های بهینه، Celery) | ❌ برخی منطق‌های کسب‌وکار در چند لایه تکرار شده‌اند (مانند بررسی خرید برای نظر). |
-| ✅ سیستم احراز هویت و مجوزهای بسیار امن و مدرن | ❌ منطق محاسبه مالیات به صورت ثابت (Hardcoded) است. |
-| ✅ مستندات API خودکار و بسیار باکیفیت با `drf-spectacular` | |
-| ✅ یکپارچه‌سازی کامل با سرویس‌های پرداخت (Zibal) و حمل و نقل (Postex) | |
-
----
-
-### **2. امتیازدهی به هر بخش**
-
-| بخش مورد ارزیابی | امتیاز (از ۱ تا ۵) | دلیل امتیاز |
-| :--- | :--- | :--- |
-| **ساختار پروژه و معماری** | ⭐️ 4.5 | معماری MVVM بسیار تمیز است. با افزودن یک لایه سرویس می‌توانست عالی باشد. |
-| **کیفیت کد** | ⭐️ 5 | کدها بسیار خوانا، استاندارد و با رعایت اصول SOLID و DRY نوشته شده‌اند. |
-| **عملکرد و کارایی** | ⭐️ 5 | استفاده هوشمندانه از کش، کوئری‌های بهینه و وظایف پس‌زمینه، عملکرد را تضمین می‌کند. |
-| **امنیت** | ⭐️ 4 | منطق احراز هویت و مجوزها عالی است، اما تنظیمات پروداکشن نیاز به اصلاح فوری دارد. |
-| **تست‌ها و پوشش کد** | ⭐️ 3.5 | تست‌های موجود باکیفیت هستند اما پوشش آن‌ها برای تضمین کامل قابلیت اطمینان، کافی نیست. |
-| **مستندسازی و قابلیت توسعه** | ⭐️ 5 | مستندات API خودکار و عالی است و ساختار پروژه توسعه آینده را بسیار آسان می‌کند. |
-
----
-
-### **3. راهکارهای عملی برای بهبود**
-
-1.  **اولویت اول: اصلاحات امنیتی**
-    *   **اقدام فوری:** در فایل تنظیمات پروداکشن (`prod.py`)، مقادیر زیر را تنظیم کنید:
-        *   `DEBUG = False`
-        *   `ALLOWED_HOSTS = ['your_domain.com', 'api.your_domain.com']`
-
-2.  **افزایش پوشش تست‌ها**
-    *   تست‌هایی برای **فیلترینگ، جستجو و مرتب‌سازی** در `ProductViewSet` بنویسید.
-    *   تست‌هایی برای **موارد مرزی (Edge Cases)** اضافه کنید (مثلاً ارسال داده نامعتبر به سریالایزرها).
-    *   یک **تست یکپارچه‌سازی (Integration Test)** برای فرآیند کامل "افزودن به سبد -> اعمال کوپن -> ایجاد سفارش" بنویسید.
-
-3.  **بهبود معماری و کاهش تکرار کد**
-    *   یک **لایه سرویس (Service Layer)** به پروژه اضافه کنید. این لایه می‌تواند شامل توابعی باشد که منطق کسب‌وکار را در خود کپسوله می‌کنند. برای مثال:
-        *   یک تابع `can_user_review_product(user, product)` ایجاد کنید و منطق بررسی خرید محصول را در آن قرار دهید تا هم از مدل و هم از ویو فراخوانی شود.
-        *   منطق محاسبه هزینه حمل و نقل و مالیات را از `OrderCreateSerializer` به یک سرویس منتقل کنید تا داینامیک و قابل مدیریت باشد.
-
-4.  **بهبودهای نهایی**
-    *   **محاسبه مالیات:** منطق محاسبه مالیات را از حالت ثابت به یک سیستم داینامیک (مثلاً بر اساس نوع محصول یا استان) تغییر دهید.
-    *   **تکمیل قابلیت چت:** قابلیت چت آنلاین را با افزودن ویژگی‌هایی مانند تاریخچه گفتگو، وضعیت آنلاین بودن کاربران و... تکمیل کنید.
-
-امیدوارم این ارزیابی جامع برای شما مفید بوده باشد. این پروژه پتانسیل بسیار بالایی دارد و با انجام بهبودهای پیشنهادی، به یک محصول در سطح کلاس جهانی تبدیل خواهد شد.
-
-موفق باشید.
+-   **Linting and Formatting**: Use `ruff` and `black` to enforce a consistent code style.
+-   **Static Analysis**: Use `bandit` to identify common security issues in Python code.
+-   **Dependency Scanning**: Use `pip-audit` or a similar tool to scan for vulnerabilities in dependencies.
+-   **Automated Testing**: Run the `pytest` suite on every pull request.
+-   **Docker Image Scanning**: Use a tool like `trivy` to scan the final Docker image for OS-level vulnerabilities.
+-   **Infrastructure as Code**: Use Helm to manage Kubernetes manifests for reproducible deployments.
+-   **Automated Deployments**: Use GitHub Actions to deploy to staging and production environments.
+-   **Secret Management**: Use GitHub Secrets to store sensitive information like database credentials and API keys.
+-   **Observability**: Configure structured logging, health checks (liveness and readiness probes), and metrics (Prometheus).
