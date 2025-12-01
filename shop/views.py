@@ -18,6 +18,7 @@ from django.db import IntegrityError
 from rest_framework import permissions, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
@@ -131,27 +132,33 @@ class ReviewViewSet(viewsets.ModelViewSet):
         logger.info("Fetching reviews for product slug: %s", product_slug)
         return services.get_reviews_for_product(product_slug)
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
         """
         Handles the creation of a new review.
         - The review is associated with the authenticated user and the specified product.
         - Delegates the creation logic to the `services.create_review` function.
         """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         product_slug = self.kwargs.get('product_slug')
         try:
-            services.create_review(
+            review = services.create_review(
                 user=self.request.user,
                 product_slug=product_slug,
                 validated_data=serializer.validated_data
             )
             logger.info("Review created for product slug: %s by user id: %s", product_slug, self.request.user.id)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # After creating the review, we serialize it to return in the response.
+            response_serializer = self.get_serializer(review)
+            headers = self.get_success_headers(response_serializer.data)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except IntegrityError:
             return Response({"detail": "You have already reviewed this product."}, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionDenied as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             logger.error("Error creating review for product slug: %s: %s", product_slug, e, exc_info=True)
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "An unexpected server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema_view(

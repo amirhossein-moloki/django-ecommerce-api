@@ -212,14 +212,9 @@ class Review(models.Model):
         Overrides the default save method to validate that a user can only review a product
         they have purchased. This is a crucial business rule to ensure the authenticity of reviews.
         """
-        from django.core.exceptions import ValidationError
-
-        # This check can be skipped, for example, when creating reviews from a fixture or a management command.
-        skip_validation = kwargs.pop('skip_validation', False)
-
-        if not skip_validation and not self.product.order_items.filter(order__user=self.user, order__status=Order.Status.PAID).exists():
-            raise ValidationError("You can only review products you have purchased and the order must be paid.")
-
+        # The business logic for checking if a user has purchased the product
+        # has been moved to the service layer (shop/services.py) to avoid
+        # duplicated logic and make the service layer the single source of truth.
         super().save(*args, **kwargs)
 
     def __str__(self):
