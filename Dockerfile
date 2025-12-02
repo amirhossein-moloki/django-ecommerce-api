@@ -53,9 +53,10 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 # Copy the application code into the final image.
 COPY . .
 
-# The entrypoint script is responsible for running database migrations and starting the server.
-# Make sure it's executable.
-RUN chmod +x /app/entrypoint.sh
+# The entrypoint and wait-for-it scripts are responsible for running database migrations and starting the server.
+# Make sure they are executable.
+RUN chmod +x /app/entrypoint.sh && \
+    chmod +x /app/wait-for-it.sh
 
 # Change the ownership of the application directory to the non-root user.
 # This includes media and static directories where Django will write files.

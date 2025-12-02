@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      args:
+        - DEV=true
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build:
+      args:
+        - DEV=true
+    volumes:
+      - .:/app
+
+  celery_beat:
+    build:
+      args:
+        - DEV=true
+    volumes:
+      - .:/app
+
+  flower:
+    build:
+      args:
+        - DEV=true
+    volumes:
+      - .:/app
