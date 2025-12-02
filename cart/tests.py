@@ -98,8 +98,9 @@ class CartClassTests(TestCase):
         request = self.factory.get('/')
         request.session = self.client.session
         request.user = AnonymousUser()
-        request.session['coupon_id'] = self.coupon.id
         cart = Cart(request)
+        cart.cart.coupon = self.coupon
+        cart.cart.save()
         cart.add(product=self.product, quantity=1)
         self.assertEqual(cart.get_discount(), Decimal('1.00'))
         self.assertEqual(cart.get_total_price_after_discount(), Decimal('9.00'))
@@ -111,22 +112,26 @@ class CartClassTests(TestCase):
         cart = Cart(request)
         cart.cart.coupon = self.coupon
         cart.cart.save()
-        cart = Cart(request)
         cart.add(product=self.product, quantity=1)
         self.assertEqual(cart.get_discount(), Decimal('1.00'))
         self.assertEqual(cart.get_total_price_after_discount(), Decimal('9.00'))
 
-    def test_merge_session_cart(self):
+    def test_merge_cart_on_login(self):
+        # 1. Create a cart as an anonymous user
         request = self.factory.get('/')
         request.session = self.client.session
         request.user = AnonymousUser()
-        cart = Cart(request)
-        cart.add(product=self.product, quantity=1)
+        anonymous_cart = Cart(request)
+        anonymous_cart.add(product=self.product, quantity=1)
+        self.assertEqual(len(anonymous_cart), 1)
 
+        # 2. "Log in" the user and initialize the cart again
         request.user = self.user
-        cart = Cart(request)
-        cart.merge_session_cart()
-        self.assertEqual(len(cart), 1)
+        authenticated_cart = Cart(request)
+
+        # 3. Verify the item from the anonymous cart is now in the authenticated cart
+        self.assertEqual(len(authenticated_cart), 1)
+        self.assertEqual(authenticated_cart.cart.user, self.user)
 
 
 class CartViewSetTests(APITestCase):
