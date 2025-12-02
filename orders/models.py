@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django_prometheus.models import ExportModelOperationsMixin
 
 from coupons.models import Coupon
 from shop.models import Product
@@ -12,7 +13,7 @@ from account.models import Address
 User = get_user_model()
 
 
-class Order(models.Model):
+class Order(ExportModelOperationsMixin('order'), models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         PAID = 'paid', 'Paid'

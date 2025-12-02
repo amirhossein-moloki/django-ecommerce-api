@@ -81,7 +81,8 @@ THIRD_PARTY_APPS = [
     'simple_history',  # Track changes to model instances
     'django_extensions',  # Additional management commands and utilities
     'rest_framework_simplejwt.token_blacklist',  # JWT token blacklist for security
-    'corsheaders'  # Cross-Origin Resource Sharing (CORS) headers
+    'corsheaders',  # Cross-Origin Resource Sharing (CORS) headers
+    'django_prometheus',  # Prometheus metrics for Django
 ]
 
 # Custom applications developed for this project
@@ -102,6 +103,7 @@ CUSTOM_APPS = [
 INSTALLED_APPS = ['daphne'] + DJANGO_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -112,6 +114,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'ecommerce_api.urls'
@@ -455,9 +458,19 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'json_formatter': {
+            'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(module)s %(funcName)s %(lineno)d %(message)s'
+        },
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(message)s'
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'json_formatter' if not DEBUG else 'simple',
         },
     },
     'root': {
@@ -465,3 +478,26 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# OpenTelemetry settings
+OTEL_SERVICE_NAME = env('OTEL_SERVICE_NAME', default='ecommerce-api')
+OTEL_EXPORTER_OTLP_ENDPOINT = env('OTEL_EXPORTER_OTLP_ENDPOINT', default='http://jaeger:4318')
+
+if OTEL_EXPORTER_OTLP_ENDPOINT:
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+    from opentelemetry.sdk.resources import Resource
+
+    resource = Resource(attributes={
+        "service.name": OTEL_SERVICE_NAME
+    })
+
+    provider = TracerProvider(resource=resource)
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces"))
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    DjangoInstrumentor().instrument()

@@ -51,6 +51,7 @@ def api_root(request):
 
 
 urlpatterns = [
+    path('metrics/', include('django_prometheus.urls')),
     path('', api_root, name='api-root'),  # Handle root path requests
     path('auth/', include('account.urls', namespace='auth')),
     path('sms/', include('sms.urls', namespace='sms')),
