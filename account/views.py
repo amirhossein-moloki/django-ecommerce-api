@@ -265,6 +265,8 @@ class ActivateView(View):
 
 
 def generate_otp():
+    if settings.DEBUG:
+        return "123456"
     return str(random.randint(100000, 999999))
 
 

@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences
+POST,/auth/request-otp/,HTTPError('500 Server Error: Internal Server Error for url: /auth/request-otp/'),19

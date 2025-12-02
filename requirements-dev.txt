@@ -3,3 +3,4 @@ django-debug-toolbar==5.1.0
 django-extensions==4.1
 flower==2.0.1
 fakeredis
+locust
