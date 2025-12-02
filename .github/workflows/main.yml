@@ -1,0 +1,139 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  validate:
+    name: "Validate Code Quality"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out code"
+        uses: actions/checkout@v4
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: "Install dependencies"
+        run: pip install -r requirements-ci.txt
+
+      - name: "Lint with ruff"
+        run: ruff check .
+
+      - name: "Format with black"
+        run: black --check .
+
+      - name: "Sort imports with isort"
+        run: isort --check .
+
+      - name: "Security analysis with bandit"
+        run: bandit -r .
+
+      - name: "Dependency scan with pip-audit"
+        run: pip-audit
+
+      - name: "Run tests with pytest"
+        env:
+          SECRET_KEY: "test-secret-key"
+          DATABASE_URL: "sqlite:///db.sqlite3"
+          REDIS_URL: "redis://localhost:6379/0"
+        run: pytest
+
+  build-and-scan:
+    name: "Build and Scan Docker Image"
+    runs-on: ubuntu-latest
+    # Only run on pull requests, for push to main this is handled in the deploy job
+    if: github.event_name == 'pull_request'
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - name: "Check out code"
+        uses: actions/checkout@v4
+
+      - name: "Log in to GitHub Container Registry"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build Docker image for scanning"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/${{ github.repository }}/scan-target:${{ github.sha }}
+
+      - name: "Scan Docker image with trivy"
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/${{ github.repository }}/scan-target:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  deploy:
+    name: "Deploy to Staging"
+    runs-on: ubuntu-latest
+    # Only run on push to main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: "Check out code"
+        uses: actions/checkout@v4
+
+      - name: "Log in to GitHub Container Registry"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and push Docker image"
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: "Scan pushed Docker image with trivy"
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/${{ github.repository }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: "Set up kubectl"
+        uses: azure/setup-kubectl@v3
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@v3
+
+      - name: "Configure kubectl"
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+
+      - name: "Deploy to Staging"
+        run: |
+          helm upgrade --install staging-ecommerce-api ./helm \
+            --namespace staging \
+            --create-namespace \
+            --set image.repository=ghcr.io/${{ github.repository }} \
+            --set image.tag=${{ github.sha }} \
+            --set ingress.hosts[0].host=staging.your-domain.com

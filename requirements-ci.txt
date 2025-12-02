@@ -4,6 +4,7 @@
 # CI/CD Tools
 ruff
 black
+isort
 bandit
 pip-audit
 pytest
