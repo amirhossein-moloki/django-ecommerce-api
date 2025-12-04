@@ -5,7 +5,7 @@ This diagram illustrates the high-level architecture of the Hypex E-commerce API
 ```mermaid
 graph TD
     subgraph "Client"
-        User[("User's Browser / Mobile App")]
+        User["User's Browser / Mobile App"]
     end
 
     subgraph "Gateway"
@@ -13,7 +13,7 @@ graph TD
     end
 
     subgraph "Application Services"
-        Web[Django Application (Gunicorn)]
+        Web["Django Application (Gunicorn)"]
         CeleryWorker[Celery Worker]
         CeleryBeat[Celery Beat Scheduler]
     end
