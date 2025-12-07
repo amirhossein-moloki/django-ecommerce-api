@@ -16,7 +16,8 @@ def process_payment(request, order_id):
         if item.product.stock < item.quantity:
             raise ValueError(f"Insufficient stock for product: {item.product.name}")
 
-    callback_url = request.build_absolute_uri(reverse("payment:verify"))
+    # Use the secure webhook for server-to-server confirmation
+    callback_url = request.build_absolute_uri(reverse("payment:webhook"))
     gateway = ZibalGateway()
     response = gateway.create_payment_request(
         amount=int(order.total_payable * 10),

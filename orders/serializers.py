@@ -107,12 +107,26 @@ class OrderCreateSerializer(serializers.Serializer):
         user = self.context['request'].user
 
         with transaction.atomic():
+            # Lock products before processing to prevent race conditions.
+            product_ids = [item['product'].product_id for item in cart]
+            locked_products = list(Product.objects.select_for_update().filter(product_id__in=product_ids))
+
+            if len(locked_products) != len(product_ids):
+                raise ValidationError("Some products in your cart could not be found or are no longer available.")
+
+            locked_products_map = {p.product_id: p for p in locked_products}
+
             # Create the order
+            # Set coupon on the cart model before calculating discount
+            if coupon:
+                cart.cart.coupon = coupon
+                cart.cart.save()
+
             order = Order.objects.create(
                 user=user,
                 address=address,
                 coupon=coupon,
-                discount_amount=cart.get_discount(coupon) if coupon else 0
+                discount_amount=cart.get_discount() if coupon else 0
             )
 
             if coupon:
@@ -123,9 +137,16 @@ class OrderCreateSerializer(serializers.Serializer):
             products_to_update = []
 
             for item in cart:
-                product = item['product']
+                # Use the locked product instance for fresh data
+                product = locked_products_map.get(item['product'].product_id)
+
+                # Re-validate stock and price at the moment of purchase
                 if product.stock < item['quantity']:
                     raise ValidationError(f"Not enough stock for {product.name}.")
+                if item['price'] != product.price:
+                    raise ValidationError(
+                        f"The price of {product.name} has changed. Please review your cart and try again."
+                    )
 
                 product.stock -= item['quantity']
                 products_to_update.append(product)

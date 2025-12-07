@@ -41,7 +41,6 @@ class OrderViewSet(viewsets.ModelViewSet):
     - Users can create, list, and retrieve their own orders.
     - Staff users have full CRUD permissions.
     """
-    queryset = Order.objects.prefetch_related('items__product', 'user', 'address', 'coupon')
 
     def get_serializer_class(self):
         """

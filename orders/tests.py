@@ -94,6 +94,69 @@ class OrderViewSetTests(APITestCase):
         response = self.client.post(self.create_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_idor_vulnerability(self):
+        """
+        Ensure a user cannot access another user's order.
+        """
+        # Create a second user
+        other_user = User.objects.create_user(
+            phone_number='+989123456717',
+            email='other@example.com',
+            username='otheruser',
+            password='password'
+        )
+
+        # Create an order for the first user
+        self.client.force_authenticate(user=self.user)
+        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
+        data = {'address_id': self.address.id}
+        response = self.client.post(self.create_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        order_id = response.data['order_id']
+
+        # Attempt to access the order as the second user
+        self.client.force_authenticate(user=other_user)
+        url = reverse('api-v1:order-detail', kwargs={'pk': order_id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_overselling_prevention(self):
+        """
+        Ensure a product with a stock of 1 cannot be sold twice.
+        """
+        # Set product stock to 1
+        self.product.stock = 1
+        self.product.save()
+
+        # Create a second user
+        other_user = User.objects.create_user(
+            phone_number='+989123456718',
+            email='another@example.com',
+            username='anotheruser',
+            password='password'
+        )
+        Address.objects.create(
+            user=other_user,
+            province='Tehran',
+            city='Tehran',
+            postal_code='1234567890',
+            full_address='123 Main St'
+        )
+
+        # First user buys the last item
+        self.client.force_authenticate(user=self.user)
+        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
+        data = {'address_id': self.address.id}
+        response = self.client.post(self.create_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Second user attempts to buy the same item
+        self.client.force_authenticate(user=other_user)
+        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
+        data = {'address_id': Address.objects.get(user=other_user).id}
+        response = self.client.post(self.create_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class OrderIntegrationTest(APITestCase):
     """

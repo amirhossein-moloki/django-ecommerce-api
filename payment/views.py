@@ -11,7 +11,11 @@ from rest_framework.views import APIView
 from ecommerce_api.core.api_standard_response import ApiResponse
 from orders.models import Order
 from . import services
-from shipping.tasks import create_postex_shipment_task
+import hmac
+from .tasks import process_successful_payment
+from ecommerce_api.core.utils import get_client_ip
+from django.conf import settings
+from rest_framework.permissions import AllowAny
 
 logger = getLogger(__name__)
 
@@ -48,6 +52,49 @@ class PaymentProcessAPIView(APIView):
                 message=str(e),
                 status_code=status.HTTP_400_BAD_REQUEST
             )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        operation_id="payment_webhook",
+        description="Webhook for Zibal payment gateway to send payment status updates.",
+        tags=["Payments"],
+        request=None,
+        responses={
+            200: OpenApiResponse(description="Webhook received and accepted for processing."),
+            400: OpenApiResponse(description="Invalid webhook request (e.g., missing headers, invalid IP).")
+        },
+    )
+)
+class PaymentWebhookAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        # Security: Check for a secret header
+        secret_header = request.headers.get('X-Zibal-Secret', '').encode('utf-8')
+        webhook_secret = settings.ZIBAL_WEBHOOK_SECRET.encode('utf-8')
+
+        if not hmac.compare_digest(secret_header, webhook_secret):
+            logger.warning("Invalid or missing webhook secret.")
+            return ApiResponse.error(message="Not authorized.", status_code=status.HTTP_403_FORBIDDEN)
+
+        # Security: Check the source IP (optional but recommended)
+        client_ip = get_client_ip(request)
+        if client_ip not in settings.ZIBAL_ALLOWED_IPS:
+            logger.warning(f"Webhook request from unauthorized IP: {client_ip}")
+            return ApiResponse.error(message="Invalid source IP.", status_code=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        track_id = data.get('trackId')
+        success = data.get('success')
+
+        if not track_id:
+            return ApiResponse.error(message="trackId is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        # Asynchronously process the payment to avoid blocking the gateway
+        process_successful_payment.delay(track_id, success)
+
+        return ApiResponse.success(message="Webhook received.", status_code=status.HTTP_200_OK)
 
 
 @extend_schema_view(

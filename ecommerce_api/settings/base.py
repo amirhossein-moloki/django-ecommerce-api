@@ -281,6 +281,12 @@ SWAGGER_SETTINGS = {
 
 TAGGIT_CASE_INSENSITIVE = True
 
+# Zibal Payment Gateway
+ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='zibal')
+ZIBAL_WEBHOOK_SECRET = env('ZIBAL_WEBHOOK_SECRET', default='your-super-secret-webhook-key')
+ZIBAL_ALLOWED_IPS = env('ZIBAL_ALLOWED_IPS', cast=lambda v: [s.strip() for s in v.split(',')], default='127.0.0.1')
+
+
 # Celery Configuration
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
