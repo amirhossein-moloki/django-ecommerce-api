@@ -5,10 +5,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django_prometheus.models import ExportModelOperationsMixin
+from simple_history.models import HistoricalRecords
 
 from coupons.models import Coupon
 from shop.models import Product
 from account.models import Address
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -32,13 +34,13 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
     address = models.ForeignKey(Address, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
     order_date = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     coupon = models.ForeignKey(Coupon, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
     currency = models.CharField(max_length=3, default='IRT')
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     payment_gateway = models.CharField(max_length=50, blank=True)
     payment_ref_id = models.CharField(max_length=100, blank=True)
-    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING, db_index=True)
     payment_track_id = models.CharField(max_length=100, blank=True)
     postex_shipment_id = models.CharField(max_length=100, blank=True)
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
@@ -49,6 +51,17 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     total_payable = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    history = HistoricalRecords()
+
+    # Define valid state transitions
+    _transitions = {
+        Status.PENDING: [Status.PAID, Status.CANCELED],
+        Status.PAID: [Status.PROCESSING, Status.CANCELED],
+        Status.PROCESSING: [Status.SHIPPED, Status.CANCELED],
+        Status.SHIPPED: [Status.DELIVERED],
+        Status.DELIVERED: [],
+        Status.CANCELED: [],
+    }
 
     class Meta:
         verbose_name = "Order"
@@ -59,6 +72,40 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         ]
         ordering = ["-order_date"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_status = self.status
+
+    def clean(self):
+        """
+        Validate state transitions before saving.
+        """
+        if self.pk and self._original_status != self.status:
+            if self.status not in self._transitions.get(self._original_status, []):
+                raise ValidationError(f"Invalid state transition from '{self._original_status}' to '{self.status}'.")
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to validate state transitions and restore stock on cancellation.
+        """
+        self.clean()  # Perform validation
+
+        # Check if the order is being canceled
+        if self.status == self.Status.CANCELED and self._original_status != self.Status.CANCELED:
+            self.restore_stock()
+
+        super().save(*args, **kwargs)
+        self._original_status = self.status  # Update original status after save
+
+    def restore_stock(self):
+        """
+        Restore the stock for all items in a canceled order.
+        """
+        for item in self.items.all():
+            product = item.product
+            product.stock += item.quantity
+            product.save(update_fields=['stock'])
+
     def get_total_cost_before_discount(self):
         """
         Calculate the total cost of all items in the order before applying any discounts.
@@ -66,7 +113,7 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         Returns:
             Decimal: The total cost of all order items.
         """
-        return sum(item.price for item in self.items.all())
+        return sum(item.get_cost() for item in self.items.all())
 
     def get_discount(self):
         """
@@ -97,9 +144,6 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         """
         self.subtotal = self.get_total_cost_before_discount()
         self.discount_amount = self.get_discount()
-        # Assuming tax and shipping are calculated elsewhere and set on the instance
-        # For now, let's represent the calculation logic.
-        # In a real scenario, tax_amount and shipping_cost would be determined by other services or logic.
         total = self.subtotal - self.discount_amount + self.shipping_cost + self.tax_amount
         self.total_payable = total
         return self.total_payable
@@ -111,6 +155,7 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, related_name='order_items', on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveSmallIntegerField(default=1)
 
     class Meta:
@@ -122,9 +167,8 @@ class OrderItem(models.Model):
         ]
         ordering = ["order"]
 
-    @property
-    def price(self):
-        return self.product.price * self.quantity
+    def get_cost(self):
+        return self.price * self.quantity
 
     def __str__(self):
         return f"Order Item: {self.product.name} (Order ID: {self.order.order_id})"

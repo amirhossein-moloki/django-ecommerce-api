@@ -10,6 +10,8 @@ from coupons.models import Coupon
 from orders.models import Order, OrderItem
 from account.models import Address
 from django.urls import reverse
+from unittest import mock
+from payment.services import verify_payment
 
 User = get_user_model()
 
@@ -255,3 +257,93 @@ class OrderIntegrationTest(APITestCase):
         # Verify stock reduction
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 8)
+
+
+class PriceSnapshotAndStockTest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number='+989123456789',
+            email='testuser2@example.com',
+            username='testuser2',
+            password='password'
+        )
+        self.category = Category.objects.create(name='Test Category 2', slug='test-category-2')
+        self.product = Product.objects.create(
+            name='Test Product 3',
+            slug='test-product-3',
+            price=Decimal('100.00'),
+            category=self.category,
+            stock=10,
+            user=self.user,
+            weight=1.0,
+            length=1.0,
+            width=1.0,
+            height=1.0
+        )
+        self.address = Address.objects.create(
+            user=self.user,
+            province='Tehran',
+            city='Tehran',
+            postal_code='1234567890',
+            full_address='123 Main St'
+        )
+
+    def test_price_is_snapshotted_on_order_item(self):
+        """
+        Verify that the price on the OrderItem is fixed at the time of purchase.
+        """
+        self.client.force_authenticate(user=self.user)
+
+        # 1. Add product to cart and create order
+        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
+        response = self.client.post(reverse('api-v1:order-list'), {'address_id': self.address.id}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        order_id = response.data['order_id']
+
+        # 2. Verify the initial price on the OrderItem
+        order = Order.objects.get(order_id=order_id)
+        order_item = order.items.first()
+        self.assertEqual(order_item.price, Decimal('100.00'))
+
+        # 3. Change the product's price
+        self.product.price = Decimal('150.00')
+        self.product.save()
+
+        # 4. Verify the price on the OrderItem has NOT changed
+        order_item.refresh_from_db()
+        self.assertEqual(order_item.price, Decimal('100.00'))
+
+    @mock.patch('payment.services.ZibalGateway.verify_payment')
+    def test_stock_is_decremented_only_once(self, mock_verify_payment):
+        """
+        Verify that product stock is decremented at order creation and not again at payment verification.
+        """
+        # Mock a successful payment verification from the gateway
+        mock_verify_payment.return_value = {'result': 100, 'refNumber': 'mock_ref_123'}
+
+        self.client.force_authenticate(user=self.user)
+
+        # 1. Check initial stock
+        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 10)
+
+        # 2. Add to cart and create order
+        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 2}, format='json')
+        response = self.client.post(reverse('api-v1:order-list'), {'address_id': self.address.id}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        order_id = response.data['order_id']
+
+        # 3. Verify stock is decremented after order creation
+        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 8)
+
+        # 4. Simulate payment verification
+        order = Order.objects.get(order_id=order_id)
+        order.payment_track_id = 'mock_track_id_123'
+        order.save()
+
+        verify_payment(order.payment_track_id)
+
+        # 5. Verify stock has not been decremented again
+        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 8)
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.PAID)
+        self.assertEqual(order.payment_status, Order.PaymentStatus.SUCCESS)

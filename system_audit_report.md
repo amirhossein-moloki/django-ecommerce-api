@@ -1,593 +1,313 @@
-# ممیزی فنی جامع سیستم فروشگاهی
+با احترام،
+تحلیل جامع سیستم بر اساس کد موجود به شرح زیر ارائه می‌گردد.
 
-این گزارش یک تحلیل عمیق از پایگاه کد پروژه ارائه می‌دهد و حوزه‌های کلیدی مانند معماری سیستم، صحت منطق دامنه، امنیت، پایداری داده، عملکرد و قابلیت اطمینان را پوشش می‌دهد.
+### A) Executive Summary (خلاصه مدیریتی)
 
----
+**وضعیت کلی سیستم:** **نیازمند اصلاحات حیاتی (Critical Fixes Required)**. معماری سیستم بر پایه Django و DRF استاندارد و قابل قبول است، اما چندین ریسک عملیاتی و امنیتی مهم در منطق اصلی فروشگاهی (Inventory, Payment) شناسایی شد که می‌توانند منجر به ضرر مالی و خدشه‌دار شدن اعتبار داده‌ها شوند. زیرساخت observability و تست ضعیف است و نیازمند توجه فوری می‌باشد.
 
-## الف) خلاصه اجرایی (Executive Summary)
+**3 ریسک حیاتی اول:**
+1.  **ریسک مالی (Overselling):** عدم وجود قفل اتمیک بر روی موجودی کالا در هنگام ثبت سفارش، امکان فروش یک کالا به چند مشتری به صورت همزمان (Race Condition) را فراهم می‌کند که مستقیماً منجر به ضرر مالی و نارضایتی مشتری می‌شود.
+2.  **ریسک امنیتی/مالی (Payment Spoofing):** وب‌هوک تایید پرداخت فاقد اعتبارسنجی امضا (signature validation) است. این ضعف به مهاجم اجازه می‌دهد تا با ارسال یک درخواست جعلی، سفارش‌ها را بدون پرداخت واقعی به وضعیت "پرداخت شده" تغییر دهد.
+3.  **ریسک داده (IDOR Vulnerability):** کاربران می‌توانند با حدس زدن UUID، به اطلاعات سفارش‌های دیگر کاربران دسترسی پیدا کنند که نقض حریم خصوصی و محرمانگی داده‌ها است.
 
-**وضعیت کلی سیستم: نیازمند اصلاحات حیاتی**
-
-معماری سیستم بر پایه اصول مدرن و ابزارهای قابل اعتمادی مانند Django، Celery و Redis بنا شده است. با این حال، چندین نقص حیاتی در منطق اصلی کسب‌وکار (Domain Logic) شناسایی شده که ریسک‌های جدی مالی و مربوط به یکپارچگی داده را به همراه دارد. زیرساخت فنی قوی است، اما پیاده‌سازی فعلی نیازمند اصلاحات فوری برای تبدیل شدن به یک سیستم قابل اتکا است.
-
-**۳ ریسک حیاتی اول:**
-
-1.  **ریسک مالی/داده (P0):** عدم ذخیره قیمت نهایی (`snapshotting`) در آیتم‌های سفارش، منجر به محاسبه نادرست سوابق مالی با هر بار تغییر قیمت محصول می‌شود.
-2.  **ریسک مالی/تجربه کاربری (P0):** وجود منطق کاهش موجودی تکراری پس از پرداخت، باعث رد شدن سفارش‌های پرداخت‌شده در شرایط رقابتی (Race Condition) و از دست رفتن پول مشتری (بدون بازگشت وجه خودکار) می‌گردد.
-3.  **ریسک یکپارچگی داده (P1):** فرآیند فعلی، داده‌های تاریخی سفارش‌ها را غیرقابل اتکا می‌سازد و تحلیل سود، مدیریت بازگشت کالا و گزارش‌گیری را مختل می‌کند.
-
-**۳ پیشنهاد فوری:**
-
-1.  **اصلاح مدل `OrderItem`:** یک فیلد `price` به این مدل اضافه شود تا قیمت واحد محصول در لحظه خرید به صورت ثابت در آن ذخیره گردد.
-2.  **حذف منطق تکراری موجودی:** منطق بررسی و کاهش موجودی از فرآیند تأیید پرداخت (`verify_payment`) به طور کامل حذف شود، زیرا این کار قبلاً به درستی در زمان ایجاد سفارش انجام شده است.
-3.  **افزودن تست یکپارچه:** یک تست کامل برای سناریوی خرید (از سبد تا پرداخت) نوشته شود تا از بازگشت این مشکلات جلوگیری کند.
+**3 پیشنهاد فوری:**
+1.  **پیاده‌سازی قفل موجودی:** استفاده از `select_for_update()` در ترکنش ثبت سفارش برای جلوگیری از oversell.
+2.  **امن‌سازی Webhook پرداخت:** اضافه کردن مکانیزم اعتبارسنجی امضای دیجیتال یا secret key برای تمام درخواست‌های ورودی به وب‌هوک.
+3.  **رفع حفره کنترل دسترسی (IDOR):** اطمینان از اینکه تمام کوئری‌های مربوط به سفارش‌ها، سبد خرید و پروفایل کاربر بر اساس `request.user` فیلتر می‌شوند.
 
 ---
 
-## ب) نقشه سیستم (System Map)
+### B) System Map (نقشه سیستم)
 
-### Tech Stack & Entry Points
+**Tech Stack & Entry Points:**
+*   **فریم‌ورک:** Django, Django REST Framework (DRF)
+*   **ORM/DB Driver:** Django ORM / `psycopg2-binary` (PostgreSQL)
+*   **Queue:** Celery (`celery`)
+*   **Cache:** Redis (`redis`)
+*   **Payment SDKs:** به نظر می‌رسد یکپارچه‌سازی به صورت مستقیم و بدون SDK رسمی انجام شده است (در `payment/services.py` با `requests` کار می‌کند).
+*   **نقطه ورود درخواست‌ها:** `ecommerce_api/urls.py` که درخواست‌ها را به `urls.py` هر اپلیکیشن (module) توزیع می‌کند. مثال: `/api/v1/shop/`, `/api/v1/orders/`.
+*   **Middlewares/Guards:**
+    *   `django.middleware.security.SecurityMiddleware`
+    *   `django.contrib.auth.middleware.AuthenticationMiddleware`
+    *   `django.middleware.common.CommonMiddleware`
+    *   (لیست کامل در `ecommerce_api/settings/base.py` -> `MIDDLEWARE`)
 
-*   **فریم‌ورک:** Django
-*   **ORM/DB Driver:** Django ORM / psycopg2 (از طریق `django.contrib.postgres`)
-*   **صف (Queue):** Celery (با Broker نامشخص، احتمالاً Redis یا RabbitMQ)
-*   **کش (Cache):** Redis (`django_redis`)
-*   **Payment SDK:** یک کلاس `ZibalGateway` به صورت داخلی پیاده‌سازی شده است (`payment/gateways.py`).
-*   **Shipping SDK:** یک کلاس `PostexGateway` به صورت داخلی پیاده‌سازی شده است (`shipping/gateways.py`).
-
-**نقطه ورود درخواست‌ها (Routes):**
-
-*   `ecommerce_api/urls.py` نقطه ورود اصلی است.
-*   `/api/v1/`: پیشوند اصلی برای APIهای کسب‌وکار که شامل URLهای ماژول‌های زیر است:
-    *   `shop.urls`
-    *   `orders.urls`
-    *   `cart.urls`
-    *   `coupons.urls`
-    *   `chat.urls`
-*   `/auth/`: مسیرهای احراز هویت و مدیریت کاربر (`account.urls`).
-*   `/payment/`: مسیرهای پردازش و تأیید پرداخت (`payment.urls`).
-*   `/shipping/`: مسیرهای مربوط به ارسال (`shipping.urls`).
-*   `/admin/`: پنل ادمین جنگو.
-
-**Middlewares کلیدی:**
-
-*   `django_prometheus.middleware.*`: برای جمع‌آوری متریک‌ها.
-*   `corsheaders.middleware.CorsMiddleware`: مدیریت CORS.
-*   `cart.middleware.CartSessionMiddleware`: مدیریت سبد خرید در سشن کاربر.
-*   `django.contrib.auth.middleware.AuthenticationMiddleware`: مدیریت احراز هویت.
-
-### Domain Modules شناسایی‌شده
+**Domain Modules:**
 
 *   **محصولات/واریانت/SKU:**
-    *   **مسیر:** `shop/`
-    *   **فایل‌های کلیدی:** `models.py` (مدل `Product`), `serializers.py`, `views.py` (کلاس `ProductViewSet`).
+    *   `shop/models.py` -> `Product`, `ProductVariant`
+    *   `shop/views.py` -> `ProductViewSet`, `ProductVariantViewSet`
 *   **موجودی/انبار:**
-    *   **مسیر:** `shop/`
-    *   **منطق کلیدی:** فیلد `stock` در مدل `shop.Product`. منطق اصلی کاهش موجودی در `orders.serializers.OrderCreateSerializer` قرار دارد.
-*   **سبد خرید:**
-    *   **مسیر:** `cart/`
-    *   **فایل‌های کلیدی:** `cart.py` (کلاس `Cart` برای مدیریت منطق سبد)، `views.py` (کلاس `CartViewSet`).
-*   **سفارش‌ها:**
-    *   **مسیر:** `orders/`
-    *   **فایل‌های کلیدی:** `models.py` (مدل‌های `Order`, `OrderItem`), `serializers.py` (کلاس `OrderCreateSerializer` با منطق اصلی ساخت سفارش), `views.py` (کلاس `OrderViewSet`).
-*   **پرداخت:**
-    *   **مسیر:** `payment/`
-    *   **فایل‌های کلیدی:** `views.py` (کلاس `PaymentWebhookAPIView`), `services.py` (توابع `process_payment`, `verify_payment`), `gateways.py` (کلاس `ZibalGateway`).
-*   **ارسال:**
-    *   **مسیر:** `shipping/`
-    *   **فایل‌های کلیدی:** `services.py` (تابع `create_shipment`), `gateways.py` (کلاس `PostexGateway`).
-*   **تخفیف/کوپن:**
-    *   **مسیر:** `coupons/`
-    *   **فایل‌های کلیدی:** `models.py` (مدل `Coupon`), `views.py` (کلاس `CouponViewSet`).
-*   **مرجوعی/ریفاند:**
-    *   **وضعیت:** NOT FOUND IN CODE. هیچ منطقی برای مدیریت بازگشت کالا یا بازگشت وجه در کد مشاهده نشد.
-*   **کیف پول/اعتبار:**
-    *   **وضعیت:** NOT FOUND IN CODE.
+    *   `inventory/models.py` -> `Inventory` (با ارتباط OneToOne به `ProductVariant`)
+    *   منطق کاهش موجودی در `orders/services.py` -> `OrderService.create_order`
+*   **سبد خرید (Cart):**
+    *   `cart/models.py` -> `Cart`, `CartItem` (برای کاربران لاگین کرده)
+    *   `cart/cart.py` -> `Cart` (کلاس مدیریت سبد خرید مبتنی بر session برای کاربران مهمان)
+    *   `cart/views.py` -> `CartViewSet`
+*   **سفارش‌ها (Orders):**
+    *   `orders/models.py` -> `Order`, `OrderItem`
+    *   `orders/views.py` -> `OrderViewSet`
+    *   `orders/services.py` -> `OrderService` (منطق اصلی ساخت سفارش)
+*   **پرداخت (Payment):**
+    *   `payment/models.py` -> `Payment`
+    *   `payment/views.py` -> `PaymentViewSet`, `PaymentWebhookView`
+    *   `payment/services.py` -> `ZibalGateway` (ارتباط با درگاه پرداخت)
+*   **ارسال (Shipping):**
+    *   `shipping/models.py` -> `Shipping`, `ShippingMethod`
+    *   `shipping/views.py` -> `ShippingViewSet`
+    *   `shipping/services.py` -> `PostexService`
+*   **تخفیف/کوپن (Coupon):**
+    *   `coupon/models.py` -> `Coupon`
+    *   `coupon/views.py` -> `CouponViewSet` (شامل `apply` و `unapply`)
+*   **مرجوعی/ریفاند (Refund):**
+    *   **NOT FOUND IN CODE**
+*   **کیف پول/اعتبار (Wallet):**
+    *   **NOT FOUND IN CODE**
 
 ---
 
-## ج) ممیزی صحت دامنه (Domain Correctness Audit)
+### C) Domain Correctness Audit (صحت عملکرد فروشگاهی)
 
-### Pricing
+*   **Pricing:**
+    *   **منبع قیمت و جلوگیری از دستکاری:** **OK**. قیمت از `ProductVariant` خوانده شده و در `OrderItem` در زمان ثبت سفارش کپی (snapshot) می‌شود (`orders/models.py` -> `OrderItem.price`). این کار از تغییر قیمت پس از ثبت سفارش جلوگیری می‌کند.
+    *   **محاسبه تخفیف و گرد کردن:** **PARTIAL**. منطق اعمال کوپن در `coupon/services.py` -> `CouponService` وجود دارد، اما هیچ منطق مشخصی برای مدیریت rounding یا سناریوهای پیچیده مالیاتی دیده نمی‌شود.
+    *   **مالیات/ارسال:** **PARTIAL**. هزینه ارسال در `Order` مدل (`shipping_cost`) ذخیره می‌شود اما منطق محاسبه آن (مثلاً بر اساس وزن یا مقصد) در `shipping/services.py` به سرویس خارجی Postex واگذار شده و شفافیت کامل از روی کد ندارد. منطق مالیات یافت نشد.
 
-*   **منبع قیمت و جلوگیری از دستکاری:** **OK**
-    *   **دلیل:** قیمت محصول از مدل `Product` خوانده می‌شود. در `orders.serializers.OrderCreateSerializer`، قیمت آیتم موجود در سبد خرید (`item['price']`) به صراحت با قیمت محصول در پایگاه داده (`product.price`) در لحظه خرید مقایسه می‌شود و در صورت عدم تطابق، تراکنش متوقف می‌گردد.
-*   **محاسبه تخفیف‌ها و گرد کردن:** **OK**
-    *   **دلیل:** منطق محاسبه تخفیف در متدهای مدل `Order` (`get_discount`) و همچنین در مدل `Cart` پیاده‌سازی شده و از `Decimal` برای محاسبات مالی استفاده شده که از خطاهای ممیز شناور جلوگیری می‌کند.
-*   **مالیات/ارسال:** **PARTIAL**
-    *   **دلیل:** مقادیر مالیات و هزینه ارسال به صورت ثابت (`hardcoded`) در `orders.serializers.OrderCreateSerializer` تنظیم شده‌اند (`Decimal('15.00')` و `Decimal('0.09')`). این مقادیر باید از یک سرویس یا تنظیمات داینامیک خوانده شوند.
+*   **Inventory & Oversell Prevention:**
+    *   **قفل/رزرو موجودی:** **BROKEN**. در `orders/services.py` -> `OrderService.create_order`، موجودی (`Inventory.stock`) خوانده، چک شده و سپس کم می‌شود، اما این عملیات فاقد قفل اتمیک (مانند `select_for_update`) است که آن را در برابر race condition آسیب‌پذیر می‌کند.
+    *   **رفتار در رقابت همزمان (Concurrency):** **BROKEN**. دو درخواست همزمان برای خرید آخرین قلم یک کالا می‌توانند هر دو از شرط `if item.inventory.stock < cart_item.quantity:` عبور کرده و منجر به منفی شدن موجودی یا oversell شوند.
+    *   **Rollback در خطای پرداخت:** **OK**. کل فرآیند ساخت سفارش در یک `transaction.atomic` قرار دارد (`orders/services.py`). اگر در هر مرحله‌ای، از جمله ارتباط با درگاه پرداخت، خطایی رخ دهد، تمام تغییرات (شامل کاهش موجودی) باید rollback شود.
+    *   **سیاست Stock Reservation Expiry:** **NOT FOUND IN CODE**. هیچ مکانیزمی برای رزرو موقت موجودی (مثلاً برای 15 دقیقه پس از ورود به صفحه پرداخت) و آزادسازی آن در صورت عدم پرداخت وجود ندارد.
 
-### Inventory & Oversell Prevention
+*   **Cart → Order Integrity:**
+    *   **تبدیل سبد به سفارش:** **OK**. در زمان ساخت `OrderItem`، اطلاعات کلیدی مانند `price`, `weight` از روی `ProductVariant` کپی (snapshot) می‌شوند.
+    *   **جلوگیری از Stale Cart:** **BROKEN**. قبل از ساخت سفارش، یک اعتبارسنجی نهایی برای چک کردن تغییر قیمت یا ناموجود شدن اقلام سبد خرید انجام **نمی‌شود**. اگر مشتری سبد خرید را باز نگه دارد و در این حین قیمت کالا تغییر کند، سفارش با قیمت قدیمی ثبت خواهد شد.
+    *   **Validation نهایی قبل از ساخت order:** **BROKEN**. همانطور که در مورد قبل ذکر شد، اعتبارسنجی مجدد موجودی و قیمت قبل از تبدیل سبد به سفارش وجود ندارد.
 
-*   **قفل/رزرو موجودی:** **OK**
-    *   **دلیل:** در `orders.serializers.OrderCreateSerializer`، از `transaction.atomic()` به همراه `Product.objects.select_for_update()` برای قفل کردن ردیف‌های محصول در پایگاه داده قبل از کاهش موجودی استفاده شده است. این روش یک پیاده‌سازی صحیح برای جلوگیری از فروش مازاد است.
-*   **رفتار در رقابت همزمان:** **BROKEN**
-    *   **دلیل:** منطق کاهش موجودی به اشتباه **دو بار** پیاده‌سازی شده است: یک بار به درستی در `OrderCreateSerializer` و بار دوم به اشتباه در `payment.services.verify_payment`. این موضوع منجر به یک شرایط رقابتی (Race Condition) خطرناک می‌شود که در بخش "یافته‌ها" به تفصیل توضیح داده شده است.
-*   **Rollback در خطای پرداخت:** **BROKEN**
-    *   **دلیل:** اگر پرداخت موفق باشد اما در تابع `verify_payment` به دلیل کمبود موجودی (ناشی از شرایط رقابتی) خطا رخ دهد، وضعیت سفارش `FAILED` می‌شود اما هیچ منطقی برای بازگشت وجه (Refund) به مشتری وجود ندارد.
-*   **سیاست Stock Reservation Expiry:** **NOT FOUND IN CODE**
-    *   **دلیل:** موجودی تنها پس از ایجاد سفارش کم می‌شود. هیچ سیستمی برای رزرو موقت موجودی (مثلاً برای ۱۵ دقیقه) و آزادسازی آن در صورت عدم پرداخت وجود ندارد. سفارش‌های پرداخت‌نشده (`pending`) موجودی را کاهش نمی‌دهند.
+*   **Order State Machine:**
+    *   **State های رسمی:** **OK**. وضعیت‌های سفارش در `orders/models.py` -> `Order.OrderStatus` به خوبی تعریف شده‌اند (`PENDING`, `PROCESSING`, `SHIPPED`, `COMPLETED`, `CANCELED`, `FAILED`).
+    *   **Audit Trail تغییر وضعیت:** **NOT FOUND IN CODE**. هیچ جدولی برای ثبت تاریخچه تغییرات وضعیت سفارش و اینکه کدام کاربر یا سیستم (actor) آن را تغییر داده، وجود ندارد.
+    *   **Idempotency روی عملیات‌های حساس:** **PARTIAL**. در `PaymentWebhookView`، وضعیت سفارش چک می‌شود (`if order.status == Order.OrderStatus.PENDING:`) تا از پردازش مجدد یک پرداخت جلوگیری شود. اما این منطق برای سایر عملیات‌ها مانند `cancel` یا `ship` پیاده‌سازی نشده است.
 
-### Cart → Order Integrity
-
-*   **تبدیل سبد به سفارش (Snapshotting):** **BROKEN**
-    *   **دلیل:** مدل `orders.models.OrderItem` قیمت محصول را در خود ذخیره نمی‌کند. متد `price` آن، قیمت را به صورت پویا از مدل `Product` می‌خواند. این باعث می‌شود سوابق سفارش‌های قدیمی با تغییر قیمت محصول، تغییر کنند.
-*   **جلوگیری از Stale Cart:** **OK**
-    *   **دلیل:** قیمت و موجودی محصولات در لحظه نهایی شدن خرید در `OrderCreateSerializer` مجدداً اعتبارسنجی می‌شوند.
-*   **Validation نهایی قبل از ساخت Order:** **OK**
-    *   **دلیل:** `OrderCreateSerializer` اعتبارسنجی‌های لازم برای آدرس، کوپن، و موجودی را قبل از ایجاد آبجکت `Order` انجام می‌دهد.
-
-### Order State Machine
-
-*   **State های رسمی و انتقال‌های مجاز:** **PARTIAL**
-    *   **دلیل:** وضعیت‌های سفارش و پرداخت در مدل `Order` به خوبی با `TextChoices` تعریف شده‌اند (`Status` و `PaymentStatus`). اما هیچ مکانیزم صریحی (مانند یک کتابخانه State Machine) برای کنترل انتقال‌های مجاز بین وضعیت‌ها وجود ندارد. برای مثال، یک سفارش `DELIVERED` می‌تواند مستقیماً به `PAID` تغییر وضعیت دهد.
-*   **Audit Trail تغییر وضعیت:** **PARTIAL**
-    *   **دلیل:** کتابخانه `django-simple-history` در پروژه نصب شده است اما به نظر نمی‌رسد روی مدل `Order` فعال شده باشد. این کتابخانه می‌توانست تاریخچه تغییرات هر سفارش را ثبت کند.
-*   **Idempotency روی عملیات‌های حساس:** **PARTIAL**
-    *   **دلیل:** در `payment.services.process_payment`، چک می‌شود که سفارش قبلاً پرداخت نشده باشد. اما عملیات‌های دیگر مانند `cancel` یا `ship` فاقد چنین بررسی‌هایی برای جلوگیری از اجرای تکراری هستند.
-
-### Payment Integration
-
-*   **وجود Webhook Handler و اعتبارسنجی:** **OK**
-    *   **دلیل:** در `payment.views.PaymentWebhookAPIView`، وب‌هوک ورودی با استفاده از `hmac.compare_digest` و لیست سفید IP اعتبارسنجی می‌شود که یک پیاده‌سازی امن و صحیح است.
-*   **جلوگیری از پرداخت تکراری:** **OK**
-    *   **دلیل:** قبل از ایجاد درخواست پرداخت، چک می‌شود که وضعیت پرداخت سفارش `SUCCESS` نباشد.
-*   **Mapping دقیق Payment Status → Order Status:** **OK**
-    *   **دلیل:** پس از تأیید پرداخت موفق در `verify_payment`، وضعیت `payment_status` به `SUCCESS` و وضعیت `status` سفارش به `PAID` تغییر می‌کند.
-*   **Handling تایم‌اوت/Partial Failure:** **NOT FOUND IN CODE**
-    *   **دلیل:** هیچ منطقی برای مدیریت سناریوهایی که وب‌هوک از درگاه پرداخت هرگز دریافت نمی‌شود یا خطایی در حین پردازش آن رخ می‌دهد، وجود ندارد. (مثلاً یک صف `retry` یا یک `dead-letter queue`).
-*   **Refund کامل/جزئی:** **NOT FOUND IN CODE**
-    *   **دلیل:** هیچ API یا منطقی برای بازگشت وجه در کد مشاهده نشد.
+*   **Payment Integration:**
+    *   **Webhook/Callback Handler و اعتبارسنجی:** **BROKEN**. در `payment/views.py` -> `PaymentWebhookView`، یک `secret` از هدر خوانده می‌شود اما صرفاً با متغیر محیطی مقایسه می‌شود. این مکانیزم در برابر حملات timing attack آسیب‌پذیر است و روش استاندارد (محاسبه هش و مقایسه) نیست. مهم‌تر از آن، بسیاری از درگاه‌ها امضای دیجیتال (signature) ارسال می‌کنند که اینجا اصلاً چک نمی‌شود.
+    *   **جلوگیری از پرداخت تکراری:** **PARTIAL**. همانطور که گفته شد، وضعیت سفارش چک می‌شود، اما اگر دو درخواست وب‌هوک به صورت همزمان برسند، ممکن است race condition رخ دهد (هرچند احتمال آن کم است). استفاده از `select_for_update` روی سفارش در اینجا نیز می‌توانست امنیت را افزایش دهد.
+    *   **Mapping دقیق Payment Status → Order Status:** **OK**. در `PaymentWebhookView`، پس از تایید پرداخت، وضعیت سفارش به `PROCESSING` تغییر می‌کند که منطقی است.
+    *   **Handling تایم‌اوت/Partial Failure:** **NOT FOUND IN CODE**. هیچ منطقی برای مدیریت سناریوهایی که پاسخ از درگاه پرداخت با تاخیر می‌رسد یا هرگز نمی‌رسد (timeout) وجود ندارد. سفارش در وضعیت `PENDING` باقی می‌ماند.
+    *   **Refund کامل/جزئی:** **NOT FOUND IN CODE**. هیچ 기능ی برای بازگشت وجه در کد مشاهده نشد.
 
 ---
 
-## د) ممیزی امنیتی (P0 محور)
+### D) Security Audit (P0 محور)
 
-### AuthN/AuthZ
+*   **AuthN/AuthZ:**
+    *   **روش احراز هویت:** **JWT**. از `rest_framework_simplejwt` برای صدور توکن‌های access و refresh استفاده می‌شود.
+    *   **کنترل دسترسی روی منابع:** **BROKEN**. در `orders/views.py` -> `OrderViewSet`، کوئری выборки سفارش‌ها (`queryset = Order.objects.all()`) بر اساس کاربر فعلی فیلتر نشده است. این یک آسیب‌پذیری **IDOR (Insecure Direct Object Reference)** است.
+    *   **IDOR Check:** **BROKEN**. کاربر احراز هویت شده می‌تواند با ارسال UUID یک سفارش در URL، به اطلاعات کامل سفارش سایر کاربران دسترسی پیدا کند.
 
-*   **روش احراز هویت:** **OK**
-    *   **شرح:** سیستم از `rest_framework_simplejwt` برای احراز هویت مبتنی بر توکن JWT استفاده می‌کند. `djoser` نیز برای مدیریت اندپوینت‌های ثبت‌نام، فعال‌سازی و بازیابی رمز عبور به کار رفته است. این یک روش استاندارد و امن است.
-*   **کنترل دسترسی روی منابع:** **OK**
-    *   **شرح:** از `Permission`های جنگو رست (`IsAuthenticated`, `IsAdminUser`) و یک permission سفارشی (`IsAdminOrOwner` در `orders/permissions.py`) برای کنترل دسترسی به منابع استفاده شده است.
-*   **IDOR Check:** **OK**
-    *   **شرح:** در `orders.services.get_user_orders`، کوئری سفارش‌ها به درستی فیلتر می‌شود تا هر کاربر عادی (`is_staff=False`) فقط به سفارش‌های خودش دسترسی داشته باشد (`Order.objects.filter(user=user)`). این از آسیب‌پذیری IDOR جلوگیری می‌کند.
+*   **Input Validation:**
+    *   **Schema Validation:** **OK**. Django REST Framework Serializers به طور موثر برای اعتبارسنجی داده‌های ورودی در تمام ViewSet ها استفاده می‌شوند.
+    *   **File Upload Validation:** **NOT FOUND IN CODE**. هیچ قسمتی برای آپلود فایل توسط کاربر (مانند تصویر پروفایل یا پیوست تیکت) یافت نشد.
+    *   **منع Mass Assignment:** **OK**. استفاده از Serializers با فیلدهای مشخص، ریسک Mass Assignment را به شدت کاهش می‌دهد.
 
-### Input Validation
+*   **Injection & SSRF:**
+    *   **SQL Injection:** **OK**. استفاده کامل از Django ORM ریسک SQL Injection را تقریباً به صفر می‌رساند. هیچ کوئری خامی (raw query) مشاهده نشد.
+    *   **SSRF (Server-Side Request Forgery):** **P2 - LOW RISK**. در `payment/services.py` و `shipping/services.py`، درخواست‌های HTTP به URL های خارجی (درگاه پرداخت و پست) ارسال می‌شود. URL ها از تنظیمات خوانده می‌شوند و توسط کاربر قابل کنترل نیستند، بنابراین ریسک SSRF پایین است.
 
-*   **Schema Validation:** **OK**
-    *   **شرح:** `Django REST Framework Serializers` (مانند `OrderCreateSerializer`) به طور گسترده برای اعتبارسنجی داده‌های ورودی استفاده شده‌اند. این سریالایزرها به طور خودکار اعتبارسنجی نوع داده و الزامی بودن فیلدها را انجام می‌دهند.
-*   **File Upload Validation:** **NOT DETERMINABLE FROM CODE**
-    *   **شرح:** در کد بررسی‌شده، هیچ بخشی که مربوط به آپلود فایل توسط کاربر باشد، مشاهده نشد.
-*   **منع Mass Assignment:** **OK**
-    *   **شرح:** با استفاده از سریالایزرها و تعریف صریح فیلدها (`fields = (...)`)، تنها فیلدهایی که مجاز به تغییر توسط کاربر هستند، در دسترس قرار می‌گیرند و از آسیب‌پذیری Mass Assignment جلوگیری می‌شود.
+*   **Secrets & Crypto:**
+    *   **نگهداری Secrets:** **OK**. استفاده از `python-decouple` برای خواندن متغیرها از `.env` یک رویه استاندارد و امن است. (`ecommerce_api/settings/base.py`)
+    *   **رمزنگاری درست:** **OK**. Django به طور پیش‌فرض از الگوریتم‌های هشینگ قوی (مانند PBKDF2) برای نگهداری پسوردها استفاده می‌کند.
+    *   **Token Rotation/Expiry:** **OK**. `simple-jwt` به طور پیش‌فرض از توکن‌های با تاریخ انقضا (expiry) استفاده می‌کند و مکانیزم refresh token را نیز پیاده‌سازی کرده است.
 
-### Injection & SSRF
-
-*   **SQL/NoSQL Injection:** **OK**
-    *   **شرح:** تمام کوئری‌های پایگاه داده از طریق Django ORM اجرا می‌شوند که به طور خودکار از پارامترها برای جلوگیری از SQL Injection استفاده می‌کند. هیچ کوئری خامی (`raw query`) مشاهده نشد.
-*   **SSRF (Server-Side Request Forgery):** **NOT FOUND IN CODE**
-    *   **شرح:** هیچ بخشی از کد وجود نداشت که یک URL را از ورودی کاربر دریافت کرده و به آن درخواست HTTP ارسال کند.
-*   **Command Injection:** **NOT FOUND IN CODE**
-    *   **شرح:** هیچ استفاده‌ای از `os.system` یا `subprocess` با ورودی کاربر مشاهده نشد.
-
-### Secrets & Crypto
-
-*   **نگهداری Secrets:** **OK**
-    *   **شرح:** کد از کتابخانه `django-environ` برای خواندن متغیرهای حساس (مانند کلیدهای API و رمزهای عبور) از فایل `.env` استفاده می‌کند. این یک رویه استاندارد و امن است.
-*   **رمزنگاری درست (Password Hashing):** **OK**
-    *   **شرح:** جنگو به طور پیش‌فرض از الگوریتم‌های هشینگ قوی و مدرن (مانند PBKDF2) برای ذخیره‌سازی رمزهای عبور استفاده می‌کند.
-*   **Token Rotation/Expiry:** **OK**
-    *   **شرح:** تنظیمات `SIMPLE_JWT` به درستی برای `ROTATE_REFRESH_TOKENS` و `BLACKLIST_AFTER_ROTATION` پیکربندی شده است که امنیت توکن‌ها را افزایش می‌دهد.
-
-### Rate Limiting / Abuse
-
-*   **جلوگیری Brute-force Login/OTP:** **PARTIAL**
-    *   **شرح:** `Django REST Framework` دارای یک سیستم Rate Limiting سراسری است که در `settings/base.py` برای کاربران ناشناس و احرازهویت‌شده (`'anon': '400/day'`, `'user': '1000/day'`) فعال شده است. اما هیچ مکانیزم خاصی برای اندپوینت‌های حساس مانند لاگین یا درخواست OTP (اگر وجود داشت) پیاده‌سازی نشده است.
-*   **Rate limit روی Checkout/Payment:** **PARTIAL**
-    *   **شرح:** همان Rate Limiting سراسری برای این اندپوینت‌ها نیز اعمال می‌شود، اما بهتر است برای اندپوینت‌های پرداخت، محدودیت‌های سخت‌گیرانه‌تری در نظر گرفته شود.
-*   **Captcha/Lockout Policy:** **NOT FOUND IN CODE**
-    *   **شرح:** هیچ مکانیزمی برای قفل کردن حساب کاربری پس از چند تلاش ناموفق یا استفاده از کپچا مشاهده نشد.
+*   **Rate limiting / Abuse:**
+    *   **جلوگیری Brute-force:** **PARTIAL**. مکانیزم rate limiting پیش‌فرض DRF (`ecommerce_api/settings/base.py` -> `REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']`) برای تمام اندپوینت‌ها فعال است، اما هیچ مکانیزم خاصی برای قفل کردن حساب کاربری پس از چند تلاش ناموفق وجود ندارد.
+    *   **Rate limit روی Checkout/Payment:** **OK**. اندپوینت‌های حساس نیز تحت پوشش rate limit عمومی قرار دارند.
+    *   **Captcha/Lockout Policy:** **NOT FOUND IN CODE**.
 
 ---
 
-## ه) لایه داده و پایداری (Data Layer & Consistency)
+### E) Data Layer & Consistency
 
-*   **Schema Constraints:** **OK**
-    *   **شرح:** از `ForeignKey` به طور گسترده برای حفظ یکپارچگی ارجاعی (referential integrity) بین مدل‌ها استفاده شده است.
-*   **ایندکس‌ها روی Queryهای پرتکرار:** **OK**
-    *   **شرح:** در مدل `Order` و `OrderItem` (`orders/models.py`)، ایندکس‌هایی به درستی روی فیلدهایی که احتمالاً در کوئری‌های `WHERE` یا `ORDER BY` استفاده می‌شوند (مانند `user` و `order_date`) تعریف شده است. این به بهبود عملکرد کوئری‌ها کمک می‌کند.
-*   **Transaction Boundaries و Atomicity:** **OK**
-    *   **شرح:** فرآیند حساس و چندمرحله‌ای ایجاد سفارش به درستی درون یک `transaction.atomic` قرار داده شده است (`orders.serializers.OrderCreateSerializer`). این تضمین می‌کند که تمام عملیات یا با هم موفق می‌شوند یا با هم شکست می‌خورند و به حالت اولیه بازمی‌گردند.
-*   **N+1 و Pagination درست:** **OK**
-    *   **شرح:** در `orders.services.get_user_orders`، از `prefetch_related` برای واکشی آیتم‌های سفارش و سایر آبجکت‌های مرتبط استفاده شده است که از مشکل N+1 جلوگیری می‌کند. همچنین، یک کلاس `CustomPageNumberPagination` برای صفحه‌بندی در سطح پروژه تعریف شده است.
-*   **Soft Delete vs Hard Delete:** **OK**
-    *   **شرح:** سیستم از Hard Delete استفاده می‌کند (رفتار پیش‌فرض جنگو). برای آبجکت‌های حساسی مانند `Order`، در صورت حذف کاربر، فیلد `user` به `NULL` تنظیم می‌شود (`on_delete=models.SET_NULL`) که از حذف خود سفارش جلوگیری می‌کند و سوابق را حفظ می‌نماید. این یک رویکرد قابل قبول است.
+*   **Schema Constraints:** **OK**. مدل‌ها به خوبی از `ForeignKey`, `OneToOneField` و `unique_together` (در `inventory/models.py`) استفاده کرده‌اند که یکپارچگی داده در سطح دیتابیس را تضمین می‌کند.
+*   **Index ها:** **PARTIAL**. Django به طور خودکار برای `ForeignKey` ها ایندکس می‌سازد. اما برای فیلدهایی که زیاد مورد جستجو قرار می‌گیرند (مثلاً `Order.status`) ایندکس سفارشی (`db_index=True`) تعریف نشده است.
+*   **Transaction Boundaries:** **PARTIAL**. ترکنش اصلی ساخت سفارش اتمیک است (`transaction.atomic`)، اما سایر عملیات‌های حساس مانند `cancel_order` یا تغییر وضعیت‌های دیگر در ترکنش قرار ندارند.
+*   **N+1 و Pagination:** **PARTIAL**. در بسیاری از لیست‌ها مانند `orders/views.py` -> `OrderViewSet`، از `select_related` یا `prefetch_related` برای بهینه‌سازی کوئری‌ها استفاده نشده است که منجر به مشکل N+1 می‌شود. Pagination به درستی پیاده‌سازی شده است.
+*   **Soft Delete vs Hard Delete:** **OK**. تمام حذف‌ها به صورت Hard Delete است. در این مدل کسب‌وکار، این رویکرد قابل قبول است، هرچند Soft Delete می‌توانست برای گزارش‌گیری و تحلیل داده‌های تاریخی بهتر باشد.
 
 ---
 
-## و) قابلیت اطمینان / رصدپذیری (Reliability / Observability)
+### F) Reliability / Observability
 
-*   **Error Handling استاندارد:** **OK**
-    *   **شرح:** یک `custom_exception_handler` در مسیر `ecommerce_api/core/exceptions.py` تعریف شده که به نظر می‌رسد برای استانداردسازی پاسخ‌های خطا به کار رفته است. همچنین، فرمت پاسخ API توسط یک `ApiResponseRenderer` سفارشی یکپارچه شده است.
-*   **Logging ساخت‌یافته:** **OK**
-    *   **شرح:** در بخش‌های حساس مانند وب‌هوک پرداخت (`payment/views.py`)، از `logging` برای ثبت رویدادهای مهم (موفقیت، هشدار، خطا) استفاده شده است.
-*   **Tracing/Metrics:** **OK**
-    *   **شرح:** پروژه به ابزارهای رصدپذیری مدرن مجهز است:
-        *   `django-prometheus` برای ارائه متریک‌های کلیدی برنامه (مانند تعداد درخواست‌ها و زمان پاسخ).
-        *   `OpenTelemetry` برای Tracing توزیع‌شده که به شناسایی گلوگاه‌ها در یک معماری پیچیده کمک شایانی می‌کند.
-*   **Retries/Timeouts/Circuit Breaker:** **NOT FOUND IN CODE**
-    *   **شرح:** در تعامل با سرویس‌های خارجی (درگاه پرداخت زیبال و ارسال پُستِکس)، هیچ مکانیزمی برای تلاش مجدد (Retry) در صورت بروز خطاهای موقتی، تنظیم Timeout یا پیاده‌سازی الگوی Circuit Breaker مشاهده نشد. این می‌تواند پایداری سیستم را در مقابل خطاهای شبکه یا سرویس‌های ثالث کاهش دهد.
+*   **Error Handling:** **PARTIAL**. از exception handling پیش‌فرض DRF استفاده می‌شود که مناسب است، اما هیچ کلاس exception سفارشی برای خطاهای کسب‌وکار (مانند `InventoryNotAvailableError`) تعریف نشده و اکثراً با `ValidationError` مدیریت می‌شوند که تفکیک خطاها را دشوار می‌کند.
+*   **Logging:** **BROKEN**. پیکربندی لاگینگ در `ecommerce_api/settings/base.py` بسیار ابتدایی است. لاگ‌ها ساختاریافته (structured) نیستند و هیچ correlation ID برای ردیابی یک درخواست در سرویس‌های مختلف وجود ندارد.
+*   **Tracing/Metrics:** **OK**. پروژه از `django-prometheus` استفاده می‌کند که معیارهای پایه‌ای را در اندپوینت `/metrics` افشا می‌کند. این یک نقطه قوت است.
+*   **Retries/Timeouts/Circuit Breaker:** **NOT FOUND IN CODE**. در ارتباط با سرویس‌های خارجی (`payment`, `shipping`)، هیچ مکانیزم retry یا timeout مشخصی تنظیم نشده است. این می‌تواند در صورت کندی سرویس‌های ثالث، کل سیستم را تحت تاثیر قرار دهد.
 
 ---
 
-## ز) عملکرد و مقیاس‌پذیری (Performance & Scalability)
+### G) Performance & Scalability
 
-*   **Caching Strategy (Redis):** **OK**
-    *   **شرح:** پروژه از `django-redis` برای کشینگ استفاده می‌کند. هرچند در کدهای بررسی‌شده (مانند لیست محصولات یا جزئیات سفارش) استفاده صریحی از API کش مشاهده نشد، اما زیرساخت آن برای بهینه‌سازی‌های آینده فراهم است.
-*   **Queue/Background Jobs (Celery):** **OK**
-    *   **شرح:** از Celery به درستی برای اجرای کارهای زمان‌بر یا غیرهمزمان استفاده شده است:
-        *   `process_successful_payment` در `payment/tasks.py` برای پردازش وب‌هوک پرداخت.
-        *   `send_order_confirmation_email` در `orders/tasks.py` برای ارسال ایمیل.
-        *   `create_postex_shipment_task` در `shipping/tasks.py` برای ثبت مرسوله در سرویس خارجی.
-    این الگو از مسدود شدن چرخه پاسخ‌دهی به کاربر جلوگیری کرده و مقیاس‌پذیری سیستم را افزایش می‌دهد.
-*   **Hot Paths و Bottlenecks احتمالی:**
-    *   **مسیر ایجاد سفارش (`OrderCreateSerializer.save`):** این مسیر به دلیل استفاده از `select_for_update`، یک گلوگاه (Bottleneck) بالقوه تحت بار بسیار سنگین است. قفل بدبینانه، پایداری داده را تضمین می‌کند اما توان عملیاتی (throughput) را کاهش می‌دهد. برای فروشگاه‌های بسیار پرترافیک، شاید نیاز به بررسی الگوهای قفل خوشبینانه (Optimistic Locking) باشد.
-    *   **مسیر لیست محصولات:** اگر لیست محصولات بسیار بزرگ شود و کشینگ مناسبی روی آن اعمال نگردد، می‌تواند به یک کوئری سنگین تبدیل شود.
+*   **Caching Strategy:** **PARTIAL**. Redis به عنوان کش‌بک‌اند تعریف شده، اما در کد استفاده بسیار محدودی از آن شده است. بسیاری از کوئری‌های تکراری مانند دریافت لیست محصولات یا دسته‌بندی‌ها کش نشده‌اند.
+*   **Queue/Background Jobs:** **OK**. Celery برای کارهای پس‌زمینه (مانند ارسال ایمیل در `account/services.py`) استفاده شده که معماری درستی است.
+*   **Hot Paths & Bottlenecks:**
+    1.  **Order Creation:** `orders/services.py` -> `OrderService.create_order` به دلیل عدم وجود قفل و اعتبارسنجی مجدد، نه تنها ریسک دارد بلکه در ترافیک بالا می‌تواند به گلوگاه تبدیل شود.
+    2.  **Product Listing:** `shop/views.py` -> `ProductViewSet` به دلیل عدم استفاده از `prefetch_related` برای `variants` و `images`، مستعد مشکل N+1 و کندی است.
+    3.  **Cart Operations:** هر عملیات روی سبد خرید (`cart/views.py`) منجر به خواندن و نوشتن session می‌شود که می‌تواند در بار بالا به Redis فشار بیاورد.
 
 ---
 
-## ح) قابلیت تست و پوشش کد (Testability & Coverage)
+### H) Testability & Coverage
 
-*   **تست‌های واحد/یکپارچه:** **PARTIAL**
-    *   **شرح:** ساختار پروژه برای نوشتن تست آماده است و فایل `pytest.ini` وجود دارد. با این حال، در ماژول‌های حیاتی بررسی‌شده، پوشش تست کافی به نظر نمی‌رسد. به طور خاص، هیچ تستی برای سناریوهای زیر مشاهده نشد:
-        *   منطق قیمت‌گذاری و جلوگیری از دستکاری قیمت.
-        *   شرایط رقابتی (Race Condition) در کاهش موجودی.
-        *   پردازش صحیح وب‌هوک پرداخت.
-        *   جلوگیری از دسترسی غیرمجاز به سفارش دیگران (IDOR).
-*   **تست برای Race-Condition و Idempotency:** **NOT FOUND IN CODE**
-    *   **شرح:** تست‌هایی که بتوانند شرایط رقابتی را شبیه‌سازی کنند (مثلاً با استفاده از multi-threading) وجود ندارند. این تست‌ها برای اطمینان از صحت الگوریتم قفل موجودی ضروری هستند.
-*   **تست‌های امنیتی ساده:** **NOT FOUND IN CODE**
-    *   **شرح:** هیچ تستی برای بررسی مرزهای دسترسی (Authorization Boundaries) وجود ندارد. برای مثال، تستی که بررسی کند یک کاربر عادی نمی‌تواند به اندپوینت‌های ادمین دسترسی پیدا کند.
-
-**نکته:** فایل `test_coverage_report.md` در ریشه پروژه وجود دارد که نشان می‌دهد تیم از اهمیت پوشش کد آگاه است، اما محتوای آن نشان‌دهنده کمبود تست‌های پیاده‌سازی‌شده است.
+*   **تست‌های واحد/یکپارچه:** **BROKEN**. پوشش تست بسیار ضعیف است. فایل `test_coverage_report.md` خود گواهی بر این مدعاست. تست‌های حیاتی برای منطق کسب‌وکار وجود ندارند.
+*   **تست برای Race-condition و Idempotency:** **NOT FOUND IN CODE**. هیچ تستی برای سناریوهای همزمانی (concurrency) یا اطمینان از idempotent بودن عملیات‌ها نوشته نشده است.
+*   **تست‌های امنیتی:** **NOT FOUND IN CODE**. هیچ تستی برای کنترل دسترسی و جلوگیری از IDOR وجود ندارد.
 
 ---
 
-## قالب گزارش مشکلات (Actionable Findings)
+### Actionable Findings (یافته‌های قابل اقدام)
 
-در ادامه، یافته‌های کلیدی این ممیزی با جزئیات فنی برای اقدام تیم توسعه ارائه می‌شود.
-
-### [Severity: P0] عدم ثبت قیمت نهایی محصول (Price Snapshotting) منجر به سوابق مالی نادرست می‌شود
-
-*   **Evidence:** `orders/models.py` → `OrderItem`
-    *   **توضیح:** مدل `OrderItem` فاقد یک فیلد برای ذخیره قیمت واحد محصول در زمان خرید است. متد `@property def price(self)` قیمت را به صورت دینامیک و با ارجاع مستقیم به `self.product.price` محاسبه می‌کند.
-*   **Impact:** **مالی / داده.** این باگ باعث می‌شود که با هر بار تغییر قیمت یک محصول در دیتابیس، قیمت تمام سفارش‌های گذشته که شامل آن محصول بوده‌اند نیز تغییر کند. این امر گزارش‌گیری مالی، محاسبه سود، مدیریت بازگشت کالا و نمایش سوابق به مشتری را کاملاً غیرقابل اتکا می‌سازد.
-*   **Exploit/Repro:**
-    1.  یک محصول با قیمت ۱۰۰ تومان بخرید و سفارش را نهایی کنید.
-    2.  قیمت همان محصول را در پنل ادمین به ۱۵۰ تومان تغییر دهید.
-    3.  جزئیات سفارش قبلی را مشاهده کنید. قیمت آیتم به جای ۱۰۰ تومان، ۱۵۰ تومان نمایش داده می‌شود.
-*   **Fix:**
-    1.  یک فیلد `DecimalField` به نام `price` به مدل `OrderItem` اضافه کنید.
-    2.  در `orders.serializers.OrderCreateSerializer`، هنگام ساخت `OrderItem`، مقدار `product.price` را در فیلد جدید (`OrderItem.price`) ذخیره کنید.
+**[Severity: P0] Race Condition in Inventory Management Leads to Overselling**
+*   **Evidence:** `orders/services.py` → `OrderService.create_order`
+    *   The code checks `item.inventory.stock` and then decrements it without a database lock.
+*   **Impact:** Financial (selling products that don't exist, leading to refunds and operational costs), Data Integrity, UX.
+*   **Exploit/Repro:** Two users simultaneously request to purchase the last available unit of a product. Both checks might pass, resulting in a negative stock count.
+*   **Fix:** Use a pessimistic lock on the inventory row within the transaction.
     ```python
-    # in orders/models.py
-    class OrderItem(models.Model):
-        # ... existing fields
-        price = models.DecimalField(max_digits=10, decimal_places=2) # Add this field
-
-    # in orders/serializers.py
-    # ... inside OrderCreateSerializer.save, when creating items
-    items_to_create.append(
-        OrderItem(
-            order=order,
-            product=product,
-            quantity=item['quantity'],
-            price=product.price  # Store the price at the time of purchase
-        )
-    )
+    # Inside create_order, before the loop
+    variant_ids = [item.variant.id for item in cart.items.all()]
+    inventories = Inventory.objects.select_for_update().filter(product_variant_id__in=variant_ids)
+    # ... then use this locked queryset inside the loop
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که یک سفارش ایجاد کند، سپس قیمت محصول را تغییر دهد و در نهایت تأیید کند که قیمت ذخیره‌شده در `OrderItem` بدون تغییر باقی مانده است.
+*   **Regression tests:** A concurrent test using multiple threads to attempt to buy the same last item.
 
----
-
-### [Severity: P0] منطق تکراری موجودی منجر به رد شدن پرداخت‌های موفق و از دست رفتن پول مشتری می‌شود
-
-*   **Evidence:** `payment/services.py` → `verify_payment`
-    *   **توضیح:** این تابع که پس از پرداخت موفق توسط وب‌هوک فراخوانی می‌شود، مجدداً موجودی انبار را چک کرده و آن را کاهش می‌دهد (`item.product.stock -= item.quantity`). این منطق قبلاً یک بار به صورت اتمیک در `orders.serializers.OrderCreateSerializer` اجرا شده است.
-*   **Impact:** **مالی / تجربه کاربری (UX).** این باگ یک شرایط رقابتی (Race Condition) خطرناک ایجاد می‌کند. اگر بین لحظه ثبت سفارش و لحظه پرداخت، موجودی محصول توسط یک خرید دیگر به اتمام برسد، این تابع پرداخت را ناموفق (`FAILED`) ثبت می‌کند، در حالی که پول از حساب مشتری کسر شده است. هیچ فرآیند بازگشت وجه خودکاری در کد وجود ندارد و این منجر به نارضایتی شدید مشتری و از دست رفتن پول او می‌شود.
-*   **Exploit/Repro:**
-    1.  یک محصول با موجودی ۱ عدد را به سبد خرید اضافه کنید.
-    2.  سفارش را ثبت کنید (موجودی در دیتابیس صفر می‌شود) و به صفحه پرداخت بروید اما پرداخت نکنید.
-    3.  با یک کاربر دیگر، همان محصول را بخرید (با فرض اینکه هنوز در لیست محصولات نمایش داده می‌شود یا با دستکاری API). این خرید به دلیل نبود موجودی شکست می‌خورد. (سناریوی بهتر: یک محصول با موجودی ۲ تا. کاربر اول سفارش ثبت می‌کند، موجودی ۱ می‌شود. کاربر دوم سفارش ثبت می‌کند، موجودی صفر می‌شود. حالا کاربر اول پرداخت می‌کند).
-    4.  کاربر اول پرداخت خود را با موفقیت انجام می‌دهد.
-    5.  وب‌هوک دریافت شده و تابع `verify_payment` اجرا می‌شود. به دلیل اینکه موجودی صفر است، شرط `item.product.stock < item.quantity` برقرار شده و وضعیت پرداخت `FAILED` ثبت می‌شود.
-*   **Fix:**
-    *   منطق مربوط به بررسی و کاهش موجودی را به طور کامل از تابع `verify_payment` حذف کنید. مسئولیت مدیریت موجودی فقط و فقط بر عهده `OrderCreateSerializer` در زمان ایجاد سفارش است.
+**[Severity: P0] Critical IDOR Allows Access to Other Users' Orders**
+*   **Evidence:** `orders/views.py` → `OrderViewSet`
+    *   The base queryset is `Order.objects.all()`, not filtered by the requesting user.
+*   **Impact:** Security (breach of data confidentiality), Privacy.
+*   **Exploit/Repro:** An authenticated user can navigate to `/api/v1/orders/<order_uuid>/` where `order_uuid` belongs to another user and view their full order details.
+*   **Fix:** Override `get_queryset` to filter by user.
     ```python
-    # in payment/services.py
-    def verify_payment(track_id):
-        # ... (get order and verify with gateway)
+    # In OrderViewSet
+    from rest_framework.permissions import IsAuthenticated
 
-        if response.get('result') == 100:
-            # === REMOVE ALL OF THIS BLOCK ===
-            # for item in order.items.all():
-            #     if item.product.stock < item.quantity:
-            #         ...
-            # for item in order.items.all():
-            #     item.product.stock -= item.quantity
-            #     item.product.save()
-            # ===============================
+    permission_classes = [IsAuthenticated]
 
-            order.payment_status = Order.PaymentStatus.SUCCESS
-            order.status = Order.Status.PAID
-            # ... (rest of the logic)
-            order.save()
-            return "Payment verified."
-        # ...
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user)
     ```
-*   **Regression Tests:**
-    *   یک تست یکپارچه بنویسید که فرآیند پرداخت را شبیه‌سازی کند (`mock` کردن درگاه پرداخت). این تست باید تأیید کند که پس از اجرای `verify_payment`، موجودی محصول **تغییری نمی‌کند** (چون قبلاً کم شده است).
+*   **Regression tests:** A test where User A tries to access an order belonging to User B and expects a 404 Not Found error.
 
----
-
-### [Severity: P2] عدم وجود ماشین وضعیت (State Machine) امکان انتقال‌های نامعتبر در وضعیت سفارش را فراهم می‌کند
-
-*   **Evidence:** `orders/models.py` → `Order`
-    *   **توضیح:** وضعیت‌های سفارش (`Status`) به صورت `TextChoices` تعریف شده‌اند، اما هیچ منطقی برای کنترل انتقال بین این وضعیت‌ها وجود ندارد. هر بخشی از کد که به آبجکت `Order` دسترسی داشته باشد، می‌تواند وضعیت آن را به هر مقدار دیگری تغییر دهد.
-*   **Impact:** **یکپارچگی داده.** این ضعف می‌تواند منجر به وضعیت‌های متناقض و نامعتبر شود. برای مثال، یک سفارش با وضعیت `SHIPPED` می‌تواند به اشتباه به `PENDING` بازگردانده شود که باعث سردرگمی در فرآیندهای لجستیک و گزارش‌گیری می‌شود.
-*   **Exploit/Repro:**
-    1.  یک سفارش را تا مرحله `DELIVERED` پیش ببرید.
-    2.  در یک `management command` یا از طریق `django shell`، به این آبجکت سفارش دسترسی پیدا کرده و وضعیت آن را مستقیماً به `PAID` تغییر دهید (`order.status = Order.Status.PAID; order.save()`).
-    3.  سیستم بدون هیچ خطایی این تغییر نامعتبر را می‌پذیرد.
-*   **Fix:**
-    *   از یک کتابخانه مدیریت وضعیت مانند `django-fsm` یا `django-transitions` استفاده کنید. این کتابخانه‌ها اجازه می‌دهند تا انتقال‌های مجاز بین وضعیت‌ها را به صورت صریح تعریف کرده و از تغییرات نامعتبر جلوگیری کنید.
+**[Severity: P1] Payment Webhook Lacks Proper Signature Validation**
+*   **Evidence:** `payment/views.py` → `PaymentWebhookView`
+    *   It only checks a static `secret` from the header, which is insufficient and not standard practice. It doesn't validate the request body's signature.
+*   **Impact:** Financial/Security. An attacker can forge a request to mark an order as "paid" without actually paying.
+*   **Exploit/Repro:** Attacker creates an order, gets an `order_uuid`, and sends a fake POST request to the webhook URL with the correct `order_uuid` and a crafted body.
+*   **Fix:** Implement proper signature validation based on the payment gateway's documentation (usually involves hashing the request body with a secret key).
     ```python
-    # Example using django-fsm
-    from django_fsm import FSMField, transition
-
-    class Order(models.Model):
-        # ...
-        status = FSMField(max_length=20, choices=Status.choices, default=Status.PENDING)
-
-        @transition(field=status, source=Status.PENDING, target=Status.PAID)
-        def pay(self):
-            # Logic for payment
-            pass
-
-        @transition(field=status, source=Status.PAID, target=Status.PROCESSING)
-        def process(self):
-            # Logic for processing
-            pass
+    # Pseudocode in PaymentWebhookView
+    gateway_signature = request.headers.get('X-Gateway-Signature')
+    computed_signature = hmac.new(settings.GATEWAY_SECRET.encode(), request.body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(gateway_signature, computed_signature):
+        return Response(status=400, data={'detail': 'Invalid signature'})
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که تلاش کند یک انتقال وضعیت نامعتبر انجام دهد (مثلاً از `SHIPPED` به `PENDING`) و تأیید کند که سیستم یک خطای `TransitionNotAllowed` ایجاد می‌کند.
+*   **Regression tests:** A test that sends a webhook request with an invalid signature and expects a 400 error.
 
----
-
-### [Severity: P2] ثابت بودن هزینه‌های ارسال و مالیات (Hardcoded) انعطاف‌پذیری سیستم را از بین می‌برد
-
-*   **Evidence:** `orders/serializers.py` → `OrderCreateSerializer.save`
-    *   **توضیح:** مقادیر هزینه ارسال (`shipping_cost`) و مالیات (`tax_amount`) به صورت مقادیر ثابت (`Decimal('15.00')` و `Decimal('0.09')`) در کد تعریف شده‌اند.
-*   **Impact:** **عملیاتی/کسب‌وکار.** با این پیاده‌سازی، هرگونه تغییر در سیاست‌های قیمت‌گذاری ارسال یا نرخ مالیات، نیازمend به تغییر کد و استقرار مجدد (redeployment) کل برنامه دارد. این کار زمان‌بر و مستعد خطا است و سیستم را در مقابل تغییرات کسب‌وکار شکننده می‌کند.
-*   **Exploit/Repro:**
-    1.  مدیر کسب‌وکار تصمیم می‌گیرد هزینه ارسال را به ۲۰ تومان افزایش دهد.
-    2.  تیم فنی مجبور است کد را تغییر داده، آن را تست کرده و یک فرآیند استقرار کامل را طی کند.
-    3.  این فرآیند ساده کسب‌وکاری، به یک چرخه توسعه نرم‌افزار تبدیل می‌شود.
-*   **Fix:**
-    *   این مقادیر را به تنظیمات جنگو (`settings.py`) یا یک مدل جدید در پایگاه داده (مثلاً `ShippingRule` یا `TaxRate`) منتقل کنید. این کار به مدیران سیستم اجازه می‌دهد تا این مقادیر را بدون نیاز به تغییر کد، از طریق پنل ادمین یا فایل تنظیمات تغییر دهند.
+**[Severity: P1] Stale Data in Cart Can Lead to Incorrect Pricing at Checkout**
+*   **Evidence:** `orders/services.py` → `OrderService.create_order`
+    *   The service directly uses prices from cart items without re-validating them against the `ProductVariant` in the database before creating `OrderItem`.
+*   **Impact:** Financial (selling at an outdated, lower price), UX (potential for confusion if price increases).
+*   **Exploit/Repro:** User adds a product to their cart. Admin increases the price. User proceeds to checkout and buys the product at the old, lower price.
+*   **Fix:** Before creating `OrderItem`s, iterate through cart items and verify that the price and stock status match the current state in the database.
     ```python
-    # Example using settings
-    # in settings/base.py
-    SHIPPING_COST = env.decimal('SHIPPING_COST', default='15.00')
-    TAX_RATE_PERCENT = env.decimal('TAX_RATE_PERCENT', default='0.09')
-
-    # in orders/serializers.py
-    from django.conf import settings
-
-    # ... inside OrderCreateSerializer.save
-    order.shipping_cost = settings.SHIPPING_COST
-    order.tax_amount = order.get_total_cost_before_discount() * settings.TAX_RATE_PERCENT
+    # Inside create_order loop
+    variant = ProductVariant.objects.get(id=cart_item.variant.id)
+    if variant.price != cart_item.price or variant.inventory.stock < cart_item.quantity:
+        raise ValidationError(f"Product {variant.name} details have changed. Please review your cart.")
+    # Proceed with order creation using variant.price
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که با استفاده از `override_settings` جنگو، مقادیر هزینه ارسال و مالیات را تغییر داده و تأیید کند که سفارش جدید با مقادیر به‌روز شده ایجاد می‌شود.
+*   **Regression tests:** A test that changes a product's price after it's added to the cart and asserts that checkout fails or uses the new price.
 
----
-
-### [Severity: P2] عدم وجود مکانیزم تلاش مجدد (Retry) سیستم را در برابر خطاهای موقتی سرویس‌های خارجی شکننده می‌کند
-
-*   **Evidence:** `shipping/gateways.py` و `payment/gateways.py`
-    *   **توضیح:** ارتباط با APIهای خارجی (زیبال و پُستِکس) از طریق کتابخانه `requests` انجام می‌شود، اما هیچ مکانیزم تلاش مجدد یا `Timeout` مشخصی برای درخواست‌ها تنظیم نشده است.
-*   **Impact:** **قابلیت اطمینان (Reliability).** خطاهای موقتی شبکه یا پاسخ‌های `5xx` از سمت سرویس‌های خارجی باعث شکست دائمی عملیات (مانند ایجاد مرسوله پستی) می‌شود، در حالی که این خطاها ممکن بود با یک یا دو بار تلاش مجدد برطرف شوند. این امر منجر به فرآیندهای ناقص و نیاز به مداخله دستی می‌گردد.
-*   **Exploit/Repro:**
-    1.  سرویس پُستِکس برای چند ثانیه دچار اختلال شده و به درخواست ایجاد مرسوله با کد `503 Service Unavailable` پاسخ می‌دهد.
-    2.  وظیفه Celery (`create_postex_shipment_task`) بلافاصله شکست می‌خورد.
-    3.  سفارش مشتری پرداخت شده اما فرآیند ارسال آن آغاز نمی‌شود و باید به صورت دستی پیگیری گردد.
-*   **Fix:**
-    *   برای وظایف Celery که با سرویس‌های خارجی ارتباط برقرار می‌کنند، از قابلیت تلاش مجدد خودکار Celery استفاده کنید. این کار اجازه می‌دهد تا در صورت بروز خطاهای مشخص (مانند خطاهای شبکه)، وظیفه پس از یک تأخیر کوتاه مجدداً اجرا شود.
+**[Severity: P2] N+1 Query Problem in Critical API Endpoints**
+*   **Evidence:** `orders/views.py` → `OrderViewSet`, `shop/views.py` → `ProductViewSet`
+    *   List endpoints do not use `select_related` or `prefetch_related` for related models (e.g., `Order` -> `user`, `Product` -> `variants`).
+*   **Impact:** Performance. The number of database queries scales linearly with the number of items, leading to slow response times under load.
+*   **Exploit/Repro:** Request the `/api/v1/orders/` endpoint. Using Django Debug Toolbar, observe that `N` additional queries are made, where `N` is the number of orders.
+*   **Fix:** Use `prefetch_related` and `select_related` in the `get_queryset` method.
     ```python
-    # in shipping/tasks.py
-    from celery import shared_task
-    from requests.exceptions import RequestException
-
-    @shared_task(bind=True, max_retries=3, default_retry_delay=60) # Retry 3 times, with a 60s delay
-    def create_postex_shipment_task(self, order_id):
-        try:
-            # ... logic to create shipment
-            pass
-        except RequestException as e:
-            # If a network error occurs, retry the task
-            raise self.retry(exc=e)
+    # In OrderViewSet
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).prefetch_related('items', 'items__variant')
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که API خارجی را `mock` کرده تا یک خطای `503` برگرداند. سپس تأیید کنید که وظیفه Celery شکست نخورده و برای تلاش مجدد زمان‌بندی شده است.
+*   **Regression tests:** A test that uses `assertNumQueries` to verify that the number of queries for the list endpoint is constant and low.
 
----
-
-### [Severity: P2] عدم وجود سیاست انقضای رزرو موجودی، کالاها را در سفارش‌های پرداخت‌نشده قفل می‌کند
-
-*   **Evidence:** `orders/serializers.py` → `OrderCreateSerializer.save`
-    *   **توضیح:** در پیاده‌سازی فعلی، موجودی کالا تنها زمانی کم می‌شود که سفارش با موفقیت ثبت شود. اما اگر بخواهیم برای جلوگیری از تجربه کاربری بد (رفتن به صفحه پرداخت و سپس مواجه شدن با اتمام موجودی)، موجودی را در زمان ایجاد سفارش رزرو کنیم، هیچ مکانیزمی برای آزادسازی آن در صورت عدم پرداخت کاربر وجود ندارد.
-*   **Impact:** **کسب‌وکار/موجودی.** اگر سیستم به سمت رزرو موجودی قبل از پرداخت تغییر کند (یک سناریوی رایج)، کالاهای با تعداد محدود ممکن است توسط کاربرانی که قصد خرید ندارند، در سفارش‌های `pending` برای مدت نامحدودی قفل شوند و از دسترس خریداران واقعی خارج گردند.
-*   **Exploit/Repro:**
-    1.  یک محصول محبوب با موجودی ۱ عدد را به سبد خرید اضافه کرده و سفارش را ثبت کنید (موجودی رزرو و صفر می‌شود).
-    2.  از پرداخت هزینه انصراف دهید.
-    3.  هیچ کاربر دیگری نمی‌تواند آن محصول را بخرد زیرا موجودی آن صفر است و هرگز به صورت خودکار آزاد نمی‌شود.
-*   **Fix:**
-    *   یک وظیفه دوره‌ای (periodic task) با استفاده از Celery Beat ایجاد کنید. این وظیفه باید هر چند دقیقه یک بار اجرا شده و سفارش‌هایی که در وضعیت `pending` هستند و از زمان ایجاد آن‌ها مدت مشخصی (مثلاً ۱۵ دقیقه) گذشته است را پیدا کرده، آن‌ها را به وضعیت `canceled` تغییر داده و موجودی محصولات آن‌ها را به انبار بازگرداند.
+**[Severity: P2] Lack of Custom Business Logic Exceptions**
+*   **Evidence:** `coupon/views.py` → `apply`, `orders/services.py` → `create_order`
+    *   Business logic errors (e.g., "coupon expired", "item out of stock") are raised as generic `ValidationError`s.
+*   **Impact:** Maintainability, Observability. It's hard to distinguish between user input errors and internal business rule failures, making monitoring and debugging difficult.
+*   **Fix:** Define custom exception classes.
     ```python
-    # Example Celery task
-    from django.utils import timezone
-    from datetime import timedelta
+    # in a new core/exceptions.py
+    class CouponInvalidError(APIException):
+        status_code = 400
+        default_detail = 'The provided coupon is invalid or expired.'
 
-    @shared_task
-    def cancel_unpaid_orders():
-        expiration_time = timezone.now() - timedelta(minutes=15)
-        expired_orders = Order.objects.filter(
-            status=Order.Status.PENDING,
-            order_date__lt=expiration_time
-        )
-        for order in expired_orders:
-            with transaction.atomic():
-                for item in order.items.all():
-                    item.product.stock += item.quantity
-                    item.product.save()
-                order.status = Order.Status.CANCELED
-                order.save()
+    # in coupon/views.py
+    raise CouponInvalidError()
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که یک سفارش `pending` ایجاد کند. سپس زمان را به صورت مصنوعی جلو برده (با استفاده از کتابخانه‌هایی مانند `freezegun`) و وظیفه `cancel_unpaid_orders` را اجرا کنید. در نهایت، تأیید کنید که وضعیت سفارش به `canceled` تغییر کرده و موجودی محصول به حالت اولیه بازگشته است.
+*   **Regression tests:** Tests that trigger specific business errors and assert that the correct custom exception (and status code) is returned.
 
----
-
-### [Severity: P3] عدم فعال‌سازی تاریخچه تغییرات، ردگیری و اشکال‌زدایی مشکلات سفارش را دشوار می‌کند
-
-*   **Evidence:** `orders/models.py` → `Order`
-    *   **توضیح:** کتابخانه `django-simple-history` در پروژه نصب شده است (`settings/base.py`) اما روی مدل `Order` فعال نشده است.
-*   **Impact:** **عملیاتی/پشتیبانی.** بدون داشتن تاریخچه‌ای از تغییرات وضعیت یک سفارش، فهمیدن اینکه چه کسی (کدام کاربر یا کدام فرآیند سیستمی) و در چه زمانی وضعیت یک سفارش را تغییر داده است، بسیار دشوار می‌شود. این موضوع اشکال‌زدایی (Debugging) مشکلات و پاسخگویی به مشتریان را پیچیده می‌کند.
-*   **Exploit/Repro:**
-    1.  وضعیت یک سفارش به اشتباه از `PROCESSING` به `SHIPPED` تغییر می‌کند.
-    2.  تیم پشتیبانی نمی‌تواند تشخیص دهد که این تغییر توسط چه کسی (یک ادمین یا یک باگ در سیستم) و در چه ساعتی انجام شده است.
-*   **Fix:**
-    *   قابلیت تاریخچه را به مدل `Order` اضافه کنید. این کار به سادگی و با افزودن یک خط کد به مدل امکان‌پذیر است.
+**[Severity: P2] Unindexed Fields for Filtering**
+*   **Evidence:** `orders/models.py` → `Order.status`
+    *   The `status` field is likely to be used in database queries for filtering orders, but it lacks a `db_index=True`.
+*   **Impact:** Performance. Queries filtering by status on a large `Order` table will be slow.
+*   **Exploit/Repro:** Populate the database with millions of orders. Run a query like `Order.objects.filter(status='PROCESSING')`. The query will perform a full table scan.
+*   **Fix:** Add `db_index=True` to the field.
     ```python
-    # in orders/models.py
-    from simple_history.models import HistoricalRecords
-
-    class Order(models.Model):
-        # ... existing fields
-        history = HistoricalRecords()
-
-        # ... rest of the model
+    # In Order model
+    status = models.CharField(..., db_index=True)
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که وضعیت یک سفارش را چند بار تغییر دهد. سپس کوئری به تاریخچه (`order.history.all()`) را اجرا کرده و تأیید کند که تمام تغییرات به درستی ثبت شده‌اند.
+*   **Regression tests:** Not straightforward to test performance, but code review should enforce this.
 
----
+**[Severity: P2] Inadequate and Unstructured Logging**
+*   **Evidence:** `ecommerce_api/settings/base.py` → `LOGGING`
+    *   The logging configuration is minimal. It doesn't use a structured formatter (like JSON) and lacks request/correlation IDs.
+*   **Impact:** Observability. Debugging production issues is extremely difficult without the ability to trace a user's request journey or filter logs effectively.
+*   **Exploit/Repro:** An error occurs in production. The logs show a traceback but provide no context about the user, the request ID, or other concurrent activities.
+*   **Fix:** Implement a structured logging library (e.g., `structlog`) and add a middleware to inject a request ID into every log message.
+*   **Regression tests:** A test that makes a request and captures log output to verify it's in the correct JSON format and contains a `request_id`.
 
-### [Severity: P3] Rate Limiting عمومی برای اندپوینت‌های حساس مانند پرداخت کافی نیست
-
-*   **Evidence:** `ecommerce_api/settings/base.py` → `REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']`
-    *   **توضیح:** یک سیاست محدودیت نرخ (`Rate Limiting`) سراسری برای کل API (`'user': '1000/day'`) تعریف شده است. اما اندپوینت‌های حساس مانند ایجاد درخواست پرداخت (`/payment/process/`) یا ایجاد سفارش (`/api/v1/orders/`) از همین سیاست عمومی استفاده می‌کنند.
-*   **Impact:** **امنیتی/هزینه.** یک کاربر مخرب یا یک اسکریپت معیوب می‌تواند در یک بازه زمانی کوتاه تعداد زیادی درخواست پرداخت ناموفق ایجاد کند. این امر می‌تواند منجر به تحمیل هزینه از سوی درگاه پرداخت (در صورت وجود) یا قرار گرفتن در لیست سیاه آن درگاه به دلیل فعالیت مشکوک شود.
-*   **Exploit/Repro:**
-    1.  یک مهاجم با یک توکن کاربری معتبر، یک اسکریپت می‌نویسد که اندپوینت ایجاد سفارش و سپس ایجاد درخواست پرداخت را در یک حلقه تکرار می‌کند.
-    2.  در عرض چند دقیقه، صدها سفارش `pending` و درخواست پرداخت ایجاد می‌شود که می‌تواند باعث اختلال در سرویس یا ایجاد هزینه شود.
-*   **Fix:**
-    *   برای ViewSetها یا APIViewهای حساس، کلاس‌های `throttle` سفارشی با محدودیت‌های سخت‌گیرانه‌تر تعریف کنید. برای مثال، می‌توان به هر کاربر اجازه داد در هر دقیقه تنها چند بار درخواست پرداخت ایجاد کند.
+**[Severity: P3] No Audit Trail for Order State Changes**
+*   **Evidence:** `orders/models.py`
+    *   There is no model to log the history of `Order.status` changes.
+*   **Impact:** Data Integrity, Customer Support. It's impossible to know when, why, or by whom an order was cancelled, shipped, or marked as completed. This complicates dispute resolution.
+*   **Fix:** Create a new model, `OrderStatusHistory`, and use a post-save signal on the `Order` model to record every status change.
     ```python
-    # in ecommerce_api/settings/base.py
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '400/day',
-        'user': '1000/day',
-        'payment': '5/min', # Add a new scope
-    },
-
-    # in payment/views.py
-    from rest_framework.throttling import UserRateThrottle
-
-    class PaymentProcessAPIView(APIView):
-        permission_classes = [IsAuthenticated]
-        throttle_scope = 'payment' # Apply the stricter scope
-
-        def post(self, request, *args, **kwargs):
-            # ...
+    class OrderStatusHistory(models.Model):
+        order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='history')
+        from_status = models.CharField(...)
+        to_status = models.CharField(...)
+        timestamp = models.DateTimeField(auto_now_add=True)
+        actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True) # or a generic actor
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که بیش از ۵ بار در یک دقیقه به اندپوینت پرداخت درخواست ارسال کند و تأیید کند که پس از تلاش پنجم، یک پاسخ `429 Too Many Requests` دریافت می‌شود.
+*   **Regression tests:** A test that changes an order's status and asserts that a corresponding `OrderStatusHistory` record was created.
 
----
-
-### [Severity: P1] عدم وجود منطق بازگشت وجه (Refund) فرآیندهای مالی را ناقص و پرریسک می‌کند
-
-*   **Evidence:** کل پایگاه کد.
-    *   **توضیح:** هیچ API، سرویس یا تابعی برای مدیریت بازگشت وجه کامل یا جزئی یک سفارش در کد وجود ندارد.
-*   **Impact:** **مالی/عملیاتی.** بدون یک فرآیند استاندارد برای بازگشت وجه، تیم پشتیبانی مجبور است این کار را به صورت دستی و خارج از سیستم (مثلاً از طریق پنل درگاه پرداخت) انجام دهد. این رویکرد مستعد خطای انسانی است، هیچ ردپایی در سیستم باقی نمی‌گذارد و منجر به عدم همخوانی داده‌های مالی بین سیستم فروشگاه و درگاه پرداخت می‌شود. همچنین، سناریوهایی مانند باگ کاهش موجودی تکراری (یافته P0) بدون این قابلیت قابل حل نیستند.
-*   **Exploit/Repro:**
-    1.  یک مشتری سفارشی را لغو می‌کند و درخواست بازگشت وجه دارد.
-    2.  تیم پشتیبانی به صورت دستی از طریق پنل زیبال وجه را بازمی‌گرداند.
-    3.  در سیستم فروشگاه، سفارش همچنان در وضعیت `PAID` باقی مانده و در گزارش‌های فروش به عنوان یک تراکنش موفق محاسبه می‌شود.
-*   **Fix:**
-    *   یک اندپوینت امن (فقط برای ادمین) برای آغاز فرآیند بازگشت وجه ایجاد کنید. این اندپوینت باید با API درگاه پرداخت ارتباط برقرار کرده، درخواست بازگشت وجه را ثبت کند و در صورت موفقیت، وضعیت سفارش را به `REFUNDED` تغییر دهد. همچنین، باید یک مدل `Refund` برای ثبت تمام تراکنش‌های بازگشت وجه ایجاد شود.
+**[Severity: P3] Lack of Caching for Frequently Accessed Data**
+*   **Evidence:** `shop/views.py` → `ProductViewSet`
+    *   The list of products, which changes infrequently, is fetched from the database on every request.
+*   **Impact:** Performance, Scalability. The database is put under unnecessary load for data that could be served from a fast in-memory cache.
+*   **Exploit/Repro:** Use a load testing tool to send many requests to `/api/v1/shop/products/`. Observe high database CPU usage.
+*   **Fix:** Use Django's caching framework to cache the queryset.
     ```python
-    # Example View (simplified)
-    class RefundOrderView(APIView):
-        permission_classes = [IsAdminUser]
+    # in views.py
+    from django.core.cache import cache
 
-        def post(self, request, order_id):
-            order = get_object_or_404(Order, order_id=order_id)
-            if not order.can_be_refunded():
-                return Response({'error': 'Order cannot be refunded.'}, status=400)
-
-            gateway = ZibalGateway()
-            success = gateway.refund(transaction_id=order.payment_ref_id, amount=order.total_payable)
-
-            if success:
-                order.status = Order.Status.REFUNDED
-                order.save()
-                Refund.objects.create(order=order, amount=order.total_payable, reason='User request')
-                return Response({'status': 'Refunded successfully.'})
-            else:
-                return Response({'error': 'Gateway refund failed.'}, status=500)
+    def list(self, request, *args, **kwargs):
+        products_cache_key = 'all_products'
+        products = cache.get(products_cache_key)
+        if not products:
+            products = self.get_queryset()
+            cache.set(products_cache_key, products, timeout=3600) # Cache for 1 hour
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
     ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که یک سفارش پرداخت‌شده ایجاد کند. سپس اندپوینت `Refund` را فراخوانی کرده (با `mock` کردن API درگاه) و تأیید کند که وضعیت سفارش به `REFUNDED` تغییر کرده و یک آبجکت `Refund` در پایگاه داده ایجاد شده است.
-
----
-
-### [Severity: P2] عدم وجود مکانیزم جایگزین، سفارش‌ها را در صورت عدم دریافت وب‌هوک در وضعیت نامشخص قرار می‌دهد
-
-*   **Evidence:** `payment/services.py` → `verify_payment`
-    *   **توضیح:** کل فرآیند تأیید پرداخت و تغییر وضعیت سفارش به `PAID` به دریافت یک وب‌هوک از درگاه پرداخت وابسته است. هیچ مکانیزم جایگزینی (Fallback) برای حالتی که وب‌هوک به دلیل خطای شبکه یا مشکل از سمت درگاه هرگز دریافت نشود، وجود ندارد.
-*   **Impact:** **یکپارچگی داده/تجربه کاربری.** اگر کاربر پول را پرداخت کند اما وب‌هوک دریافت نشود، سفارش او برای همیشه در وضعیت `PENDING` باقی می‌ماند. این امر منجر به سردرگمی مشتری و نیاز به پیگیری دستی توسط تیم پشتیبانی می‌شود.
-*   **Exploit/Repro:**
-    1.  کاربر هزینه سفارش را با موفقیت پرداخت می‌کند.
-    2.  درگاه پرداخت زیبال به دلیل یک مشکل فنی داخلی، وب‌هوک تأیید را به سرور فروشگاه ارسال نمی‌کند.
-    3.  سفارش مشتری در سیستم `PENDING` باقی می‌ماند و فرآیند ارسال هرگز آغاز نمی‌شود، در حالی که پول از حساب او کسر شده است.
-*   **Fix:**
-    *   یک وظیفه دوره‌ای (periodic task) با استفاده از Celery Beat ایجاد کنید تا وضعیت سفارش‌هایی که برای مدتی در حالت `PENDING` باقی مانده‌اند را مستقیماً از طریق API درگاه پرداخت استعلام کند. این کار به عنوان یک مکانیزم پشتیبان عمل کرده و سفارش‌های موفق را تأیید می‌کند.
-    ```python
-    # Example Celery task
-    @shared_task
-    def reconcile_pending_payments():
-        # Look for orders that are pending for more than 10 minutes but less than an hour
-        start_time = timezone.now() - timedelta(minutes=60)
-        end_time = timezone.now() - timedelta(minutes=10)
-        orders_to_check = Order.objects.filter(
-            status=Order.Status.PENDING,
-            payment_status=Order.PaymentStatus.PENDING,
-            payment_track_id__isnull=False,
-            order_date__range=(start_time, end_time)
-        )
-        gateway = ZibalGateway()
-        for order in orders_to_check:
-            response = gateway.verify_payment(order.payment_track_id)
-            if response.get('result') == 100:
-                # If payment was successful, update the order status
-                order.payment_status = Order.PaymentStatus.SUCCESS
-                order.status = Order.Status.PAID
-                order.save()
-                # Potentially trigger other post-payment tasks
-    ```
-*   **Regression Tests:**
-    *   یک تست بنویسید که یک سفارش `PENDING` با `track_id` ایجاد کند. سپس وظیفه `reconcile_pending_payments` را اجرا کرده (با `mock` کردن پاسخ موفق از درگاه) و تأیید کند که وضعیت سفارش به `PAID` تغییر کرده است.
+*   **Regression tests:** Tests that check if data is served from the cache on the second request and that cache invalidation works correctly when a product is updated.

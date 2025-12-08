@@ -49,3 +49,6 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
 }
+
+# Dummy Redis URL for the recommender system
+REDIS_URL = 'redis://localhost:6379/1'

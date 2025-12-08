@@ -1,0 +1,2522 @@
+postex Logo
+Search...
+احراز هویت
+تولید فایل خروجی
+بسته بندی
+شیوه های پرداخت
+مرسولات
+رهگیری مرسولات
+get
+رهگیری مرسوله با شناسه مرسوله
+get
+رهگیری سفارش با بارکد
+get
+گزارش تغییر وضعیت های مرسوله
+هزینه ارسال
+شیوه های ارسال
+حساب کاربری
+کیف پول
+حساب های بانکی
+احراز هویت مکانی
+تقسیمات جغرافیایی
+سرویس عمومی
+مدیریت فروشگاه ها
+redocly logoAPI docs by Redocly
+مستندات فنی پستکس
+پشتیبانی فنی پستکس: api@postex.ir
+URL: https://api.postex.ir
+پستکس اولین هاب پستی ایران با ارائه دهنده خدمات آنلاین پست به صورت درب تا درب است که در آن متقاضیان این امکان را خواهند داشت تا از بین سرویس های پستی، حمل و نقل شهری و حمل و نقل سنگین و با توجه به مقایسه قیمت، سرعت و کیفیت به انتخاب سرویس مورد نظر خود بپردازند.
+
+احراز هویت
+احراز هویت API های پستکس با استفاده از API Key صورت می گیرد و شما برای استفاده از سرویس های پستکس نیاز به API Key مختص به خود دارید. مقدار API Key می بایست در Header هر درخواست با اسم x-api-key ارسال گردد.>مقدار API Key را می بایست در Header با اسم x-api-key ارسال کنید
+
+تولید فایل خروجی
+دانلود اکسل سفارشات
+
+get
+/api/v1/export/download/{exportJobId}
+Authorizations:
+ApiKey
+path Parameters
+exportJobId
+required
+string <uuid>
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+ایجاد خروجی اکسل سفارشات
+
+get
+/api/v1/export/parcels/excel
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+بسته بندی
+/api/v1/packing/container-calculator
+
+post
+/api/v1/packing/container-calculator
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+/api/v1/packing/container-selector
+
+post
+/api/v1/packing/container-selector
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+/api/v1/packing/pack
+
+post
+/api/v1/packing/pack
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+شیوه های پرداخت
+دریافت شیوه های پرداخت
+
+get
+/api/v1/payment-methods
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+مرسولات
+انصراف از ارسال
+
+delete
+/api/v1/parcels/{parcel-no}
+انصراف از ارسال مرسوله
+
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+integer <int64>
+query Parameters
+reason
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت با شناسه مرسوله
+
+get
+/api/v1/parcels/{parcel-no}
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+integer <int64>
+شناسه مرسوله
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+ویرایش جزییات مرسوله
+
+patch
+/api/v1/parcels/{parcel-no}
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+integer <int64>
+شناسه مرسوله
+
+Request Body schema: application/json
+request_label
+boolean or null
+درخواست برچسب برای مرسوله
+
+to
+required
+object (To)
+اطلاعات گیرنده
+
+parcel_items
+required
+Array of objects (ParcelItemDto)
+فهرست محتویات مرسوله
+
+parcel_properties
+required
+object (ParcelPropertyDto)
+مشخصات مرسوله
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+Expand allCollapse all
+{
+"parcel_items": [
+{}
+],
+"parcel_properties": {
+"box_type_id": 6,
+"height": 20,
+"length": 20,
+"total_value": 10000000,
+"total_weight": 1000,
+"width": 15,
+"is_fragile": false,
+"is_liquid": false
+},
+"to": {
+"contact": {},
+"location": {}
+},
+"request_label": true
+}
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+ویرایش مرسوله
+
+put
+/api/v1/parcels/{parcel-no}
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+integer <int64>
+شناسه مرسوله
+
+Request Body schema: application/json
+request_label
+boolean or null
+درخواست برچسب برای مرسوله
+
+to
+required
+object (To)
+اطلاعات گیرنده
+
+parcel_items
+required
+Array of objects (ParcelItemDto)
+فهرست محتویات مرسوله
+
+parcel_properties
+required
+object (ParcelPropertyDto)
+مشخصات مرسوله
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+Expand allCollapse all
+{
+"parcel_items": [
+{}
+],
+"parcel_properties": {
+"box_type_id": 6,
+"height": 20,
+"length": 20,
+"total_value": 10000000,
+"total_weight": 1000,
+"width": 15,
+"is_fragile": false,
+"is_liquid": false
+},
+"to": {
+"contact": {},
+"location": {}
+},
+"request_label": true
+}
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+ثبت مرسوله جدید
+
+post
+/api/v1/parcels/bulk
+با فراخوانی این سرویس ، امکان ثبت چندین مرسوله در یک درخواست را دارید
+
+Authorizations:
+ApiKey
+Request Body schema: application/json
+collection_type
+string or null
+نحوه جمع آوری
+pick_up: درخواست جمع آوری از محل فرستنده
+
+courier_drop_off: تحویل حضوری به شرکت پستی
+
+postex_drop_off: تحویل حضوری به پستکس
+
+remark
+string or null
+توضیحات مربوط به سفارش
+
+custom_batch_no
+string or null
+شناسه اختیاری
+
+custom_channel
+string or null
+کانال ثبت سفارش
+
+parcels
+Array of objects or null (CreateParcelCommand)
+فهرست مرسولات
+
+Responses
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+402 Payment Required
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+Expand allCollapse all
+{
+"collection_type": "postex_drop_off",
+"remark": "سفارش گروهی تست",
+"custom_batch_no": "",
+"custom_channel": "",
+"parcels": [
+{}
+]
+}
+Response samples
+400401402403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+تولید برچسب پستی گروهی
+
+post
+/api/v1/parcels/labels/bulk
+Authorizations:
+ApiKey
+Request Body schema: application/json
+لیست شناسه مرسولات
+
+Array
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+
+Copy
+[
+"string"
+]
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت با شماره سفارش مشتری
+
+get
+/api/v1/parcels/custom-order-no/{custom-order-no}
+با استفاده از این سرویس می توانید اطلاعات مرسوله خود شامل وضعیت و سایر اطلاعات را با استفاده از فیلدی custom_order_no که در هنگام ثبت سفارش ارسال کرده اید دریافت کنید
+
+Authorizations:
+ApiKey
+path Parameters
+custom-order-no
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+تولید برچسب پستی
+
+get
+/api/v1/parcels/{parcel-no}/label
+تولید برچسب پستی برای یک مرسوله
+
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت مرسولات ثبت شده
+
+get
+/api/v1/parcels
+Get your parcels
+
+Authorizations:
+ApiKey
+query Parameters
+page_size
+integer <int32>
+اندازه صفحه
+
+page_index
+integer <int32>
+تعداد صفحه
+
+Keyword
+string
+کلمه کلیدی
+
+location_keyword
+string
+محل یا لوکیشن
+
+from_city
+integer <int32>
+شهر فرستنده
+
+to_city
+integer <int32>
+شهر گیرنده
+
+courier_id
+integer <int32>
+ای دی سرویس دهنده پستی
+
+service_id
+integer <int32>
+ای دی سرویس پستی
+
+to_mobile_no
+string
+موبایل فرستنئده
+
+to_postcode
+string
+کدپستی
+
+status_codes
+string
+وضعیت سفارش
+
+sort_by
+string
+مرتب سازی بر اساس
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+آماده به ارسال کردن مرسوله
+
+post
+/api/v1/parcels/mark-ready
+آماده به ارسال کردن مرسوله
+
+Authorizations:
+ApiKey
+Request Body schema: application/json
+Array
+integer <int64>
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+
+Copy
+[
+0
+]
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت بازه زمانی جمع آوری
+
+get
+/api/v1/orders/pick-up/{city-code}/available-schedules
+دریافت بازه های زمانی موجود برای جمع آوری مرسوله از مبدا
+
+Authorizations:
+ApiKey
+path Parameters
+city-code
+required
+integer <int64>
+کد شهر
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت سفارش
+
+get
+/api/v1/orders/{orderNo}
+دریافت اطلاعات مرسوله با شناسه سفارش
+
+Authorizations:
+ApiKey
+path Parameters
+orderNo
+required
+integer <int64>
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت برچسب پستی برای تمام مرسولات در یک سفارش
+
+get
+/api/v1/orders/orders/{order-no}/labels
+تولید برچسب پستی برای یک مرسوله
+
+Authorizations:
+ApiKey
+path Parameters
+order-no
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+رهگیری مرسولات
+رهگیری مرسوله با شناسه مرسوله
+
+get
+/api/v1/tracking/events/{parcel-no}
+Authorizations:
+ApiKey
+path Parameters
+parcel-no
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+رهگیری سفارش با بارکد
+
+get
+/api/v1/tracking/events/{courier}/{tracking-code}
+Authorizations:
+ApiKey
+path Parameters
+courier
+required
+string
+tracking-code
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+گزارش تغییر وضعیت های مرسوله
+
+get
+/api/v1/tracking/report
+Authorizations:
+ApiKey
+query Parameters
+from_date
+string
+to_date
+string
+Responses
+200 OK
+Response Schema: application/json
+Array
+order_no
+integer <int64>
+tracking_no
+string or null
+change_status_date
+string or null
+change_status_date_utc
+string or null
+change_status_time
+string or null
+change_status_time_utc
+string or null
+event_code
+string or null
+event_name
+string or null
+event_desc
+string or null
+custom_order_no
+string or null
+custom_reference_no
+string or null
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+200400401403
+Content type
+application/json
+
+Copy
+Expand allCollapse all
+[
+{
+"order_no": 0,
+"tracking_no": "string",
+"change_status_date": "string",
+"change_status_date_utc": "string",
+"change_status_time": "string",
+"change_status_time_utc": "string",
+"event_code": "string",
+"event_name": "string",
+"event_desc": "string",
+"custom_order_no": "string",
+"custom_reference_no": "string"
+}
+]
+هزینه ارسال
+محاسبه هزینه جمع آوری و ارسال
+
+post
+/api/v1/shipping/quotes
+محاسبه هزینه جمع آوری و ارسال مرسوله
+
+Authorizations:
+ApiKey
+Request Body schema: application/json
+collection_type
+required
+string non-empty
+نحوه جمع آوری
+pick_up: درخواست جمع آوری از محل فرستنده
+
+courier_drop_off: تحویل حضوری به شرکت پستی
+
+postex_drop_off: تحویل حضوری به پستکس
+
+from_city_code
+required
+integer <int32>
+شناسه شهر مبدا
+
+courier
+object (GetQuotesCourier)
+parcels
+required
+Array of objects (GetShippingQuotesQueryParcels)
+مرسولات
+
+value_added_service
+object (OptionalServices)
+سرویس هاس اختیاری
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+Expand allCollapse all
+{
+"collection_type": "courier_drop_off",
+"from_city_code": 444,
+"courier": {
+"courier_code": "",
+"service_type": ""
+},
+"value_added_service": { },
+"parcels": [
+{}
+]
+}
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+شیوه های ارسال
+دریافت شیوه های ارسال
+
+get
+/api/v1/shipping-methods
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+حساب کاربری
+/api/v1/user/access-token
+
+post
+/api/v1/user/access-token
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت اطلاعات کاربری
+
+get
+/api/v1/user/whoami
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+کیف پول
+موجودی کیف پول
+
+get
+/api/v1/wallet/balance
+با استفاده از این سرویس می توانید موجودی ریالی کیف پول متصل به حساب کاربری خود را دریافت کنید ، توجه داشته باشید مبلغ موجودی به ریال است .
+
+توجه داشته باشید پس از هر ثبت سفارش موفق ، مبلغ از کیف پول کسر شده و در صورت عدم موجودی کافی کیف پول شما قادر به ثبت مرسوله نخواهید بود.
+
+Authorizations:
+ApiKey
+Responses
+200 OK
+Response Schema: application/json
+amount
+integer <int64>
+موجودی کیف پول کاربر به ریال
+
+userID
+string <uuid>
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+200400401403
+Content type
+application/json
+
+Copy
+{
+"amount": 1500000,
+"userID": "2c3821b8-1cdb-4b77-bcd8-a1da701e46aa"
+}
+دریافت تراکنش ها
+
+get
+/api/v1/wallet/transactions
+Authorizations:
+ApiKey
+query Parameters
+from
+string <date-time>
+to
+string <date-time>
+transactionTypeId
+integer <int32>
+actionTypeId
+integer <int32>
+limit
+integer <int32>
+Default: 50
+start
+integer <int32>
+Default: 0
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+/api/v1/wallet/wallet-freeze
+
+get
+/api/v1/wallet/wallet-freeze
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+شارژ کیف پول
+
+post
+/api/v1/wallet/top-up
+از این متد برای شارژ مبلغ کیف پول در نزد پستکس به صورت آنلاین می توانید استفاده کنید
+
+Authorizations:
+ApiKey
+Request Body schema: application/json
+amount
+required
+integer <int64>
+مبلغ شارژ به ریال
+
+successfulCallbackUrl
+required
+string non-empty
+نشانی بازگشت پس از پرداخت موفق
+
+failedCallbackUrl
+required
+string non-empty
+نشانی بازگشت در صورت پرداخت ناموفق
+
+Responses
+200 OK
+Response Schema: application/json
+amount
+integer <int64>
+مبلغ شارژ به ریال
+
+paymentID
+string <uuid>
+شناسه پرداخت
+
+startPaymentUrl
+string or null
+نشانی اینترنتی برای انتقال کاربر به درگاه پرداخت آنلاین
+
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+{
+"amount": "<long>",
+"failedCallbackUrl": "<string>",
+"successfulCallbackUrl": "<string>"
+}
+Response samples
+200400401403
+Content type
+application/json
+
+Copy
+{
+"amount": 0,
+"paymentID": "471b4c61-4e6a-414a-9a08-2528498de3f3",
+"startPaymentUrl": "string"
+}
+درخواست برداشت از کیف پول
+
+post
+/api/v1/wallet/withdraw
+Authorizations:
+ApiKey
+Request Body schema: application/json
+parcel_no
+required
+string non-empty
+remark
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+{
+"parcel_no": "<string>"
+}
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+درخواست برداشت
+
+post
+/api/v1/wallet/cash-out
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+تاریخچه برداشت پول
+
+get
+/api/v1/wallet/cash-out
+Authorizations:
+ApiKey
+query Parameters
+fromDateTime
+string <date-time>
+toDateTime
+string <date-time>
+bankAccountId
+integer <int64>
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+حساب های بانکی
+افزون حساب بانکی جدید
+
+post
+/api/v1/bank-accounts
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت حساب های
+
+get
+/api/v1/bank-accounts
+دریافت فهرست حساب های بانکی ثبت شده شما در پستکس
+
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+حذف حساب بانکی
+
+delete
+/api/v1/bank-accounts/{id}
+با فراخوانی این سرویس حساب بانکی مورد نظر شما حذف
+
+Authorizations:
+ApiKey
+path Parameters
+id
+required
+integer <int64>
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+احراز هویت مکانی
+درخواست احراز هویت
+
+post
+/api/v1/address-verify
+ثبت درخواست احراز هویت مکانی و دریافت کد رهیگیری
+
+Authorizations:
+ApiKey
+Request Body schema: application/json
+cellPhoneNo
+required
+string non-empty
+تلفن همراه
+
+gender
+required
+integer <int32>
+جنسیت
+
+firstName
+required
+string non-empty
+نام
+
+lastName
+required
+string non-empty
+نام خانوادگی
+
+nationalId
+required
+string non-empty
+کد ملی 10 رقمی
+
+addressStatus
+required
+integer <int32>
+نوع نشانی
+
+postcode
+required
+string non-empty
+کد پستی 10 رقمی
+
+selfReportingAddress
+required
+string non-empty
+نشانی
+
+buildingNumber
+required
+string non-empty
+شماره ساختمان
+
+floor
+required
+integer <int32>
+طبقه
+
+unit
+required
+integer <int32>
+واحد
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Request samples
+Payload
+Content type
+application/json
+Example
+
+نمونه درخواست
+نمونه درخواست
+
+Copy
+{
+"cellPhoneNo": "09129284502",
+"gender": 1,
+"firstName": "بهرنگ",
+"lastName": "عقیلی نسب",
+"nationalId": "1374134961",
+"addressStatus": 0,
+"postcode": "3814567893",
+"selfReportingAddress": " تست",
+"buildingNumber": "221",
+"floor": 2,
+"unit": 10
+}
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+استعلام وضعیت
+
+get
+/api/v1/address-verify/{trackingNo}
+استعلام وضعیت احراز هویت مکانی با استفاده از کد رهگیری
+
+Authorizations:
+ApiKey
+path Parameters
+trackingNo
+required
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+تقسیمات جغرافیایی
+فهرست تمام شهرها
+
+get
+/api/v1/locality/cities/all
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت شهرهای استان
+
+get
+/api/v1/locality/cities/{province-code}
+Authorizations:
+ApiKey
+path Parameters
+province-code
+required
+integer <int32>
+The id of province
+
+query Parameters
+q
+string
+Search keyword
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت فهرست کشورها
+
+get
+/api/v1/locality/countries
+Authorizations:
+ApiKey
+query Parameters
+q
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+فهرست شهرهای مبدا
+
+get
+/api/v1/locality/cities/from/all
+Authorizations:
+ApiKey
+query Parameters
+keyword
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت شهرهای استان مبدا
+
+get
+/api/v1/locality/cities/from/{province-code}
+Authorizations:
+ApiKey
+path Parameters
+province-code
+required
+integer <int32>
+The id of province
+
+query Parameters
+q
+string
+Search keyword
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+فهرست استان ها
+
+get
+/api/v1/locality/provinces
+Authorizations:
+ApiKey
+query Parameters
+q
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+فهرست شهرهای مقصد
+
+get
+/api/v1/locality/cities/to/all
+Authorizations:
+ApiKey
+query Parameters
+keyword
+string
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت شهرهای استان مقصد
+
+get
+/api/v1/locality/cities/to/{province-code}
+Authorizations:
+ApiKey
+path Parameters
+province-code
+required
+integer <int32>
+The id of province
+
+query Parameters
+q
+string
+Search keyword
+
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+سرویس عمومی
+دریافت سایز جعبه ها
+
+get
+/api/v1/common/boxes
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت شیوه های پرداخت
+
+get
+/api/v1/common/payment-methods
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت شیوه های ارسال
+
+get
+/api/v1/common/shipping-methods
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+دریافت وضعیت ها
+
+get
+/api/v1/common/statuses
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}
+مدیریت فروشگاه ها
+/api/v1/store/enroll
+
+post
+/api/v1/store/enroll
+Authorizations:
+ApiKey
+Responses
+200 OK
+400 Bad Request
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+401 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+403 Unauthorized
+Response Schema: application/json
+isSuccess
+boolean
+message
+string or null
+Response samples
+400401403
+Content type
+application/json
+
+Copy
+{
+"isSuccess": true,
+"message": "string"
+}

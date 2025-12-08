@@ -70,13 +70,21 @@ class PaymentWebhookAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # Security: Check for a secret header
-        secret_header = request.headers.get('X-Zibal-Secret', '').encode('utf-8')
-        webhook_secret = settings.ZIBAL_WEBHOOK_SECRET.encode('utf-8')
+        # Security: Validate the webhook signature
+        gateway_signature = request.headers.get('X-Gateway-Signature')
+        if not gateway_signature:
+            logger.warning("Webhook request missing X-Gateway-Signature header.")
+            return ApiResponse.error(message="Invalid signature.", status_code=status.HTTP_403_FORBIDDEN)
 
-        if not hmac.compare_digest(secret_header, webhook_secret):
-            logger.warning("Invalid or missing webhook secret.")
-            return ApiResponse.error(message="Not authorized.", status_code=status.HTTP_403_FORBIDDEN)
+        computed_signature = hmac.new(
+            settings.ZIBAL_WEBHOOK_SECRET.encode('utf-8'),
+            request.body,
+            'sha256'
+        ).hexdigest()
+
+        if not hmac.compare_digest(gateway_signature, computed_signature):
+            logger.warning("Invalid webhook signature.")
+            return ApiResponse.error(message="Invalid signature.", status_code=status.HTTP_403_FORBIDDEN)
 
         # Security: Check the source IP (optional but recommended)
         client_ip = get_client_ip(request)
@@ -90,6 +98,17 @@ class PaymentWebhookAPIView(APIView):
 
         if not track_id:
             return ApiResponse.error(message="trackId is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        # Idempotency Check
+        try:
+            order = Order.objects.get(payment_track_id=track_id)
+            if order.payment_status == Order.PaymentStatus.SUCCESS:
+                logger.info(f"Webhook for track_id {track_id} already processed successfully.")
+                return ApiResponse.success(message="Webhook already processed.", status_code=status.HTTP_200_OK)
+        except Order.DoesNotExist:
+            # This can happen if the webhook arrives before the order is saved.
+            # The Celery task will handle this gracefully.
+            pass
 
         # Asynchronously process the payment to avoid blocking the gateway
         process_successful_payment.delay(track_id, success)

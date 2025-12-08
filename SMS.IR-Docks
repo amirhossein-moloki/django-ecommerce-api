@@ -1,0 +1,116 @@
+پکیج Python
+Python
+نصب پکیج Python:
+
+Installation:
+
+
+pip install smsir-python
+
+نحوه استفاده
+
+ایجاد نمونه :
+
+
+from sms_ir import SmsIr
+sms_ir = SmsIr(
+api_key,
+linenumber,
+)
+ارسال پیام به شماره موبایل خاص:
+
+
+sms_ir.send_sms(
+number,
+message,
+linenumber,
+)
+ارسال پیام به چند شماره موبایل:
+
+
+sms_ir.send_bulk_sms(
+numbers,
+message,
+linenumber,
+)
+ارسال پیام های متعدد به چند شماره تلفن همراه جفت به جفت
+
+
+sms_ir.send_like_to_like(
+numbers,
+messages,
+linenumber,
+send_date_time,
+)
+حذف پیام برنامه ریزی شده :
+
+
+sms_ir.delete_scheduled(
+pack_id,
+)
+ارسال کد تایید با الگوی از پیش تعریف شده
+
+
+sms_ir.send_verify_code(
+number,
+template_id,
+parameters,
+)
+دریافت گزارش پیام ارسال شده
+
+
+sms_ir.report_message(
+message_id,
+)
+دریافت گزارش بسته پیام ارسال شده
+
+
+sms_ir.report_pack(
+pack_id,
+))
+دریافت گزارش پیام های ارسال شده امروز
+
+
+sms_ir.report_today(
+page_size,
+page_number,
+))
+دریافت گزارش از پیام های آرشیو شده
+
+
+sms_ir.report_archived(
+from_date,
+to_date,
+page_size,
+page_number,
+))
+دریافت گزارش آخرین پیام های دریافتی
+
+
+sms_ir.report_latest_received(
+count,
+)
+دریافت گزارش پیام های دریافتی امروز
+
+
+sms_ir.report_today_received(
+page_size,
+page_number,
+)
+دریافت گزارش پیام های دریافتی امروز
+
+
+sms_ir.report_archived_received(
+from_date,
+to_date,
+page_size,
+page_number,
+)
+دریافت اعتبار حساب
+
+
+sms_ir.get_credit()
+شماره خطوط حساب را دریافت کنید
+
+
+sms_ir.get_line_numbers()

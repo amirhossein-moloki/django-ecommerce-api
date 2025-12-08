@@ -71,7 +71,7 @@ THIRD_PARTY_APPS = [
 CUSTOM_APPS = [
     'shop.apps.ShopConfig',  # Shop application for managing products
     'cart.apps.CartConfig',  # Cart application for managing shopping carts
-    'orders.apps.OrdersConfig',  # Orders application for managing customer orders
+    'orders',  # Orders application for managing customer orders
     'coupons.apps.CouponsConfig',  # Coupons application for discounts
 
     'chat.apps.ChatConfig',  # Chat application for real-time communication
