@@ -45,16 +45,6 @@ def verify_payment(track_id):
     response = gateway.verify_payment(track_id)
 
     if response.get('result') == 100:
-        for item in order.items.all():
-            if item.product.stock < item.quantity:
-                order.payment_status = Order.PaymentStatus.FAILED
-                order.save()
-                raise ValueError(f"Insufficient stock for product: {item.product.name}. Payment will be refunded.")
-
-        for item in order.items.all():
-            item.product.stock -= item.quantity
-            item.product.save()
-
         order.payment_status = Order.PaymentStatus.SUCCESS
         order.payment_ref_id = response.get('refNumber', '')
         order.status = Order.Status.PAID

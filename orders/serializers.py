@@ -16,7 +16,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     Provides detailed information about a product within an order.
     """
     product = serializers.StringRelatedField()
-    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, source='get_cost')
 
     class Meta:
         model = OrderItem
@@ -155,6 +155,7 @@ class OrderCreateSerializer(serializers.Serializer):
                     OrderItem(
                         order=order,
                         product=product,
+                        price=product.price,
                         quantity=item['quantity']
                     )
                 )

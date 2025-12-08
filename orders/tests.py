@@ -47,8 +47,12 @@ class OrderModelTests(TestCase):
             active=True
         )
         self.order = Order.objects.create(user=self.user, coupon=self.coupon)
-        self.order_item1 = OrderItem.objects.create(order=self.order, product=self.product1, quantity=1)
-        self.order_item2 = OrderItem.objects.create(order=self.order, product=self.product2, quantity=2)
+        self.order_item1 = OrderItem.objects.create(
+            order=self.order, product=self.product1, quantity=1, price=self.product1.price
+        )
+        self.order_item2 = OrderItem.objects.create(
+            order=self.order, product=self.product2, quantity=2, price=self.product2.price
+        )
 
     def test_get_total_cost_before_discount(self):
         self.assertEqual(self.order.get_total_cost_before_discount(), Decimal('50.00'))
@@ -58,6 +62,27 @@ class OrderModelTests(TestCase):
 
     def test_total_price(self):
         self.assertEqual(self.order.total_price, Decimal('45.00'))
+
+    def test_price_snapshotting(self):
+        """
+        Tests that the price in OrderItem is snapshotted and does not change
+        when the Product price is updated.
+        """
+        # Price of product1 at the time of order creation was 10.00
+        initial_order_item_price = self.order_item1.price
+        self.assertEqual(initial_order_item_price, Decimal('10.00'))
+
+        # Now, change the price of the original product
+        new_product_price = Decimal('15.00')
+        self.product1.price = new_product_price
+        self.product1.save()
+
+        # Refresh the order item from the database to be sure we have the latest state
+        self.order_item1.refresh_from_db()
+
+        # The price in the order item should remain the same as when it was created
+        self.assertEqual(self.order_item1.price, initial_order_item_price)
+        self.assertNotEqual(self.order_item1.price, new_product_price)
 
 
 class OrderViewSetTests(APITestCase):
