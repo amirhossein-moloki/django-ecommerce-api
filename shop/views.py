@@ -493,74 +493,8 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
             self.permission_classes = [permissions.IsAdminUser]
         return super().get_permissions()
 
-    # The cache_page decorator has been removed to implement custom caching.
-    def list(self, request, *args, **kwargs):
+    def get_queryset(self):
         """
-        Lists all categories with custom caching.
-        - Caches the category list for 24 hours using a custom cache key.
-        - This allows for easier cache invalidation when categories are updated.
+        Caches the queryset for 24 hours.
         """
-        from django.core.cache import cache
-        try:
-            logger.info("Listing categories")
-
-            # Using a custom cache key for easier invalidation.
-            query_params = request.query_params.urlencode()
-            cache_key = f'category_list_{query_params}'
-
-            # Try to fetch the data from the cache.
-            cached_data = cache.get(cache_key)
-
-            if cached_data is None:
-                # If the data is not in the cache, fetch it from the database.
-                queryset = services.get_category_list()
-                page = self.paginate_queryset(queryset)
-                if page is not None:
-                    serializer = self.get_serializer(page, many=True)
-                    response = self.get_paginated_response(serializer.data)
-                else:
-                    serializer = self.get_serializer(queryset, many=True)
-                    response = Response(serializer.data)
-
-                # Cache the response data for 24 hours.
-                cache.set(cache_key, response.data, 60 * 60 * 24)
-
-                return response
-            else:
-                # If the data is in the cache, return it.
-                from rest_framework.response import Response
-                return Response(cached_data)
-
-        except Exception as e:
-            logger.error("Error listing categories: %s", e, exc_info=True)
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def perform_create(self, serializer):
-        """
-        Handles the creation of a new category.
-        - Delegates the creation logic to the `services.create_category` function.
-        """
-        try:
-            services.create_category(serializer.validated_data)
-            cache.delete('category_list')
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error("Error creating category: %s", e, exc_info=True)
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def perform_update(self, serializer):
-        """
-        Handles the update of a category.
-        """
-        serializer.save()
-        cache.delete(f"category_{serializer.instance.slug}")
-        cache.delete('category_list')
-
-    def perform_destroy(self, instance):
-        """
-        Handles the deletion of a category.
-        """
-        cache.delete(f"category_{instance.slug}")
-        cache.delete('category_list')
-        instance.delete()
+        return cache.get_or_set('category_list', Category.objects.all(), 60 * 60 * 24)

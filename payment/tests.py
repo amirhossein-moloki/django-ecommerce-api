@@ -66,3 +66,60 @@ class PaymentAPIViewTests(APITestCase):
         self.order.save()
         response = self.client.get(self.verify_url + '?trackId=12345')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class PaymentWebhookAPIViewTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number='+989123456718',
+            email='testwebhook@example.com',
+            username='testwebhookuser',
+            password='password'
+        )
+        self.order = Order.objects.create(user=self.user, total_payable=Decimal('250.00'), payment_track_id='track123')
+        self.webhook_url = reverse('payment:webhook')
+
+    @patch('payment.views.process_successful_payment.delay')
+    def test_webhook_success(self, mock_task):
+        """
+        Test a successful webhook call.
+        """
+        payload = {'trackId': 'track123', 'success': True}
+        headers = {'X-Zibal-Secret': 'your-super-secret-webhook-key'}
+        response = self.client.post(self.webhook_url, payload, format='json', **headers)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_task.assert_called_once_with('track123', True)
+
+    def test_webhook_invalid_secret(self):
+        """
+        Test a webhook call with an invalid secret.
+        """
+        payload = {'trackId': 'track123', 'success': True}
+        headers = {'X-Zibal-Secret': 'invalid-secret'}
+        response = self.client.post(self.webhook_url, payload, format='json', **headers)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch('payment.views.process_successful_payment.delay')
+    def test_webhook_idempotency(self, mock_task):
+        """
+        Test that a successful webhook is not processed twice.
+        """
+        # First successful call
+        payload = {'trackId': 'track123', 'success': True}
+        headers = {'X-Zibal-Secret': 'your-super-secret-webhook-key'}
+        response = self.client.post(self.webhook_url, payload, format='json', **headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_task.assert_called_once_with('track123', True)
+
+        # Mark the order as successful
+        self.order.payment_status = Order.PaymentStatus.SUCCESS
+        self.order.save()
+
+        # Second call should not trigger the task again
+        mock_task.reset_mock()
+        response = self.client.post(self.webhook_url, payload, format='json', **headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['message'], 'Webhook already processed.')
+        mock_task.assert_not_called()
