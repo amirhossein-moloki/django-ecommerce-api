@@ -9,6 +9,7 @@ from taggit.managers import TaggableManager
 
 from .custom_taggit import CustomTaggedItem
 from .utils import product_upload_to_unique
+from .validators import FileValidator
 
 
 class SluggedModel(models.Model):
@@ -62,6 +63,12 @@ class InStockManager(models.Manager):
         return super().get_queryset().filter(stock__gt=0)
 
 
+validate_image = FileValidator(
+    max_size=2 * 1024 * 1024,  # 2MB
+    content_types=('image/jpeg', 'image/png', 'image/webp')
+)
+
+
 class Product(SluggedModel):
     """
     Represents a product in the e-commerce store.
@@ -76,7 +83,8 @@ class Product(SluggedModel):
         null=True,
         blank=True,
         upload_to=product_upload_to_unique,
-        help_text="A thumbnail image for the product."
+        help_text="A thumbnail image for the product.",
+        validators=[validate_image]
     )
     category = models.ForeignKey(
         Category,

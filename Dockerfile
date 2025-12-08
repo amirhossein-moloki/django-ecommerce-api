@@ -14,7 +14,7 @@ ARG DEV=false
 # Install system-level dependencies required for building Python packages,
 # particularly those with C extensions like psycopg2.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the working directory inside the container.
@@ -32,6 +32,10 @@ RUN if [ "$DEV" = "true" ]; then pip install --no-cache-dir -r requirements-dev.
 # --- Final Stage ---
 #
 FROM python:3.11-slim-bookworm AS final
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libmagic1 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set environment variables for the final image.
 ENV PYTHONDONTWRITEBYTECODE=1
