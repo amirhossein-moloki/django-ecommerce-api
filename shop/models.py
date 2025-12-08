@@ -55,9 +55,30 @@ class Category(SluggedModel):
         return f"Category: {self.name}"
 
 
-class InStockManager(models.Manager):
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        from django.utils import timezone
+        return self.update(deleted_at=timezone.now())
+
+    def restore(self):
+        return self.update(deleted_at=None)
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, self.using).filter(deleted_at__isnull=True)
+
+    def all_with_deleted(self):
+        return SoftDeleteQuerySet(self.model, self.using)
+
+
+class InStockManager(SoftDeleteManager):
     """
-    A custom manager that returns only products that are in stock (stock > 0).
+    A custom manager that returns only products that are in stock (stock > 0)
+    and not soft-deleted.
     """
     def get_queryset(self):
         return super().get_queryset().filter(stock__gt=0)
@@ -80,6 +101,7 @@ class Product(SluggedModel):
     stock = models.IntegerField(validators=[MinValueValidator(0)], help_text="The number of items in stock.")
     created = models.DateTimeField(auto_now_add=True, help_text="The date and time when the product was created.")
     updated = models.DateTimeField(auto_now=True, help_text="The date and time when the product was last updated.")
+    deleted_at = models.DateTimeField(null=True, blank=True, editable=False, help_text="The date and time when the product was soft-deleted.")
     thumbnail = models.ImageField(
         null=True,
         blank=True,
@@ -99,7 +121,8 @@ class Product(SluggedModel):
         on_delete=models.CASCADE,
         help_text="The user who created the product."
     )
-    objects = models.Manager()  # The default manager.
+    objects = SoftDeleteManager()  # The default manager.
+    all_objects = models.Manager()  # The manager for all objects, including deleted ones.
     in_stock = InStockManager()  # The custom 'in_stock' manager.
     tags = TaggableManager(through=CustomTaggedItem, help_text="Tags for the product.")
     weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The weight of the product.")
@@ -152,6 +175,18 @@ class Product(SluggedModel):
         Returns the absolute URL for a product instance.
         """
         return reverse('api-v1:product-detail', kwargs={'slug': self.slug})
+
+    def delete(self, using=None, keep_parents=False):
+        from django.utils import timezone
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at'])
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at'])
+
+    def hard_delete(self):
+        super().delete()
 
     def update_rating_and_reviews_count(self):
         """
