@@ -7,9 +7,9 @@ from .models import Product
 
 
 class TrendingProductsFeed(Feed):
-    title = 'eCommerce API - Trending'
-    link = reverse_lazy('api-v1:products-list')
-    description = 'Trending Products for this week'
+    title = "eCommerce API - Trending"
+    link = reverse_lazy("api-v1:products-list")
+    description = "Trending Products for this week"
 
     def items(self):
         return Product.in_stock.all()[:5]

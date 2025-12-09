@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("shop", "0006_product_height_product_length_product_weight_and_more"),
     ]

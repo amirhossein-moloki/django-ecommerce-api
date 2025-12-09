@@ -6,7 +6,6 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from orders.models import Order
-from shop.models import Product, Category
 from account.models import Address
 
 User = get_user_model()

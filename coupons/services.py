@@ -1,4 +1,3 @@
-from django.utils import timezone
 from cart.cart import Cart
 from .models import Coupon
 

@@ -5,8 +5,7 @@ from .views import (
     UserViewSet,
     TokenRefreshView,
     TokenVerifyView,
-    TokenDestroyView, ActivateView,
-    RequestOTP,
+    TokenDestroyView, RequestOTP,
     VerifyOTP,
     CompleteProfileView,
 )

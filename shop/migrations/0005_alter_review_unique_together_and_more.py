@@ -5,19 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('shop', '0004_alter_review_unique_together_and_more'),
+        ("shop", "0004_alter_review_unique_together_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='review',
+            name="review",
             unique_together=set(),
         ),
         migrations.AddConstraint(
-            model_name='review',
-            constraint=models.UniqueConstraint(fields=('user', 'product'), name='unique_user_product_review', violation_error_message='A user can only leave one review per product.'),
+            model_name="review",
+            constraint=models.UniqueConstraint(
+                fields=("user", "product"),
+                name="unique_user_product_review",
+                violation_error_message="A user can only leave one review per product.",
+            ),
         ),
     ]

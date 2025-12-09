@@ -1,7 +1,11 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIRequestFactory
-from account.serializers import UserProfileSerializer, AddressSerializer
+from account.serializers import (
+    AddressSerializer,
+    CompleteProfileSerializer,
+    UserProfileSerializer,
+)
 from account.models import Address
 
 User = get_user_model()
@@ -61,8 +65,6 @@ class UserProfileSerializerTest(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('phone_number', serializer.errors)
 
-
-from account.serializers import UserProfileSerializer, AddressSerializer, CompleteProfileSerializer
 
 class CompleteProfileSerializerTest(TestCase):
     def setUp(self):

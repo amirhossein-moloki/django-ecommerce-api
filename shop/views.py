@@ -1,10 +1,6 @@
 from logging import getLogger
 
 from django.core.cache import cache
-from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_headers
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import (
     extend_schema_view,
@@ -22,15 +18,11 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from taggit.models import Tag
 
-from cart.cart import Cart
 from ecommerce_api.core.mixins import PaginationMixin
 from ecommerce_api.core.permissions import IsOwnerOrStaff
 from shop.filters import ProductFilter, InStockFilterBackend, ProductSearchFilterBackend
 from .models import Product, Category
-from .models import Review
-from .recommender import Recommender
 from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
 from .serializers import ReviewSerializer
 from . import services
@@ -48,13 +40,13 @@ logger = getLogger(__name__)
             401: OpenApiResponse(description="Authentication required."),
             403: OpenApiResponse(description="Permission denied."),
             404: OpenApiResponse(description="Review not found."),
-        }
+        },
     ),
     list=extend_schema(
         operation_id="review_list",
         description="List all reviews for a product.",
         tags=["Reviews"],
-        responses={200: OpenApiResponse(description="Reviews retrieved successfully.")}
+        responses={200: OpenApiResponse(description="Reviews retrieved successfully.")},
     ),
     create=extend_schema(
         operation_id="review_create",
@@ -64,7 +56,7 @@ logger = getLogger(__name__)
             201: OpenApiResponse(description="Review created successfully."),
             400: OpenApiResponse(description="Invalid input data."),
             401: OpenApiResponse(description="Authentication required."),
-        }
+        },
     ),
     update=extend_schema(
         operation_id="review_update",
@@ -76,7 +68,7 @@ logger = getLogger(__name__)
             401: OpenApiResponse(description="Authentication required."),
             403: OpenApiResponse(description="Permission denied."),
             404: OpenApiResponse(description="Review not found."),
-        }
+        },
     ),
     partial_update=extend_schema(
         operation_id="review_partial_update",
@@ -88,7 +80,7 @@ logger = getLogger(__name__)
             401: OpenApiResponse(description="Authentication required."),
             403: OpenApiResponse(description="Permission denied."),
             404: OpenApiResponse(description="Review not found."),
-        }
+        },
     ),
     destroy=extend_schema(
         operation_id="review_destroy",
@@ -99,7 +91,7 @@ logger = getLogger(__name__)
             401: OpenApiResponse(description="Authentication required."),
             403: OpenApiResponse(description="Permission denied."),
             404: OpenApiResponse(description="Review not found."),
-        }
+        },
     ),
 )
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -112,6 +104,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     - **Business Rules:**
         - A user can only leave one review per product.
     """
+
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -120,7 +113,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         Instantiates and returns the list of permissions that this view requires.
         - For 'update', 'partial_update', and 'destroy' actions, only the owner or staff is allowed.
         """
-        if self.action in ['update', 'partial_update', 'destroy']:
+        if self.action in ["update", "partial_update", "destroy"]:
             self.permission_classes = [IsOwnerOrStaff]
         return super().get_permissions()
 
@@ -128,7 +121,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         """
         Returns the queryset of reviews for a specific product, identified by its slug.
         """
-        product_slug = self.kwargs.get('product_slug')
+        product_slug = self.kwargs.get("product_slug")
         logger.info("Fetching reviews for product slug: %s", product_slug)
         return services.get_reviews_for_product(product_slug)
 
@@ -140,25 +133,44 @@ class ReviewViewSet(viewsets.ModelViewSet):
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        product_slug = self.kwargs.get('product_slug')
+        product_slug = self.kwargs.get("product_slug")
         try:
             review = services.create_review(
                 user=self.request.user,
                 product_slug=product_slug,
-                validated_data=serializer.validated_data
+                validated_data=serializer.validated_data,
             )
-            logger.info("Review created for product slug: %s by user id: %s", product_slug, self.request.user.id)
+            logger.info(
+                "Review created for product slug: %s by user id: %s",
+                product_slug,
+                self.request.user.id,
+            )
             # After creating the review, we serialize it to return in the response.
             response_serializer = self.get_serializer(review)
             headers = self.get_success_headers(response_serializer.data)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers,
+            )
         except IntegrityError:
-            return Response({"detail": "You have already reviewed this product."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "You have already reviewed this product."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except PermissionDenied as e:
             return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
-            logger.error("Error creating review for product slug: %s: %s", product_slug, e, exc_info=True)
-            return Response({"detail": "An unexpected server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(
+                "Error creating review for product slug: %s: %s",
+                product_slug,
+                e,
+                exc_info=True,
+            )
+            return Response(
+                {"detail": "An unexpected server error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @extend_schema_view(
@@ -171,13 +183,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 name=r"tag",
                 description=r"Filter products by tag slug",
                 required=False,
-                type=str
+                type=str,
             ),
             OpenApiParameter(
                 name=r"category",
                 description=r"Filter products by category slug",
                 required=False,
-                type=str
+                type=str,
             ),
         ],
         examples=[
@@ -193,21 +205,23 @@ class ReviewViewSet(viewsets.ModelViewSet):
                             "name": "Sample Product",
                             "price": "19.99",
                             "stock": 50,
-                            "slug": "sample-product"
+                            "slug": "sample-product",
                         }
-                    ]
-                }
+                    ],
+                },
             )
-        ]
+        ],
     ),
     retrieve=extend_schema(
         operation_id=r"product\_retrieve",
         description=r"Retrieve a single product by slug. Cached for 1 hour.",
         tags=[r"Products"],
         responses={
-            200: OpenApiResponse(description=r"Product details retrieved successfully."),
+            200: OpenApiResponse(
+                description=r"Product details retrieved successfully."
+            ),
             404: OpenApiResponse(description=r"Product not found."),
-        }
+        },
     ),
     create=extend_schema(
         operation_id=r"product\_create",
@@ -217,8 +231,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
             201: OpenApiResponse(description=r"Product created successfully."),
             400: OpenApiResponse(description=r"Invalid input data."),
             401: OpenApiResponse(description=r"Authentication required."),
-            403: OpenApiResponse(description=r"Permission denied - must be owner or staff."),
-        }
+            403: OpenApiResponse(
+                description=r"Permission denied - must be owner or staff."
+            ),
+        },
     ),
     update=extend_schema(
         operation_id=r"product\_update",
@@ -228,9 +244,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
             200: OpenApiResponse(description=r"Product updated successfully."),
             400: OpenApiResponse(description=r"Invalid input data."),
             401: OpenApiResponse(description=r"Authentication required."),
-            403: OpenApiResponse(description=r"Permission denied - must be owner or staff."),
+            403: OpenApiResponse(
+                description=r"Permission denied - must be owner or staff."
+            ),
             404: OpenApiResponse(description=r"Product not found."),
-        }
+        },
     ),
     partial_update=extend_schema(
         operation_id=r"product\_partial\_update",
@@ -240,9 +258,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
             200: OpenApiResponse(description=r"Product updated successfully."),
             400: OpenApiResponse(description=r"Invalid input data."),
             401: OpenApiResponse(description=r"Authentication required."),
-            403: OpenApiResponse(description=r"Permission denied - must be owner or staff."),
+            403: OpenApiResponse(
+                description=r"Permission denied - must be owner or staff."
+            ),
             404: OpenApiResponse(description=r"Product not found."),
-        }
+        },
     ),
     destroy=extend_schema(
         operation_id=r"product\_destroy",
@@ -251,9 +271,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         responses={
             204: OpenApiResponse(description=r"Product deleted successfully."),
             401: OpenApiResponse(description=r"Authentication required."),
-            403: OpenApiResponse(description=r"Permission denied - must be owner or staff."),
+            403: OpenApiResponse(
+                description=r"Permission denied - must be owner or staff."
+            ),
             404: OpenApiResponse(description=r"Product not found."),
-        }
+        },
     ),
     list_user_products=extend_schema(
         operation_id=r"product\_list\_user",
@@ -264,13 +286,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 name="username",
                 description="Filter products by the username of the user. Optional.",
                 required=False,
-                type=str
+                type=str,
             ),
         ],
         responses={
             200: OpenApiResponse(description=r"User products retrieved successfully."),
             401: OpenApiResponse(description=r"Authentication required."),
-        }
+        },
     ),
 )
 class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
@@ -284,7 +306,10 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         - Supports ordering by name, price, stock, and creation date.
         - Includes a product recommendation feature.
     """
-    queryset = Product.objects.select_related('user', 'category').prefetch_related('tags', 'reviews')
+
+    queryset = Product.objects.select_related("user", "category").prefetch_related(
+        "tags", "reviews"
+    )
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrStaff]
     serializer_class = ProductSerializer
     filterset_class = ProductFilter
@@ -294,15 +319,15 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         InStockFilterBackend,
         ProductSearchFilterBackend,
     ]
-    ordering_fields = [r'name', r'price', r'stock', r'created']
-    lookup_field = r'slug'
+    ordering_fields = [r"name", r"price", r"stock", r"created"]
+    lookup_field = r"slug"
 
     def get_permissions(self):
         """
         Instantiates and returns the list of permissions that this view requires.
         - The 'list_user_products' action is available to any user.
         """
-        if self.action in [r'list_user_products']:
+        if self.action in [r"list_user_products"]:
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
 
@@ -311,7 +336,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         Returns the serializer class to be used for the current action.
         - For the 'retrieve' action, it uses the `ProductDetailSerializer` to include more details.
         """
-        if self.action == 'retrieve':
+        if self.action == "retrieve":
             return ProductDetailSerializer
         return super().get_serializer_class()
 
@@ -321,13 +346,21 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         try:
             serializer.save(user=self.request.user)
-            cache.delete('product_list')
+            cache.delete("product_list")
             logger.info("Product created by user id: %s", self.request.user.id)
         except ValidationError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error("Error creating product for user id: %s: %s", self.request.user.id, e, exc_info=True)
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(
+                "Error creating product for user id: %s: %s",
+                self.request.user.id,
+                e,
+                exc_info=True,
+            )
+            return Response(
+                {"detail": "An unexpected error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def perform_update(self, serializer):
         """
@@ -335,14 +368,14 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         serializer.save()
         cache.delete(f"product_{serializer.instance.slug}")
-        cache.delete('product_list')
+        cache.delete("product_list")
 
     def perform_destroy(self, instance):
         """
         Handles the deletion of a product.
         """
         cache.delete(f"product_{instance.slug}")
-        cache.delete('product_list')
+        cache.delete("product_list")
         instance.delete()
 
     def list(self, request, *args, **kwargs):
@@ -353,32 +386,36 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         # A more granular caching strategy will be implemented in the caching step.
         query_params = request.query_params.urlencode()
-        cache_key = f'product_list_{query_params}'
+        cache_key = f"product_list_{query_params}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return Response(cached_data)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 60 * 5) # 5 minutes
+        cache.set(cache_key, response.data, 60 * 5)  # 5 minutes
         return response
-
 
     def retrieve(self, request, *args, **kwargs):
         """
         Retrieves a single product by its slug.
         - Delegates the retrieval logic to the `services.get_product_detail` function.
         """
-        slug = kwargs.get('slug')
-        cache_key = f'product_{slug}'
+        slug = kwargs.get("slug")
+        cache_key = f"product_{slug}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return Response(cached_data)
         product = services.get_product_detail(slug)
         serializer = self.get_serializer(product)
-        cache.set(cache_key, serializer.data, 60 * 60) # 1 hour
+        cache.set(cache_key, serializer.data, 60 * 60)  # 1 hour
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], url_path='user-products', url_name='user-products')
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="user-products",
+        url_name="user-products",
+    )
     def list_user_products(self, request):
         """
         A custom action to list products belonging to a specific user.
@@ -387,10 +424,13 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         try:
             logger.info("Listing user products for user id: %s", request.user.id)
-            username = request.query_params.get('username')
+            username = request.query_params.get("username")
             user = request.user if not username else None
             if not user and not username:
-                return Response({"detail": "Authentication required to view your products."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response(
+                    {"detail": "Authentication required to view your products."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
             queryset = services.get_user_products(user=user, username=username)
             page = self.paginate_queryset(queryset)
@@ -401,7 +441,10 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error("Error listing user products: %s", e, exc_info=True)
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "An unexpected error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @extend_schema_view(
@@ -411,16 +454,18 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         tags=[r"Categories"],
         responses={
             200: OpenApiResponse(description=r"Categories retrieved successfully."),
-        }
+        },
     ),
     retrieve=extend_schema(
         operation_id=r"category\_retrieve",
         description=r"Retrieve a single category by slug.",
         tags=[r"Categories"],
         responses={
-            200: OpenApiResponse(description=r"Category details retrieved successfully."),
+            200: OpenApiResponse(
+                description=r"Category details retrieved successfully."
+            ),
             404: OpenApiResponse(description=r"Category not found."),
-        }
+        },
     ),
     create=extend_schema(
         operation_id=r"category\_create",
@@ -431,7 +476,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             400: OpenApiResponse(description=r"Invalid input data."),
             401: OpenApiResponse(description=r"Authentication required."),
             403: OpenApiResponse(description=r"Admin privileges required."),
-        }
+        },
     ),
     update=extend_schema(
         operation_id=r"category\_update",
@@ -443,7 +488,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             401: OpenApiResponse(description=r"Authentication required."),
             403: OpenApiResponse(description=r"Admin privileges required."),
             404: OpenApiResponse(description=r"Category not found."),
-        }
+        },
     ),
     partial_update=extend_schema(
         operation_id=r"category\_partial\_update",
@@ -455,7 +500,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             401: OpenApiResponse(description=r"Authentication required."),
             403: OpenApiResponse(description=r"Admin privileges required."),
             404: OpenApiResponse(description=r"Category not found."),
-        }
+        },
     ),
     destroy=extend_schema(
         operation_id=r"category\_destroy",
@@ -466,7 +511,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             401: OpenApiResponse(description=r"Authentication required."),
             403: OpenApiResponse(description=r"Admin privileges required."),
             404: OpenApiResponse(description=r"Category not found."),
-        }
+        },
     ),
 )
 class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
@@ -476,10 +521,11 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
     - **Permissions:**
         - Category creation, update, and deletion are restricted to admin users.
     """
+
     queryset = Category.objects.all()
     permission_classes = [permissions.AllowAny]
     serializer_class = CategorySerializer
-    lookup_field = r'slug'
+    lookup_field = r"slug"
 
     def get_permissions(self):
         """
@@ -487,7 +533,7 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
         - 'list' and 'retrieve' actions are allowed for any user.
         - Other actions require admin privileges.
         """
-        if self.action in ['list', 'retrieve']:
+        if self.action in ["list", "retrieve"]:
             self.permission_classes = [permissions.AllowAny]
         else:
             self.permission_classes = [permissions.IsAdminUser]
@@ -497,4 +543,4 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         Caches the queryset for 24 hours.
         """
-        return cache.get_or_set('category_list', Category.objects.all(), 60 * 60 * 24)
+        return cache.get_or_set("category_list", Category.objects.all(), 60 * 60 * 24)

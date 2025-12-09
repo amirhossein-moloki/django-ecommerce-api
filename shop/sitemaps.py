@@ -4,7 +4,7 @@ from .models import Product
 
 
 class ProductSitemap(Sitemap):
-    changefreq = 'daily'
+    changefreq = "daily"
     priority = 0.9
 
     def items(self):

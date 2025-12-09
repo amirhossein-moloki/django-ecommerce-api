@@ -15,7 +15,7 @@ os.environ.setdefault('ZIBAL_MERCHANT_ID', 'dummy-zibal-merchant')
 os.environ.setdefault('ZIBAL_WEBHOOK_SECRET', 'dummy-zibal-secret')
 os.environ.setdefault('SMS_IR_OTP_TEMPLATE_ID', '123456')
 
-from .base import *
+from .base import *  # noqa: E402, F403
 
 # Override settings for a predictable test environment
 

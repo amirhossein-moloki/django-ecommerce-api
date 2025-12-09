@@ -15,10 +15,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.utils.decorators import method_decorator
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 from rest_framework_simplejwt.views import (
     TokenBlacklistView,
-    TokenObtainPairView as BaseTokenObtainPairView,
     TokenRefreshView as BaseTokenRefreshView,
     TokenVerifyView as BaseTokenVerifyView,
 )
@@ -287,7 +286,7 @@ class RequestOTP(APIView):
         otp_code = generate_otp()
         expires_at = timezone.now() + timedelta(minutes=2)
 
-        otp = OTPCode.objects.create(phone=phone, code=otp_code, expires_at=expires_at)
+        OTPCode.objects.create(phone=phone, code=otp_code, expires_at=expires_at)
 
         sms_provider = SmsIrProvider()
         template_id = settings.SMS_IR_OTP_TEMPLATE_ID

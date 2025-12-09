@@ -12,7 +12,7 @@ class CustomTag(TagBase):
 class CustomTaggedItem(GenericTaggedItemBase):
     # Override the object_id field from the default IntegerField to a UUIDField.
     object_id = models.UUIDField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
 
     tag = models.ForeignKey(
         CustomTag,

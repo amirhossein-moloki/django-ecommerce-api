@@ -1,7 +1,5 @@
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from rest_framework import status
-from ecommerce_api.core.api_standard_response import ApiResponse
 from orders.models import Order
 from .gateways import ZibalGateway
 from shipping.tasks import create_postex_shipment_task

@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('shop', '0008_alter_category_name_alter_category_slug_and_more'),
+        ("shop", "0008_alter_category_name_alter_category_slug_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='deleted_at',
-            field=models.DateTimeField(blank=True, editable=False, null=True, help_text='The date and time when the product was soft-deleted.'),
+            model_name="product",
+            name="deleted_at",
+            field=models.DateTimeField(
+                blank=True,
+                editable=False,
+                null=True,
+                help_text="The date and time when the product was soft-deleted.",
+            ),
         ),
     ]

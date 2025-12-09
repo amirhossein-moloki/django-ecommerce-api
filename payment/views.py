@@ -1,11 +1,8 @@
 from logging import getLogger
 
-from django.shortcuts import get_object_or_404
-from django.urls import reverse
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ecommerce_api.core.api_standard_response import ApiResponse

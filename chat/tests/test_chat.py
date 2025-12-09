@@ -7,7 +7,6 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from shop.models import Product, Category
 from chat.models import Message
-from chat.consumers import ChatConsumer
 from ecommerce_api.asgi import application
 
 User = get_user_model()

@@ -3,10 +3,8 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Order
 from .permissions import IsAdminOrOwner
 from .serializers import OrderSerializer, OrderCreateSerializer
-from .tasks import send_order_confirmation_email
 from . import services
 
 

@@ -5,9 +5,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 
-from cart.cart import Cart
 from coupons.models import Coupon
 from coupons.serializers import CouponSerializer
 from . import services

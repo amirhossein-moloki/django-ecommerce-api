@@ -10,7 +10,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("shop", "0007_product_rating_product_reviews_count_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

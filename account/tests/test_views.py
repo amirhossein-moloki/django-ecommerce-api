@@ -3,9 +3,6 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-from djoser.utils import encode_uid
-from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
 from datetime import timedelta
 
@@ -98,7 +95,9 @@ class OTPTests(APITestCase):
         self.assertFalse(user.is_active)
 
     def test_verify_otp_existing_user(self):
-        user = User.objects.create_user(phone_number='+989123456789', username='test', is_profile_complete=True)
+        User.objects.create_user(
+            phone_number="+989123456789", username="test", is_profile_complete=True
+        )
         expires_at = timezone.now() + timedelta(minutes=2)
         OTPCode.objects.create(phone='+989123456789', code='123456', expires_at=expires_at)
         url = reverse('auth:verify-otp')

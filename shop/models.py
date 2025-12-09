@@ -17,8 +17,11 @@ class SluggedModel(models.Model):
     An abstract base model that provides 'name' and 'slug' fields.
     The 'slug' field is automatically generated from the 'name' field.
     """
+
     name = models.CharField(max_length=100, help_text="The name of the item.")
-    slug = models.SlugField(max_length=100, unique=True, help_text="A URL-friendly version of the name.")
+    slug = models.SlugField(
+        max_length=100, unique=True, help_text="A URL-friendly version of the name."
+    )
 
     class Meta:
         abstract = True
@@ -28,12 +31,13 @@ class Category(SluggedModel):
     """
     Represents a product category.
     """
+
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "Categories"
         indexes = [
-            models.Index(fields=['slug']),
-            models.Index(fields=['name']),
+            models.Index(fields=["slug"]),
+            models.Index(fields=["name"]),
         ]
         ordering = ["name"]
 
@@ -49,7 +53,7 @@ class Category(SluggedModel):
         """
         Returns the absolute URL for a category instance.
         """
-        return reverse('api-v1:category-detail', kwargs={'slug': self.slug})
+        return reverse("api-v1:category-detail", kwargs={"slug": self.slug})
 
     def __str__(self):
         return f"Category: {self.name}"
@@ -58,6 +62,7 @@ class Category(SluggedModel):
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
         from django.utils import timezone
+
         return self.update(deleted_at=timezone.now())
 
     def restore(self):
@@ -69,7 +74,9 @@ class SoftDeleteQuerySet(models.QuerySet):
 
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
-        return SoftDeleteQuerySet(self.model, self.using).filter(deleted_at__isnull=True)
+        return SoftDeleteQuerySet(self.model, self.using).filter(
+            deleted_at__isnull=True
+        )
 
     def all_with_deleted(self):
         return SoftDeleteQuerySet(self.model, self.using)
@@ -80,13 +87,14 @@ class InStockManager(SoftDeleteManager):
     A custom manager that returns only products that are in stock (stock > 0)
     and not soft-deleted.
     """
+
     def get_queryset(self):
         return super().get_queryset().filter(stock__gt=0)
 
 
 validate_image = FileValidator(
     max_size=2 * 1024 * 1024,  # 2MB
-    content_types=('image/jpeg', 'image/png', 'image/webp')
+    content_types=("image/jpeg", "image/png", "image/webp"),
 )
 
 
@@ -94,51 +102,116 @@ class Product(SluggedModel):
     """
     Represents a product in the e-commerce store.
     """
-    product_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, help_text="The unique identifier for the product.")
-    sku = models.CharField(max_length=100, unique=True, blank=True, null=True, help_text="The stock keeping unit for the product.")
+
+    product_id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="The unique identifier for the product.",
+    )
+    sku = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="The stock keeping unit for the product.",
+    )
     description = models.TextField(help_text="A detailed description of the product.")
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)], help_text="The price of the product.")
-    stock = models.IntegerField(validators=[MinValueValidator(0)], help_text="The number of items in stock.")
-    created = models.DateTimeField(auto_now_add=True, help_text="The date and time when the product was created.")
-    updated = models.DateTimeField(auto_now=True, help_text="The date and time when the product was last updated.")
-    deleted_at = models.DateTimeField(null=True, blank=True, editable=False, help_text="The date and time when the product was soft-deleted.")
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.0)],
+        help_text="The price of the product.",
+    )
+    stock = models.IntegerField(
+        validators=[MinValueValidator(0)], help_text="The number of items in stock."
+    )
+    created = models.DateTimeField(
+        auto_now_add=True, help_text="The date and time when the product was created."
+    )
+    updated = models.DateTimeField(
+        auto_now=True, help_text="The date and time when the product was last updated."
+    )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="The date and time when the product was soft-deleted.",
+    )
     thumbnail = models.ImageField(
         null=True,
         blank=True,
         upload_to=product_upload_to_unique,
         help_text="A thumbnail image for the product.",
-        validators=[validate_image]
+        validators=[validate_image],
     )
     category = models.ForeignKey(
         Category,
         related_name="products",
         on_delete=models.CASCADE,
-        help_text="The category to which the product belongs."
+        help_text="The category to which the product belongs.",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="products",
         on_delete=models.CASCADE,
-        help_text="The user who created the product."
+        help_text="The user who created the product.",
     )
     objects = SoftDeleteManager()  # The default manager.
-    all_objects = models.Manager()  # The manager for all objects, including deleted ones.
+    all_objects = (
+        models.Manager()
+    )  # The manager for all objects, including deleted ones.
     in_stock = InStockManager()  # The custom 'in_stock' manager.
     tags = TaggableManager(through=CustomTaggedItem, help_text="Tags for the product.")
-    weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The weight of the product.")
-    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The length of the product.")
-    width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The width of the product.")
-    height = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="The height of the product.")
-    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, help_text="The average rating of the product.")
-    reviews_count = models.IntegerField(default=0, help_text="The number of reviews for the product.")
+    weight = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0)],
+        help_text="The weight of the product.",
+    )
+    length = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0)],
+        help_text="The length of the product.",
+    )
+    width = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0)],
+        help_text="The width of the product.",
+    )
+    height = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0)],
+        help_text="The height of the product.",
+    )
+    rating = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=0.00,
+        help_text="The average rating of the product.",
+    )
+    reviews_count = models.IntegerField(
+        default=0, help_text="The number of reviews for the product."
+    )
 
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Products"
         indexes = [
-            models.Index(fields=['slug']),
-            models.Index(fields=['name']),
-            models.Index(fields=['category']),
+            models.Index(fields=["slug"]),
+            models.Index(fields=["name"]),
+            models.Index(fields=["category"]),
         ]
         ordering = ["name"]
 
@@ -165,7 +238,9 @@ class Product(SluggedModel):
                 self.slug = base_slug
 
         # If the generated slug is already in use, append a random string to make it unique.
-        while self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+        while (
+            self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+        ):
             self.slug = f"{base_slug}-{get_random_string(6)}"
 
         super().save(*args, **kwargs)
@@ -174,16 +249,17 @@ class Product(SluggedModel):
         """
         Returns the absolute URL for a product instance.
         """
-        return reverse('api-v1:product-detail', kwargs={'slug': self.slug})
+        return reverse("api-v1:product-detail", kwargs={"slug": self.slug})
 
     def delete(self, using=None, keep_parents=False):
         from django.utils import timezone
+
         self.deleted_at = timezone.now()
-        self.save(update_fields=['deleted_at'])
+        self.save(update_fields=["deleted_at"])
 
     def restore(self):
         self.deleted_at = None
-        self.save(update_fields=['deleted_at'])
+        self.save(update_fields=["deleted_at"])
 
     def hard_delete(self):
         super().delete()
@@ -194,15 +270,18 @@ class Product(SluggedModel):
         This method is typically called after a new review is added or an existing one is deleted.
         """
         from django.db.models import Avg, Count
+
         reviews = self.reviews.all()
         if reviews.exists():
-            aggregation = reviews.aggregate(average_rating=Avg('rating'), count=Count('id'))
-            self.rating = aggregation.get('average_rating', 0.00)
-            self.reviews_count = aggregation.get('count', 0)
+            aggregation = reviews.aggregate(
+                average_rating=Avg("rating"), count=Count("id")
+            )
+            self.rating = aggregation.get("average_rating", 0.00)
+            self.reviews_count = aggregation.get("count", 0)
         else:
             self.rating = 0.00
             self.reviews_count = 0
-        self.save(update_fields=['rating', 'reviews_count'])
+        self.save(update_fields=["rating", "reviews_count"])
 
     def __str__(self):
         return f"Product: {self.name} (ID: {self.product_id})"
@@ -212,42 +291,49 @@ class Review(models.Model):
     """
     Represents a review for a product.
     """
+
     product = models.ForeignKey(
         Product,
         related_name="reviews",
         on_delete=models.CASCADE,
-        help_text="The product that this review is for."
+        help_text="The product that this review is for.",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="reviews",
         on_delete=models.CASCADE,
-        help_text="The user who wrote the review."
+        help_text="The user who wrote the review.",
     )
     rating = models.PositiveSmallIntegerField(
         validators=[
             MinValueValidator(1),
             MaxValueValidator(5),
         ],
-        help_text="The rating given by the user, from 1 to 5."
+        help_text="The rating given by the user, from 1 to 5.",
     )
-    comment = models.TextField(blank=True, null=True, help_text="The comment left by the user.")
-    created = models.DateTimeField(auto_now_add=True, help_text="The date and time when the review was created.")
-    updated = models.DateTimeField(auto_now=True, help_text="The date and time when the review was last updated.")
+    comment = models.TextField(
+        blank=True, null=True, help_text="The comment left by the user."
+    )
+    created = models.DateTimeField(
+        auto_now_add=True, help_text="The date and time when the review was created."
+    )
+    updated = models.DateTimeField(
+        auto_now=True, help_text="The date and time when the review was last updated."
+    )
 
     class Meta:
         verbose_name = "Review"
         verbose_name_plural = "Reviews"
         ordering = ["-created"]
         indexes = [
-            models.Index(fields=['product']),
-            models.Index(fields=['user']),
+            models.Index(fields=["product"]),
+            models.Index(fields=["user"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'product'],
-                name='unique_user_product_review',
-                violation_error_message='A user can only leave one review per product.'
+                fields=["user", "product"],
+                name="unique_user_product_review",
+                violation_error_message="A user can only leave one review per product.",
             )
         ]
 

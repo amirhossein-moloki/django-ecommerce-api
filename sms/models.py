@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils import timezone
-import datetime
 
 
 class OTPCode(models.Model):
@@ -15,4 +14,4 @@ class OTPCode(models.Model):
         return self.expires_at < timezone.now()
 
     def __str__(self):
-        return f'{self.phone} - {self.code}'
+        return f"{self.phone} - {self.code}"

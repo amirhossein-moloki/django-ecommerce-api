@@ -1,7 +1,6 @@
 import environ
 from datetime import timedelta
 from pathlib import Path
-import sys
 
 from django.urls import reverse_lazy
 
@@ -92,7 +91,6 @@ THIRD_PARTY_APPS = [
     'django_extensions',  # Additional management commands and utilities
     'rest_framework_simplejwt.token_blacklist',  # JWT token blacklist for security
     'corsheaders',  # Cross-Origin Resource Sharing (CORS) headers
-    'ratelimit',  # Rate limiting for views
     'django_prometheus',  # Prometheus metrics for Django
 ]
 

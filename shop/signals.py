@@ -10,7 +10,7 @@ def invalidate_category_cache(sender, instance, **kwargs):
     """
     Invalidate the category list cache when a category is saved or deleted.
     """
-    cache.delete('category_list')
+    cache.delete("category_list")
 
 
 @receiver([post_save, post_delete], sender=Product)
@@ -18,8 +18,8 @@ def invalidate_product_cache(sender, instance, **kwargs):
     """
     Invalidate product-related caches when a product is saved or deleted.
     """
-    cache.delete('product_list')
-    cache.delete(f'product_{instance.slug}')
+    cache.delete("product_list")
+    cache.delete(f"product_{instance.slug}")
 
 
 @receiver(post_save, sender=Review)

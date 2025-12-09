@@ -18,8 +18,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecommerce_api.settings.developm
 django_asgi_application = get_asgi_application()
 
 # Import websocket patterns after Django is initialized
-from chat.routing import websocket_urlpatterns as chat_ws
-from shop.routing import websocket_urlpatterns as search_ws
+from chat.routing import websocket_urlpatterns as chat_ws  # noqa: E402
+from shop.routing import websocket_urlpatterns as search_ws  # noqa: E402
 
 websocket_urlpatterns = chat_ws + search_ws
 

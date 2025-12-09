@@ -1,4 +1,3 @@
-from django.contrib.postgres.search import TrigramSimilarity
 from django_filters import FilterSet
 from rest_framework.filters import BaseFilterBackend
 
@@ -16,13 +15,13 @@ class ProductFilter(FilterSet):
     class Meta:
         model = Product
         fields = {
-            'name': ['exact', 'icontains'],
-            'description': ['icontains'],
-            'price': ['exact', 'lt', 'gt', 'range'],
-            'stock': ['exact', 'lt', 'gt'],
-            'category__slug': ['exact'],
-            'category__name': ['exact', 'icontains'],
-            'tags__name': ['exact', 'icontains'],
+            "name": ["exact", "icontains"],
+            "description": ["icontains"],
+            "price": ["exact", "lt", "gt", "range"],
+            "stock": ["exact", "lt", "gt"],
+            "category__slug": ["exact"],
+            "category__name": ["exact", "icontains"],
+            "tags__name": ["exact", "icontains"],
         }
 
 
@@ -41,5 +40,5 @@ class ProductSearchFilterBackend(BaseFilterBackend):
     """
 
     def filter_queryset(self, request, queryset, view):
-        search = request.query_params.get('search', None)
+        search = request.query_params.get("search", None)
         return search_products(queryset, search)

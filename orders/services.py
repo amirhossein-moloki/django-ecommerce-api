@@ -1,20 +1,21 @@
+import logging
 import sys
+
 from django.db import transaction
 
 from .models import Order
 from .serializers import OrderCreateSerializer
 from .tasks import send_order_confirmation_email
 
+logger = logging.getLogger(__name__)
+
 
 def get_user_orders(user):
     if user.is_staff:
-        return Order.objects.prefetch_related('items__product', 'user', 'address', 'coupon')
-    return Order.objects.filter(user=user).prefetch_related('items__product', 'user', 'address', 'coupon')
-
-
-import logging
-
-logger = logging.getLogger(__name__)
+        return Order.objects.prefetch_related("items__product", "user", "address", "coupon")
+    return Order.objects.filter(user=user).prefetch_related(
+        "items__product", "user", "address", "coupon"
+    )
 
 @transaction.atomic
 def create_order(request, validated_data):

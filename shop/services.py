@@ -8,7 +8,7 @@ from .models import Product, Review, Category
 
 
 def get_product_detail(slug: str):
-    cache_key = f'product_detail_{slug}'
+    cache_key = f"product_detail_{slug}"
     cached_data = cache.get(cache_key)
     if cached_data:
         return cached_data
@@ -25,25 +25,22 @@ def get_user_products(user, username: str = None):
 
 
 def get_reviews_for_product(product_slug: str):
-    return Review.objects.filter(product__slug=product_slug).select_related('user')
+    return Review.objects.filter(product__slug=product_slug).select_related("user")
 
 
 def create_review(user, product_slug: str, validated_data: dict):
     product = get_object_or_404(Product, slug=product_slug)
 
     completed_order_exists = product.order_items.filter(
-        order__user=user,
-        order__status=Order.Status.PAID
+        order__user=user, order__status=Order.Status.PAID
     ).exists()
 
     if not completed_order_exists:
-        raise PermissionDenied("You can only review products you have purchased and paid for.")
+        raise PermissionDenied(
+            "You can only review products you have purchased and paid for."
+        )
 
-    review = Review.objects.create(
-        user=user,
-        product=product,
-        **validated_data
-    )
+    review = Review.objects.create(user=user, product=product, **validated_data)
     return review
 
 
@@ -56,4 +53,6 @@ def create_category(validated_data: dict):
         category = Category.objects.create(**validated_data)
         return category
     except IntegrityError:
-        raise ValidationError({"name": "A category with this name or slug already exists."})
+        raise ValidationError(
+            {"name": "A category with this name or slug already exists."}
+        )

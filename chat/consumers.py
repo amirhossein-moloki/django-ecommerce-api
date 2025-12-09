@@ -172,7 +172,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': saved_message.sent_at.isoformat()
             }))
 
-        except Exception as e:
+        except Exception:
             await self.send(text_data=json.dumps({
                 'error': 'Failed to save message. Please try again.'
             }))

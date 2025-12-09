@@ -1,4 +1,4 @@
-from .base import *
+from .base import INSTALLED_APPS, MIDDLEWARE, env
 
 # Production-specific settings
 

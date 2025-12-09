@@ -1,6 +1,10 @@
+from datetime import timedelta
+
 from celery import shared_task
-from django.core.mail import send_mail
 from celery.utils.log import get_task_logger
+from django.core.mail import send_mail
+from django.utils import timezone
+
 from .models import Order
 
 logger = get_task_logger(__name__)
@@ -27,8 +31,6 @@ def send_order_confirmation_email(self, order_pk):
         logger.error(f"Error sending confirmation email for order {order_pk}: {e}")
         raise self.retry(exc=e)
 
-from django.utils import timezone
-from datetime import timedelta
 
 @shared_task
 def cancel_pending_orders():

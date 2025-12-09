@@ -1,7 +1,5 @@
 from logging import getLogger
 
-from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiResponse,
@@ -11,8 +9,6 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from shop.models import Product
-from .cart import Cart
 from .serializers import CartSerializer, AddToCartSerializer
 from . import services
 

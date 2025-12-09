@@ -45,18 +45,18 @@ class SearchConsumer(AsyncWebsocketConsumer):
         """
         if await self.is_throttled():
             # Send an error message if the user is making requests too frequently.
-            await self.send(text_data=json.dumps({'error': 'Too many requests'}))
+            await self.send(text_data=json.dumps({"error": "Too many requests"}))
             return
 
         # Parse the incoming JSON data.
         data = json.loads(text_data)
-        query = data.get('query', '')
+        query = data.get("query", "")
 
         # Fetch search suggestions based on the query.
         results = await self.get_search_suggestions(query)
 
         # Send the search results back to the client.
-        await self.send(text_data=json.dumps({'results': results}))
+        await self.send(text_data=json.dumps({"results": results}))
 
     @database_sync_to_async
     def get_search_suggestions(self, query):
@@ -69,16 +69,26 @@ class SearchConsumer(AsyncWebsocketConsumer):
         key = f"search_suggestions_{self.throttle_id}"
         past_results = cache.get(key)
 
-        if past_results and query.startswith(cache.get(f"last_query_{self.throttle_id}", "")):
+        if past_results and query.startswith(
+            cache.get(f"last_query_{self.throttle_id}", "")
+        ):
             # Filter cached results if the new query starts with the previous query
-            filtered_results = [product for product in past_results if query.lower() in product[0].lower()]
+            filtered_results = [
+                product
+                for product in past_results
+                if query.lower() in product[0].lower()
+            ]
         else:
             # Fetch results from the database and cache them
             products = Product.objects.all()
             filtered_products = search_products(products, query)[:20]
-            filtered_results = list(filtered_products.values_list('name', 'description'))
+            filtered_results = list(
+                filtered_products.values_list("name", "description")
+            )
             cache.set(key, filtered_results, timeout=1)  # Cache results for 1 second
-            cache.set(f"last_query_{self.throttle_id}", query, timeout=1)  # Cache the last query
+            cache.set(
+                f"last_query_{self.throttle_id}", query, timeout=1
+            )  # Cache the last query
 
         # Return only the titles, limited to 5 results
         return [product[0] for product in filtered_results[:5]]
