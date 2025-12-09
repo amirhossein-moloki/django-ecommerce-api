@@ -1,16 +1,16 @@
 ````md
-# Hypex E-commerce API (Django REST Framework)
+# Hypex eCommerce API (Django REST Framework)
 
 **Hypex** is a **production-oriented eCommerce backend API** built with **Django** and **Django REST Framework (DRF)**.  
-It ships with **JWT authentication**, **Redis caching**, **Celery background tasks**, **OpenAPI/Swagger docs**, and core commerce modules like **products, cart, orders, payments, coupons, shipping**, plus **real-time chat** via **Django Channels**.
+It includes **JWT authentication**, **Redis caching**, **Celery background tasks**, **OpenAPI/Swagger documentation**, and core commerce modules like **products, cart, orders, payments, coupons, shipping**, plus **real-time chat** via **Django Channels**.
 
-> Keywords: Django eCommerce API, DRF eCommerce, REST API, JWT, Redis, Celery, Docker, Swagger, OpenAPI, Orders, Payments, Coupons, Shipping.
+> **Keywords:** Django eCommerce API, DRF eCommerce, REST API, JWT, Redis, Celery, Docker, Swagger, OpenAPI, Orders, Payments, Coupons, Shipping
 
 ---
 
 ## ✨ Highlights (What you get out of the box)
 
-- **Django REST Framework eCommerce API** with modular, scalable architecture
+- **Modular, scalable architecture** (clean separation of domains)
 - **Auth & Accounts:** JWT auth (`djoser`, `simplejwt`), profiles, addresses, OTP/SMS
 - **Catalog:** products, categories, reviews, tagging, advanced search
 - **Cart & Checkout:** persistent cart, order lifecycle, coupons/discounts
@@ -42,8 +42,8 @@ It ships with **JWT authentication**, **Redis caching**, **Celery background tas
 
 ### Run locally
 ```bash
-git clone https://github.com/m-h-s/E-commerce-api.git
-cd E-commerce-api
+git clone https://github.com/amirhossein-moloki/django-ecommerce-api.git
+cd django-ecommerce-api
 cp .env.example .env
 docker-compose up -d --build
 ````
@@ -55,8 +55,8 @@ docker-compose up -d --build
 * **API Root:** `http://localhost:80/api/v1/`
 * **Swagger UI:** `http://localhost:80/api/v1/schema/swagger-ui/`
 * **ReDoc:** `http://localhost:80/api/v1/schema/redoc/`
-* **Admin:** `http://localhost:80/admin/`
-* **Flower (Celery):** `http://localhost:5555/`
+* **Admin Panel:** `http://localhost:80/admin/`
+* **Celery Monitoring (Flower):** `http://localhost:5555/`
 
 ---
 
@@ -79,19 +79,19 @@ docker-compose exec web coverage report
 
 ## 🛠️ Debugging
 
-Logs:
+View logs:
 
 ```bash
 docker-compose logs -f <service_name>
 ```
 
-Shell inside container:
+Open a shell inside a container:
 
 ```bash
 docker-compose exec web sh
 ```
 
-Django shell_plus:
+Use Django shell_plus:
 
 ```bash
 docker-compose exec web python manage.py shell_plus
