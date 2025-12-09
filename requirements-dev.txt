@@ -4,3 +4,9 @@ django-extensions==4.1
 flower==2.0.1
 fakeredis
 locust
+pytest
+pytest-django
+pytest-cov
+coverage
+factory-boy
+pytest-mock

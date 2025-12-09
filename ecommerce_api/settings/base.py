@@ -31,6 +31,7 @@ CORS_ALLOW_CREDENTIALS = env.bool('CORS_ALLOW_CREDENTIALS', default=True)
 
 # Database and Cache
 DATABASES = {'default': env.db('DATABASE_URL')}
+REDIS_URL = env('REDIS_URL')
 CACHES = {'default': env.cache('REDIS_URL')}
 
 # Email
