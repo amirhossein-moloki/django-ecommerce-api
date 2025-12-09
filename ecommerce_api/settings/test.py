@@ -1,22 +1,28 @@
+import os
+
+# Set dummy environment variables for testing before importing base settings
+os.environ.setdefault('SECRET_KEY', 'dummy-secret-key-for-testing')
+os.environ.setdefault('DEBUG', 'False')
+os.environ.setdefault('ALLOWED_HOSTS', 'testserver')
+os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
+os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
+os.environ.setdefault('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+os.environ.setdefault('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+os.environ.setdefault('EMAIL_URL', 'consolemail://')
+os.environ.setdefault('GOOGLE_OAUTH2_KEY', 'dummy-key')
+os.environ.setdefault('GOOGLE_OAUTH2_SECRET', 'dummy-secret')
+os.environ.setdefault('ZIBAL_MERCHANT_ID', 'dummy-zibal-merchant')
+os.environ.setdefault('ZIBAL_WEBHOOK_SECRET', 'dummy-zibal-secret')
+os.environ.setdefault('SMS_IR_OTP_TEMPLATE_ID', '123456')
+
 from .base import *
 
-# Set a dummy secret key for the test environment
-SECRET_KEY = 'dummy-secret-key-for-testing'
-DEBUG = False
-ALLOWED_HOSTS = ['testserver']
+# Override settings for a predictable test environment
 
 # Use dummy cache for tests to avoid side effects
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-    }
-}
-
-# Use in-memory SQLite database for tests
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
     }
 }
 
@@ -27,28 +33,14 @@ CHANNEL_LAYERS = {
     },
 }
 
-# Use console backend for emails in tests
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-# Since we're not using redis for tests, we need to make sure the session engine is not set to cache
+# Use a database-backed session engine for tests
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
-# Dummy social auth keys for tests
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = 'dummy-key'
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = 'dummy-secret'
-
-# Dummy domain and site name for tests
-DOMAIN = 'localhost:8000'
-SITE_NAME = 'Test Site'
-
-# Make celery tasks eager in tests
+# Make Celery tasks execute synchronously for tests
 CELERY_TASK_ALWAYS_EAGER = True
 
-# Disable logging during tests
+# Disable logging during tests to keep the output clean
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
 }
-
-# Dummy Redis URL for the recommender system
-REDIS_URL = 'redis://localhost:6379/1'

@@ -8,14 +8,43 @@ from django.urls import reverse_lazy
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-env = environ.Env()
+# Use django-environ to manage environment variables
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False)
+)
 env.read_env(str(BASE_DIR / '.env'))
 
+# -----------------------------------------------------------------------------
+# C O R E   S E T T I N G S
+# -----------------------------------------------------------------------------
+# These are critical settings that must be defined in the environment.
+# The application will not start without them.
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
 
-CORS_ALLOW_CREDENTIALS = True
+# Security settings
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
+CORS_ALLOW_CREDENTIALS = env.bool('CORS_ALLOW_CREDENTIALS', default=True)
+
+# Database and Cache
+DATABASES = {'default': env.db('DATABASE_URL')}
+CACHES = {'default': env.cache('REDIS_URL')}
+
+# Email
+EMAIL_CONFIG = env.email_url('EMAIL_URL', default='consolemail://')
+vars().update(EMAIL_CONFIG)
+
+# Site settings
+DOMAIN = env('DOMAIN', default='localhost:8000')
+SITE_NAME = env('SITE_NAME', default='Hypex')
+ADMINS = [tuple(s.split(':')) for s in env.list('ADMINS', default=[])]
+
+
+# CORS settings
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -27,7 +56,6 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-
 CORS_EXPOSE_HEADERS = ['csrftoken', 'sessionid']
 
 # Application definition
@@ -194,8 +222,8 @@ REST_FRAMEWORK = {
 
 # JWT Authentication Tokens
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=env.int('JWT_ACCESS_TOKEN_LIFETIME_DAYS', 1)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('JWT_REFRESH_TOKEN_LIFETIME_DAYS', 7)),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -220,16 +248,13 @@ SPECTACULAR_SETTINGS = {
 }
 
 # Django Debug Toolbar settings
-INTERNAL_IPS = [
-    '127.0.0.1',
-    'localhost',
-]
+INTERNAL_IPS = env.list('INTERNAL_IPS', default=['127.0.0.1', 'localhost'])
 
 CART_SESSION_ID = 'cart'
 SITE_ID = 1
 ASGI_APPLICATION = 'ecommerce_api.asgi.application'
 
-SMS_IR_OTP_TEMPLATE_ID = env('SMS_IR_OTP_TEMPLATE_ID', default=123456)
+SMS_IR_OTP_TEMPLATE_ID = env.int('SMS_IR_OTP_TEMPLATE_ID', 123456)
 
 POSTEX_SENDER_NAME = env('POSTEX_SENDER_NAME', default='Your Company Name')
 POSTEX_SENDER_PHONE = env('POSTEX_SENDER_PHONE', default='Your Company Phone')
@@ -242,6 +267,10 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'social_core.backends.google.GoogleOAuth2',
 ]
+
+# Social Auth settings for Google OAuth2
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('GOOGLE_OAUTH2_KEY', default=None)
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('GOOGLE_OAUTH2_SECRET', default=None)
 
 DJOSER = {
     'HIDE_USERS': True,
@@ -283,21 +312,21 @@ SWAGGER_SETTINGS = {
 TAGGIT_CASE_INSENSITIVE = True
 
 # Zibal Payment Gateway
-ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='zibal')
-ZIBAL_WEBHOOK_SECRET = env('ZIBAL_WEBHOOK_SECRET', default='your-super-secret-webhook-key')
-ZIBAL_ALLOWED_IPS = env('ZIBAL_ALLOWED_IPS', cast=lambda v: [s.strip() for s in v.split(',')], default='127.0.0.1')
-
+ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID')
+ZIBAL_WEBHOOK_SECRET = env('ZIBAL_WEBHOOK_SECRET')
+ZIBAL_ALLOWED_IPS = env.list('ZIBAL_ALLOWED_IPS', default=['127.0.0.1'])
 
 # Celery Configuration
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
-
 CELERY_BEAT_SCHEDULE = {
     'cancel-pending-orders': {
         'task': 'orders.tasks.cancel_pending_orders',
-        'schedule': 600.0,  # Run every 10 minutes
+        'schedule': env.float('CANCEL_PENDING_ORDERS_INTERVAL', 600.0),  # Default to 10 minutes
     },
 }
 

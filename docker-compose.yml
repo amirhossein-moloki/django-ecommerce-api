@@ -15,8 +15,6 @@ services:
       - media_volume:/app/media
     expose:
       - 8000
-    environment:
-      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.development
     env_file:
       - .env
     depends_on:
@@ -56,8 +54,6 @@ services:
     image: ecommerce-api:latest
     container_name: celery_worker
     command: celery -A ecommerce_api worker -l info
-    environment:
-      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.development
     env_file:
       - .env
     depends_on:
@@ -70,8 +66,6 @@ services:
     image: ecommerce-api:latest
     container_name: celery_beat
     command: celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    environment:
-      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.development
     env_file:
       - .env
     depends_on:
@@ -86,8 +80,6 @@ services:
     command: celery -A ecommerce_api flower --address=0.0.0.0 --port=5555
     ports:
       - "5555:5555"
-    environment:
-      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.development
     env_file:
       - .env
     depends_on:
