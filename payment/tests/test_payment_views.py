@@ -1,6 +1,10 @@
+import hashlib
+import hmac
 import pytest
 from unittest.mock import patch
 from decimal import Decimal
+from urllib.parse import urlencode
+from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -8,6 +12,7 @@ from rest_framework.test import APIClient
 from orders.factories import OrderFactory, OrderItemFactory, ProductFactory
 from account.factories import UserFactory
 from orders.models import Order
+from payment.models import PaymentTransaction
 
 pytestmark = pytest.mark.django_db
 
@@ -38,6 +43,15 @@ def order(user, product):
     return order_obj
 
 
+def build_signature(payload):
+    serialized = urlencode(sorted(payload.items()))
+    return hmac.new(
+        settings.ZIBAL_WEBHOOK_SECRET.encode('utf-8'),
+        serialized.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 class TestPaymentAPIViews:
 
     @patch('payment.gateways.ZibalGateway.create_payment_request')
@@ -61,11 +75,17 @@ class TestPaymentAPIViews:
         order.payment_track_id = '12345'
         order.save()
 
-        mock_verify.return_value = {'status': 'SUCCESS', 'refNumber': 'ABC-123'}
+        mock_verify.return_value = {
+            'result': 100,
+            'refNumber': 'ABC-123',
+            'amount': int(order.total_payable * 10),
+            'orderId': str(order.order_id),
+        }
 
         url = reverse('api-v1:payment:verify')
-        params = {'trackId': '12345'}
-        response = api_client.get(url, params)
+        params = {'trackId': '12345', 'success': '1'}
+        signature = build_signature(params)
+        response = api_client.get(url, params, **{'HTTP_X_ZIBAL_SIGNATURE': signature})
 
         order.refresh_from_db()
 
@@ -78,16 +98,19 @@ class TestPaymentAPIViews:
         order.items.first().product.refresh_from_db()
         assert order.items.first().product.stock == 18
 
+        assert PaymentTransaction.objects.filter(track_id='12345').exists()
+
     @patch('payment.gateways.ZibalGateway.verify_payment')
     def test_payment_verify_failed(self, mock_verify, api_client, user, order):
         order.payment_track_id = '67890'
         order.save()
 
-        mock_verify.return_value = {'status': 'FAILED'}
+        mock_verify.return_value = {'result': 102, 'message': 'Failed payment'}
 
         url = reverse('api-v1:payment:verify')
-        params = {'trackId': '67890'}
-        response = api_client.get(url, params)
+        params = {'trackId': '67890', 'success': '0'}
+        signature = build_signature(params)
+        response = api_client.get(url, params, **{'HTTP_X_ZIBAL_SIGNATURE': signature})
 
         order.refresh_from_db()
 
@@ -98,6 +121,9 @@ class TestPaymentAPIViews:
 
         order.items.first().product.refresh_from_db()
         assert order.items.first().product.stock == 20
+
+        txn = PaymentTransaction.objects.filter(track_id='67890').last()
+        assert txn is not None and txn.status != PaymentTransaction.Status.PROCESSED
 
     def test_cannot_process_paid_order(self, api_client, user, order):
         order.status = 'PAID'

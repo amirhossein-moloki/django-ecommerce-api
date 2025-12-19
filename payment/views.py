@@ -1,18 +1,21 @@
+import hashlib
+import hmac
 from logging import getLogger
+from urllib.parse import urlencode
 
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
+from django.conf import settings
+
 from ecommerce_api.core.api_standard_response import ApiResponse
+from ecommerce_api.core.utils import get_client_ip
 from orders.models import Order
 from . import services
-import hmac
+from .models import PaymentTransaction
 from .tasks import process_successful_payment
-from ecommerce_api.core.utils import get_client_ip
-from django.conf import settings
-from rest_framework.permissions import AllowAny
 
 logger = getLogger(__name__)
 
@@ -78,6 +81,11 @@ class PaymentVerifyAPIView(APIView):
     def get(self, request, *args, **kwargs):
         track_id = request.query_params.get('trackId')
         success = request.query_params.get('success')
+        success_value = success if success is not None else ''
+        raw_payload = {'trackId': track_id, 'success': success_value}
+        signature = request.headers.get('X-Zibal-Signature', '')
+        client_ip = get_client_ip(request)
+        allowed_ips = getattr(settings, 'ZIBAL_ALLOWED_IPS', [])
 
         if not track_id:
             logger.error("Zibal callback received without trackId.")
@@ -86,16 +94,68 @@ class PaymentVerifyAPIView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        if success != '1':
+        if client_ip and allowed_ips and client_ip not in allowed_ips:
+            PaymentTransaction.objects.create(
+                order=Order.objects.filter(payment_track_id=track_id).first(),
+                track_id=track_id,
+                event_type=PaymentTransaction.EventType.VERIFY,
+                status=PaymentTransaction.Status.REJECTED,
+                ip_address=client_ip,
+                signature=signature,
+                raw_payload=raw_payload,
+                message="Callback rejected due to IP allowlist.",
+            )
+            return ApiResponse.error(
+                message="Request not allowed from this IP.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
+        expected_signature = hmac.new(
+            getattr(settings, 'ZIBAL_WEBHOOK_SECRET', '').encode('utf-8'),
+            urlencode(sorted(raw_payload.items())).encode('utf-8'),
+            hashlib.sha256,
+        ).hexdigest()
+
+        if not signature or not hmac.compare_digest(signature, expected_signature):
+            PaymentTransaction.objects.create(
+                order=Order.objects.filter(payment_track_id=track_id).first(),
+                track_id=track_id,
+                event_type=PaymentTransaction.EventType.VERIFY,
+                status=PaymentTransaction.Status.REJECTED,
+                ip_address=client_ip,
+                signature=signature,
+                raw_payload=raw_payload,
+                message="Invalid or missing signature on callback.",
+            )
+            return ApiResponse.error(
+                message="Invalid signature.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
+        if success_value != '1':
             logger.warning(f"Zibal callback for trackId {track_id} indicates a failed or canceled payment.")
-            # Optionally, update the order status to FAILED here if needed.
+            PaymentTransaction.objects.create(
+                order=Order.objects.filter(payment_track_id=track_id).first(),
+                track_id=track_id,
+                event_type=PaymentTransaction.EventType.VERIFY,
+                status=PaymentTransaction.Status.FAILED,
+                ip_address=client_ip,
+                signature=signature,
+                raw_payload=raw_payload,
+                message="Gateway callback indicated failure or cancellation.",
+            )
             return ApiResponse.error(
                 message="Payment was not successful or was canceled by the user.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
         try:
-            message = services.verify_payment(track_id)
+            message = services.verify_payment(
+                track_id,
+                signature=signature,
+                ip_address=client_ip,
+                raw_payload=raw_payload,
+            )
             # In a real frontend application, you would redirect the user to a success page.
             # For an API, returning a success message is appropriate.
             return ApiResponse.success(
@@ -104,6 +164,16 @@ class PaymentVerifyAPIView(APIView):
             )
         except Order.DoesNotExist:
             logger.error(f"Verification failed: No order found for trackId {track_id}.")
+            PaymentTransaction.objects.create(
+                order=None,
+                track_id=track_id,
+                event_type=PaymentTransaction.EventType.VERIFY,
+                status=PaymentTransaction.Status.REJECTED,
+                ip_address=client_ip,
+                signature=signature,
+                raw_payload=raw_payload,
+                message="Order not found for provided trackId.",
+            )
             return ApiResponse.error(
                 message="Order not found.",
                 status_code=status.HTTP_404_NOT_FOUND
