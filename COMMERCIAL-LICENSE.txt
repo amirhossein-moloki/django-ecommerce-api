@@ -1,0 +1,61 @@
+Commercial License / EULA for Hypex eCommerce API
+=================================================
+
+This Commercial License ("Agreement") governs the commercial use of the Hypex eCommerce API ("Software").
+The Software is a fork of a project originally licensed under the MIT License by Yousef M. Y. AlSabbah.
+All new code, enhancements, configurations, and business logic added in this fork are owned by amirhossein-moloki.
+
+1. License Grant
+   - Subject to full payment of agreed commercial fees, amirhossein-moloki grants you a non-exclusive,
+     non-transferable, revocable license to deploy and use the Software for your internal business purposes.
+   - This license does not permit resale, sublicensing, redistribution, or making the Software (including
+     source code) available to third parties except as expressly authorized in writing by amirhossein-moloki.
+
+2. Ownership and Reservation of Rights
+   - Open-source components included in the Software remain governed by their respective licenses
+     (including the MIT License for upstream code). Nothing in this Agreement alters those licenses.
+   - All other rights, including ownership of modifications, integrations, and proprietary business logic in
+     this fork, remain with amirhossein-moloki.
+
+3. Distribution and Resale Restrictions
+   - Commercial sales, sublicensing, or distribution of the Software (in source or binary form) may only be
+     conducted by amirhossein-moloki or through channels explicitly authorized in writing by amirhossein-moloki.
+   - You may not resell, rent, lease, sublicense, transfer, publish, or otherwise provide access to the Software
+     or its source code to any third party without prior written consent.
+
+4. Deployment Scope
+   - Unless otherwise agreed in writing, this Agreement covers a single production deployment and any associated
+     staging environments controlled by you. Additional production deployments require additional licenses.
+
+5. Confidentiality and Source Code Handling
+   - If source code access is provided, you must implement reasonable safeguards to prevent unauthorized access,
+     copying, or distribution. Publishing the source code or derivative works is prohibited without prior written
+     consent from amirhossein-moloki.
+
+6. Compliance with Open Source Licenses
+   - Components licensed under MIT or other open-source licenses remain subject to their respective terms.
+     Your obligations under those licenses continue in parallel with this Agreement.
+
+7. Support and Updates
+   - Support, maintenance, and updates are provided only if explicitly stated in a separate support agreement
+     or order form with amirhossein-moloki.
+
+8. Termination
+   - This Agreement terminates automatically if you breach its terms. Upon termination, you must cease all
+     commercial use and destroy or return all copies of the Software, except for components you are entitled to
+     retain under applicable open-source licenses.
+
+9. Disclaimer of Warranty and Limitation of Liability
+   - THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. TO THE MAXIMUM EXTENT PERMITTED BY LAW,
+     AMIRHOSSEIN-MOLOKI DISCLAIMS ALL WARRANTIES AND SHALL NOT BE LIABLE FOR ANY INDIRECT, SPECIAL, INCIDENTAL,
+     CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF THIS AGREEMENT OR USE OF THE SOFTWARE.
+
+10. Governing Law and Venue
+    - This Agreement is governed by the laws of your jurisdiction unless otherwise agreed in writing. Any disputes
+      will be resolved in courts of competent jurisdiction in the agreed venue.
+
+11. Entire Agreement and Amendments
+    - This Agreement constitutes the entire understanding regarding commercial use of the Software and may only be
+      modified in writing signed by amirhossein-moloki.
+
+By installing, accessing, or using the Software under commercial terms, you agree to be bound by this Agreement.

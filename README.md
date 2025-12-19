@@ -166,3 +166,19 @@ Before going live:
 - Add CI/CD (lint, tests, build image, deploy)
 - Centralize logs + enable APM/tracing (OpenTelemetry)
 - Configure health checks and autoscaling
+
+---
+
+## 🛡️ Licensing & Ownership
+
+- **Upstream MIT code (original project by Yousef M. Y. AlSabbah):** the baseline Django/DRF architecture and core commerce modules (e.g., `account`, `cart`, `shop`, `orders`, `coupons`, `shipping`, `payment`, `ecommerce_api`, and supporting assets) continue to be available under the MIT License. See `LICENSE` for full text and copyrights.
+- **Fork ownership (amirhossein-moloki):** all modifications, enhancements, deployment assets (Docker/Helm/Nginx), documentation updates, performance tuning, integrations, and business logic added after the fork are owned by **amirhossein-moloki**. Commercial distribution or resale of the fork is only permitted through amirhossein-moloki.
+- **Dual-path usage:**
+  - **Open-source use:** you may rely on the MIT-licensed portions under MIT terms (retain notices, no warranty).
+  - **Commercial use or resale:** requires a commercial license from amirhossein-moloki. See `COMMERCIAL-LICENSE.txt`.
+- **Practical safeguards against unauthorized resale:**
+  - Keep proprietary modules/configuration in private repositories; vendor only vetted, compiled Docker/OCI images when possible.
+  - Use environment-based feature flags to isolate proprietary workflows from the MIT core so they can be withheld in OSS releases.
+  - Watermark distributed artifacts (build metadata, license headers) and gate production features behind license keys or signed builds.
+  - Maintain contributor agreements (or DCO) for any third-party contributions to proprietary portions to preserve clean ownership.
+
