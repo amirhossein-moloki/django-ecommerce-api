@@ -1,345 +1,386 @@
-# E-commerce Project Audit Report
+# گزارش حسابرسی عمیق سیستم تجارت الکترونیک
+
+این گزارش یک تحلیل جامع از معماری، امنیت، پایایی و عملکرد کدبیس ارائه می‌دهد. تحلیل فقط بر اساس بازبینی ایستای کد و فایل‌های پیکربندی انجام شده است.
+
+## A) بازسازی سیستم (مهندسی معکوس کامل)
+
+### نمای کلی معماری (Architecture Overview)
+
+سیستم بر اساس فریم‌ورک Django و با استفاده از یک معماری ماژولار (مبتنی بر اپ) ساخته شده است. هر دامنه کسب‌وکار اصلی در یک اپ جنگوی جداگانه کپسوله شده است که باعث جداسازی دغدغه‌ها (Separation of Concerns) و نگهداری آسان‌تر می‌شود.
+
+*   **ساختار اپ‌ها:**
+    *   `account`: مدیریت کاربران، پروفایل‌ها، آدرس‌ها و احراز هویت (شامل ورود با حساب اجتماعی).
+    *   `shop`: مسئول کاتالوگ محصولات، دسته‌بندی‌ها، تگ‌ها و نظرات.
+    *   `cart`: پیاده‌سازی سبد خرید با پشتیبانی از کاربران مهمان (مبتنی بر سشن) و کاربران وارد شده (مبتنی بر پایگاه داده) و منطق ادغام سبدها.
+    *   `orders`: مدیریت چرخه حیات سفارشات، از ایجاد تا تحویل.
+    *   `payment`: یکپارچه‌سازی با درگاه پرداخت (Zibal) برای پردازش پرداخت‌ها.
+    *   `coupons`: مدیریت کوپن‌های تخفبف.
+    *   `shipping`: یکپارچه‌سازی با سرویس‌های حمل و نقل (Postex).
+    *   `sms`: ارسال پیامک (مانند OTP) از طریق سرویس‌های خارجی (SMS.ir).
+    *   `chat`: [نیاز به بررسی بیشتر] به نظر می‌رسد یک قابلیت چت در سیستم وجود دارد.
+    *   `ecommerce_api`: اپ اصلی پروژه که شامل تنظیمات، URLهای ریشه و پیکربندی ASGI/WSGI است.
+
+*   **مرزبندی و وابستگی‌ها:**
+    *   اپ‌ها به طور کلی به خوبی مرزبندی شده‌اند. برای مثال، `orders` به `shop` (برای محصولات) و `account` (برای کاربران) وابستگی دارد، که یک جریان وابستگی منطقی است.
+    *   پرداخت (`payment`) به طور واضح از سفارش (`orders`) جدا شده و تنها پس از ایجاد یک سفارش موفق، فرآیند پرداخت آغاز می‌شود.
+    *   یک API عمومی تحت پیشوند `/api/v1/` وجود دارد که اپ‌های اصلی کسب‌وکار (`shop`, `orders`, `cart`, `coupons`) را در بر می‌گیرد. اپ‌های دیگر مانند `auth` و `payment` دارای endpointهای اختصاصی خود هستند.
+
+### تکنولوژی‌ها و وابستگی‌ها (Technologies/Dependencies)
+
+پشته فناوری پروژه مدرن و مناسب برای یک API تجارت الکترونیک مقیاس‌پذیر است.
+
+*   **Backend Framework:** Django 5.2, Django REST Framework 3.16
+*   **Database:** PostgreSQL (بر اساس درایور `psycopg-binary`)
+*   **Async Task Queue:** Celery 5.5 (با RabbitMQ یا Redis broker بر اساس `amqp` و `redis`)
+*   **Caching:** Redis (با `django-redis`)
+*   **Web Server/Interface:** ASGI با Daphne/Uvicorn (بر اساس `daphne`, `channels`, `uvicorn` در وابستگی‌ها و `ASGI_APPLICATION` در تنظیمات)
+*   **Authentication:**
+    *   JWT با `djangorestframework_simplejwt`
+    *   مدیریت کامل کاربر با `djoser`
+    *   ورود با حساب اجتماعی با `social-auth-app-django` (پیکربندی شده برای Google)
+*   **API Documentation:** OpenAPI 3 با `drf-spectacular`
+*   **Monitoring & Observability:**
+    *   `django-prometheus` برای ارائه متریک‌ها.
+    *   `opentelemetry` برای tracing توزیع‌شده.
+*   **Security:**
+    *   `django-cors-headers` برای مدیریت CORS.
+    *   `django-ratelimit` برای محدودسازی نرخ درخواست‌ها.
+    *   `python-magic` برای اعتبارسنجی نوع MIME فایل‌های آپلود شده.
+*   **ویژگی‌های دیگر:**
+    *   `django-taggit`: برای تگ‌گذاری محصولات.
+    *   `django-simple-history`: برای ردیابی تاریخچه تغییرات مدل‌ها (به خصوص `Order`).
+    *   `Pillow`: برای پردازش تصویر.
+
+### محیط اجرا (Execution Environment)
+
+*   **Server Interface:** سیستم از `ASGI` (Asynchronous Server Gateway Interface) با استفاده از `daphne` به عنوان سرور برنامه استفاده می‌کند. این امر امکان پشتیبانی از پروتکل‌های ناهمزمان مانند WebSockets (که احتمالاً در اپ `chat` استفاده می‌شود) را فراهم می‌کند.
+*   **Middleware:** یک خط لوله میان‌افزار سفاری تعریف شده است که شامل:
+    *   `django_prometheus.middleware`: برای جمع‌آوری متریک‌های درخواست.
+    *   `corsheaders.middleware.CorsMiddleware`: برای مدیریت درخواست‌های Cross-Origin.
+    *   `cart.middleware.CartSessionMiddleware`: یک میان‌افزار سفارشی که کلاس `Cart` را به هر درخواست `request` متصل می‌کند.
+    *   `debug_toolbar.middleware.DebugToolbarMiddleware`: برای دیباگ در محیط توسعه.
+*   **Settings:** تنظیمات پروژه به چندین فایل تقسیم شده‌اند (`base.py`, `development.py`, `production.py`) که یک بهترین روش برای مدیریت محیط‌های مختلف است. متغیرهای محیطی با استفاده از `django-environ` مدیریت می‌شوند.
+
+### نقشه دامنه فروشگاه (Domain Map)
+
+#### ۱. کاتالوگ (Catalog)
+
+*   **Entities (Models):**
+    *   `shop.Product`: موجودیت اصلی محصول با فیلدهایی مانند `product_id (UUID, PK)`, `name`, `slug`, `description`, `price`, `stock`, `thumbnail`.
+        *   **روابط:** `ForeignKey` به `shop.Category` و `account.User`.
+        *   **Constraints:** `sku` منحصر به فرد است. اعتبارسنجی برای قیمت (`>=0`) و موجودی (`>=0`) وجود دارد. یک اعتبارسنج سفارشی (`validate_image`) برای thumbnail جهت محدودیت اندازه (2MB) و نوع (JPEG, PNG, WEBP) اعمال شده است.
+        *   **ویژگی خاص:** از **Soft Delete** (فیلد `deleted_at`) با یک منیجر سفارشی (`SoftDeleteManager`) استفاده می‌کند.
+    *   `shop.Category`: دسته‌بندی محصولات با ساختار ساده `name` و `slug`.
+    *   `shop.Review`: نظرات کاربران برای محصولات.
+        *   **روابط:** `ForeignKey` به `Product` و `User`.
+        *   **Constraints:** یک کاربر فقط یک نظر برای هر محصول می‌تواند ثبت کند (`UniqueConstraint`). امتیاز بین ۱ تا ۵ است.
+    *   `taggit.Tag`: از طریق `django-taggit` برای تگ‌گذاری محصولات استفاده می‌شود.
+
+*   **API Endpoints:** `shop.urls` شامل `ProductViewSet`, `CategoryViewSet`, `ReviewViewSet` است که عملیات CRUD را ارائه می‌ده دهند.
+*   **Business Rules:**
+    *   اسلاگ‌ها به صورت خودکار از نام ساخته می‌شوند.
+    *   منطق بررسی اینکه آیا کاربر محصول را برای ثبت نظر خریداری کرده است، به لایه سرویس (`shop/services.py`) منتقل شده است.
+    *   میانگین امتیاز و تعداد نظرات محصول به صورت دنورمالایز شده در مدل `Product` ذخیره می‌شود و با هر تغییر در نظرات به‌روزرسانی می‌شود.
+*   **Side Effects:** ایجاد/تغییر در `Review` باعث به‌روزرسانی فیلدهای `rating` و `reviews_count` در `Product` می‌شود.
+
+#### ۲. سبد خرید (Cart)
+
+*   **Entities (Models):**
+    *   `cart.Cart`: مدل اصلی سبد خرید با `ForeignKey` به `User` (nullable) و `Coupon`. فیلد `session_key` برای پیوند با کاربران مهمان استفاده می‌شود.
+    *   `cart.CartItem`: آیتم‌های داخل سبد خرید با `ForeignKey` به `Cart` و `Product`.
+*   **API Endpoints:** `cart.urls` شامل `CartViewSet` برای مدیریت کامل محتویات سبد خرید است.
+*   **Business Rules:**
+    *   **استراتژی ترکیبی:** سبد خرید همیشه در پایگاه داده ذخیره می‌شود. برای کاربران مهمان با `session_key` و برای کاربران وارد شده با `user_id` مرتبط می‌شود.
+    *   **ادغام سبد خرید:** هنگام ورود کاربر، آیتم‌های سبد خرید سشن به سبد خرید کاربر منتقل می‌شود.
+*   **Side Effects:** ندارد.
+
+#### ۳. سفارشات (Orders)
+
+*   **Entities (Models):**
+    *   `orders.Order`: مدل اصلی سفارش با ماشین وضعیت (`status`) و تاریخچه تغییرات (`simple_history`).
+    *   `orders.OrderItem`: آیتم‌های سفارش با **Price Snapshot** (ذخیره `price`, `product_name` در زمان خرید).
+*   **API Endpoints:** `orders.urls` شامل `OrderViewSet` برای ایجاد و مشاهده سفارشات است.
+*   **Business Rules:**
+    *   **بازگرداندن موجودی:** لغو سفارش (`status='canceled'`) باعث بازگشت موجودی به محصولات با عملیات اتمی `F()` می‌شود.
+    *   انتقالات وضعیت سفارش محدود و اعتبارسنجی شده است.
+*   **Side Effects:** تغییر وضعیت به `canceled` موجودی را به‌روز می‌کند.
+
+#### ۴. پرداخت (Payments)
+
+*   **Entities (Models):** ندارد. وضعیت پرداخت در مدل `Order` مدیریت می‌شود.
+*   **API Endpoints:**
+    *   `POST /payment/process/<uuid:order_id>/`: برای شروع فرآیند پرداخت (نیازمند احراز هویت).
+    *   `GET /payment/verify/`: برای مدیریت callback و تأیید نهایی پرداخت.
+*   **Business Rules:**
+    *   **جریان پرداخت:** ایجاد درخواست -> بررسی مجدد موجودی -> هدایت به درگاه -> بازگشت کاربر -> تأیید سرور-به-سرور.
+    *   **کنترل‌های امنیتی:** Idempotency، تأیید مبلغ و تأیید شناسه سفارش.
+*   **Side Effects:** پرداخت موفق، وضعیت سفارش را به `paid` تغییر داده و تسک Celery (`create_postex_shipment_task`) را فعال می‌کند.
 
-## 1. Code Quality and Maintainability
+### فهرست API (API Inventory)
 
-### Observations
+این لیست بر اساس `ecommerce_api/urls.py` و فایل‌های `urls.py` درون هر اپ است.
 
-*   **Readability and Naming Conventions:** The code is generally clean, readable, and follows Python's PEP8 naming conventions (e.g., `snake_case` for functions and variables, `PascalCase` for classes). The modular structure, with well-named apps, files, and functions, makes the codebase easy to navigate.
-
-*   **Modularity and DRY Principle:** The project is well-structured into reusable Django apps, promoting modularity and separation of concerns. The use of a custom `SluggedModel` abstract class in `shop/models.py` is a good example of the DRY principle in action. However, there are some areas where code could be further refactored to reduce duplication, such as the `get_discount` logic in the `Cart` class and the `Order` model.
-
-*   **Error Handling and Logging:** Error handling is present but could be more robust and consistent. In `payment/services.py`, for example, exceptions are raised with string literals, which is not ideal for programmatic error handling. A more structured approach, using custom exception classes, would be beneficial. Logging is not consistently used throughout the codebase, which could make it difficult to debug issues in a production environment.
-
-*   **Comments and Documentation:** The code is well-commented, and the docstrings are generally clear and informative. The use of comments to explain complex logic is a good practice. The `README.md` file is comprehensive and provides clear instructions for setting up and running the project.
-
-### Strengths
-
-*   **Clean and Readable Code:** The code is well-formatted and easy to understand.
-*   **Good Modularity:** The project is well-structured into reusable Django apps.
-*   **Consistent Naming Conventions:** The code follows PEP8 naming conventions.
-*   **Good Documentation:** The code is well-commented, and the `README.md` is comprehensive.
-
-### Weaknesses
-
-*   **Inconsistent Error Handling:** The error handling is not consistent, and the use of string literals for exceptions is not ideal.
-*   **Lack of Centralized Logging:** Logging is not consistently used, which could make it difficult to debug issues in a production environment.
-*   **Some Code Duplication:** There are some areas where code could be refactored to reduce duplication.
-
-### Actionable Recommendations
-
-*   **Implement Custom Exception Classes:** Create a set of custom exception classes to provide more structured and informative error messages. This will make it easier to handle errors programmatically and provide more meaningful feedback to the user.
-*   **Implement Centralized Logging:** Implement a centralized logging strategy to record important events and errors. This will make it easier to debug issues in a production environment and provide valuable insights into the application's performance.
-*   **Refactor Duplicated Code:** Refactor the `get_discount` logic in the `Cart` class and the `Order` model into a reusable function or a separate service to reduce code duplication and improve maintainability.
-
-### Score
-
-**8/10**
-
-## 2. Project Architecture
-
-### Observations
-
-*   **MVC/MVT Structure:** The project follows the MVT (Model-View-Template) pattern, with a clear separation of concerns. The models, views, and templates are well-organized within their respective apps.
-
-*   **Organization of Apps:** The project is well-structured into reusable Django apps, which is a good practice for maintainability and scalability. The app names are descriptive and provide a clear indication of their functionality.
-
-*   **Static and Media Files:** The project uses a standard approach for managing static and media files, with `staticfiles` and `media` directories at the project root. The use of a separate `staticfiles` directory for collected static files is a good practice for production deployments.
-
-*   **Dependency Management:** The project uses a `requirements.txt` file to manage its dependencies, which is a standard practice for Python projects. However, the `requirements.txt` file is not pinned to specific versions, which could lead to unexpected issues if a dependency is updated with a breaking change.
-
-### Strengths
-
-*   **Clear Separation of Concerns:** The project follows the MVT pattern, with a clear separation of concerns.
-*   **Well-Organized Apps:** The project is well-structured into reusable Django apps.
-*   **Standard Static and Media File Management:** The project uses a standard approach for managing static and media files.
-
-### Weaknesses
-
-*   **Unpinned Dependencies:** The `requirements.txt` file is not pinned to specific versions, which could lead to unexpected issues.
-
-### Actionable Recommendations
-
-*   **Pin Dependencies:** Pin the dependencies in the `requirements.txt` file to specific versions to ensure that the project is always built with the same set of dependencies. This can be done using the `pip freeze > requirements.txt` command.
-
-### Score
-
-**9/10**
-
-## 3. Database Design and ORM Usage
-
-### Observations
-
-*   **Models Structure and Normalization:** The database models are well-structured and normalized. The use of foreign keys to establish relationships between models is appropriate. The `SluggedModel` abstract class is a good example of a reusable component that promotes consistency.
-
-*   **Indexing and Query Optimization:** The models use indexes on frequently queried fields, which is a good practice for performance. However, there is no evidence of the use of `select_related` or `prefetch_related` in the codebase, which could lead to a large number of database queries in some cases.
-
-*   **Data Integrity and Constraints:** The models use appropriate constraints to ensure data integrity. For example, the `Review` model has a `UniqueConstraint` to prevent a user from leaving more than one review per product.
-
-*   **Migrations Management:** The project uses Django's built-in migrations framework to manage database schema changes, which is a standard practice.
-
-### Strengths
-
-*   **Well-Structured Models:** The database models are well-structured and normalized.
-*   **Good Use of Indexes:** The models use indexes on frequently queried fields.
-*   **Good Use of Constraints:** The models use appropriate constraints to ensure data integrity.
-
-### Weaknesses
-
-*   **Lack of `select_related` and `prefetch_related`:** The codebase does not use `select_related` or `prefetch_related`, which could lead to a large number of database queries in some cases.
-
-### Actionable Recommendations
-
-*   **Use `select_related` and `prefetch_related`:** Use `select_related` and `prefetch_related` to optimize database queries and reduce the number of database queries. For example, when retrieving a list of products with their categories, use `select_related('category')` to fetch the related category in a single query.
-
-### Score
-
-**8/10**
-
-## 4. Security
-
-### Observations
-
-*   **Authentication and Authorization:** The project uses JWT authentication, which is a good choice for a RESTful API. The use of `djoser` and `rest_framework_simplejwt` provides a solid foundation for authentication and authorization.
-
-*   **Protection Against Common Vulnerabilities:** The project uses Django's built-in protection against common web vulnerabilities such as CSRF, XSS, and SQL injection. The use of the `CsrfViewMiddleware` and the automatic escaping of template variables provide a good level of protection.
-
-*   **Secure Password Storage:** The project uses Django's built-in password hashing framework, which is a secure way to store passwords.
-
-*   **HTTPS Configuration:** The project is configured to be deployed behind an Nginx reverse proxy, which is a good practice for production deployments. However, there is no explicit configuration for HTTPS in the `nginx` configuration file.
-
-*   **Sensitive Data Handling:** The project uses environment variables to store sensitive data such as the `SECRET_KEY` and database credentials, which is a good practice.
-
-### Strengths
-
-*   **JWT Authentication:** The project uses JWT authentication, which is a good choice for a RESTful API.
-*   **Protection Against Common Vulnerabilities:** The project uses Django's built-in protection against common web vulnerabilities.
-*   **Secure Password Storage:** The project uses Django's built-in password hashing framework.
-*   **Use of Environment Variables:** The project uses environment variables to store sensitive data.
-
-### Weaknesses
-
-*   **No Explicit HTTPS Configuration:** There is no explicit configuration for HTTPS in the `nginx` configuration file.
-
-### Actionable Recommendations
-
-*   **Configure HTTPS:** Configure HTTPS in the `nginx` configuration file to ensure that all traffic is encrypted. This can be done using a free SSL certificate from Let's Encrypt.
-
-### Score
-
-**9/10**
-
-## 5. Functionality and Features
-
-### Observations
-
-*   **Correctness and Completeness of Key Features:** The project implements the core features of an e-commerce application, including a product catalog, categories, cart, checkout, and order management. The implementation of these features is generally correct and complete.
-
-*   **Edge Cases Handling:** The project handles some edge cases, such as insufficient stock during payment verification. However, there may be other edge cases that are not handled, such as concurrent stock updates.
-
-*   **Transactional Integrity:** The project does not use atomic transactions when updating the database, which could lead to data inconsistencies in the event of a failure. For example, in the `verify_payment` function in `payment/services.py`, the stock is updated after the payment is verified. If the stock update fails, the payment will have been processed, but the stock will not have been updated.
-
-*   **Integration with Third-Party Services:** The project integrates with the Zibal payment gateway, which is a good example of a third-party integration.
-
-### Strengths
-
-*   **Core E-commerce Features:** The project implements the core features of an e-commerce application.
-*   **Third-Party Integration:** The project integrates with a third-party payment gateway.
-
-### Weaknesses
-
-*   **Lack of Atomic Transactions:** The project does not use atomic transactions when updating the database, which could lead to data inconsistencies.
-*   **Incomplete Edge Case Handling:** The project may not handle all edge cases, such as concurrent stock updates.
-
-### Actionable Recommendations
-
-*   **Use Atomic Transactions:** Use atomic transactions when updating the database to ensure data consistency. For example, in the `verify_payment` function, wrap the stock update and order status update in an atomic transaction.
-*   **Implement Pessimistic Locking:** Implement pessimistic locking to prevent concurrent stock updates. This can be done using `select_for_update()` when retrieving the product from the database.
-
-### Score
-
-**7/10**
-
-## 6. User Experience (UX/UI)
-
-### Observations
-
-*   **API-First Design:** This is a Django REST Framework project, which means it's API-first. There is no traditional front-end, so a UX/UI audit in the traditional sense is not applicable. The focus is on the developer experience (DX) of a using the API.
-
-*   **API Discoverability:** The project uses `drf-spectacular` to generate an OpenAPI 3 schema and Swagger UI, which is excellent for API discoverability and documentation. The root endpoint also provides a list of available endpoints.
-
-*   **Error Messages:** The custom exception handler provides a consistent error response format, which is good for developers consuming the API.
-
-### Strengths
-
-*   **Excellent API Documentation:** The use of `drf-spectacular` provides excellent, interactive API documentation.
-*   **Consistent API Responses:** The custom renderer and exception handler ensure a consistent API response format.
-
-### Weaknesses
-
-*   **None:** As an API-first project, the focus is on developer experience, which is well-addressed.
-
-### Actionable Recommendations
-
-*   **None.**
-
-### Score
-
-**10/10**
-
-## 7. Performance and Optimization
-
-### Observations
-
-*   **Query Efficiency:** The project uses indexes on frequently queried fields, which is a good practice for performance. However, the lack of `select_related` and `prefetch_related` can lead to the N+1 query problem, which can significantly impact performance.
-
-*   **Caching Strategies:** The project uses Redis for caching, which is a good choice for a high-performance cache. The use of a separate `django-redis` library provides a good level of integration with Django's caching framework.
-
-*   **Media Handling:** The project uses the default Django file storage, which is suitable for development but not for production. In a production environment, it's recommended to use a cloud storage service such as Amazon S3.
-
-*   **Pagination:** The project uses a custom pagination class, which is a good practice for performance.
-
-*   **Asynchronous Tasks:** The project uses Celery with a Redis broker for handling asynchronous tasks, which is a good choice for offloading long-running tasks from the main request-response cycle.
-
-### Strengths
-
-*   **Use of Redis for Caching:** The project uses Redis for caching, which is a good choice for a high-performance cache.
-*   **Custom Pagination:** The project uses a custom pagination class, which is a good practice for performance.
-*   **Asynchronous Task Processing:** The project uses Celery for handling asynchronous tasks.
-
-### Weaknesses
-
-*   **N+1 Query Problem:** The lack of `select_related` and `prefetch_related` can lead to the N+1 query problem.
-*   **Default Media Handling:** The project uses the default Django file storage, which is not suitable for production.
-
-### Actionable Recommendations
-
-*   **Use `select_related` and `prefetch_related`:** Use `select_related` and `prefetch_related` to optimize database queries and reduce the number of database queries.
-*   **Use a Cloud Storage Service for Media Files:** Use a cloud storage service such as Amazon S3 to store media files in a production environment. This will improve performance and scalability.
-
-### Score
-
-**7/10**
-
-## 8. Testing and Quality Assurance
-
-### Observations
-
-*   **Unit Tests and Integration Tests:** The project includes a `tests` directory in each app, which is a good practice. However, the test coverage is very low. Most of the `tests.py` files are empty or contain only a single placeholder test.
-
-*   **Test Data Management:** There is no evidence of a strategy for managing test data. This can make it difficult to write and maintain tests.
-
-*   **CI/CD Integration:** There is no evidence of a CI/CD pipeline. This means that tests are not automatically run when code is pushed to the repository.
-
-### Strengths
-
-*   **Test Directory Structure:** The project includes a `tests` directory in each app, which is a good practice.
-
-### Weaknesses
-
-*   **Low Test Coverage:** The test coverage is very low.
-*   **No Test Data Management Strategy:** There is no evidence of a strategy for managing test data.
-*   **No CI/CD Integration:** There is no evidence of a CI/CD pipeline.
-
-### Actionable Recommendations
-
-*   **Write More Tests:** Write more unit and integration tests to increase the test coverage. This will help to ensure that the code is correct and that new changes do not break existing functionality.
-*   **Use a Test Data Management Library:** Use a library such as `factory-boy` to manage test data. This will make it easier to write and maintain tests.
-*   **Set Up a CI/CD Pipeline:** Set up a CI/CD pipeline to automatically run tests when code is pushed to the repository. This will help to ensure that the code is always in a deployable state.
-
-### Score
-
-**3/10**
-
-## 9. Documentation and Knowledge Transfer
-
-### Observations
-
-*   **README:** The `README.md` file is comprehensive and provides clear instructions for setting up and running the project. It also includes a good overview of the project's features and architecture.
-
-*   **API Documentation:** The project uses `drf-spectacular` to generate an OpenAPI 3 schema and Swagger UI, which is excellent for API documentation.
-
-*   **Inline Comments and Docstrings:** The code is well-commented, and the docstrings are generally clear and informative.
-
-*   **Developer Guidelines:** There are no explicit guidelines for developers to contribute to or maintain the project. This could make it difficult for new developers to get up to speed.
-
-### Strengths
-
-*   **Comprehensive README:** The `README.md` file is comprehensive and provides clear instructions.
-*   **Excellent API Documentation:** The project uses `drf-spectacular` to generate excellent API documentation.
-*   **Good Inline Comments and Docstrings:** The code is well-commented, and the docstrings are clear and informative.
-
-### Weaknesses
-
-*   **No Developer Guidelines:** There are no explicit guidelines for developers to contribute to or maintain the project.
-
-### Actionable Recommendations
-
-*   **Create a `CONTRIBUTING.md` File:** Create a `CONTRIBUTING.md` file that provides guidelines for developers to contribute to the project. This should include information about the development workflow, coding standards, and how to submit pull requests.
-
-### Score
-
-**9/10**
-
-## 10. Deployment, DevOps, and Environment Management
-
-### Observations
-
-*   **Production-Ready Settings:** The project uses a split settings structure, which is a good practice for managing different environments. However, the `DEBUG` is set to `True` in the `base.py` settings file, which is a security risk in a production environment.
-
-*   **Logging, Error Handling, and Monitoring:** The project lacks a centralized logging and monitoring strategy, which could make it difficult to debug issues in a production environment.
-
-*   **Dockerization:** The project is fully containerized using Docker and Docker Compose, which is a good practice for portability and scalability.
-
-*   **CI/CD Pipelines:** There is no evidence of a CI/CD pipeline, which means that the deployment process is likely manual.
-
-### Strengths
-
-*   **Split Settings Structure:** The project uses a split settings structure, which is a good practice for managing different environments.
-*   **Dockerization:** The project is fully containerized using Docker and Docker Compose.
-
-### Weaknesses
-
-*   **`DEBUG` is set to `True` in `base.py`:** The `DEBUG` is set to `True` in the `base.py` settings file, which is a security risk in a production environment.
-*   **Lack of Centralized Logging and Monitoring:** The project lacks a centralized logging and monitoring strategy.
-*   **No CI/CD Pipeline:** There is no evidence of a CI/CD pipeline.
-
-### Actionable Recommendations
-
-*   **Set `DEBUG` to `False` in Production:** Set `DEBUG` to `False` in the production settings file to avoid exposing sensitive information.
-*   **Implement Centralized Logging and Monitoring:** Implement a centralized logging and monitoring strategy to record important events and errors.
-*   **Set Up a CI/CD Pipeline:** Set up a CI/CD pipeline to automate the deployment process.
-
-### Score
-
-**6/10**
-
-## Summary Report
-
-### Overall Score: 76/100
-
-### Major Strengths
-
-*   **Solid Foundation:** The project is built on a solid foundation, with a clean and modular architecture, a well-structured database, and a good set of features.
-*   **Good Documentation:** The project is well-documented, with a comprehensive `README.md` file and excellent API documentation.
-*   **Dockerization:** The project is fully containerized using Docker and Docker Compose, which makes it easy to set up and deploy.
-
-### Critical Issues
-
-*   **Low Test Coverage:** The test coverage is very low, which is a major risk. Without a comprehensive test suite, it's difficult to ensure that the code is correct and that new changes do not break existing functionality.
-*   **Lack of CI/CD Pipeline:** There is no CI/CD pipeline, which means that the deployment process is likely manual. This can lead to errors and inconsistencies.
-*   **`DEBUG` is set to `True` in `base.py`:** The `DEBUG` is set to `True` in the `base.py` settings file, which is a security risk in a production environment.
-
-### Suggested Improvements
-
-*   **Increase Test Coverage:** The highest priority should be to increase the test coverage. This will help to ensure that the code is correct and that new changes do not break existing functionality.
-*   **Set Up a CI/CD Pipeline:** The second highest priority should be to set up a CI/CD pipeline. This will automate the deployment process and help to ensure that the code is always in a deployable state.
-*   **Set `DEBUG` to `False` in Production:** The third highest priority should be to set `DEBUG` to `False` in the production settings file. This will improve the security of the application.
-*   **Implement Centralized Logging and Monitoring:** Implement a centralized logging and monitoring strategy to make it easier to debug issues in a production environment.
-*   **Use `select_related` and `prefetch_related`:** Use `select_related` and `prefetch_related` to optimize database queries and reduce the number of database queries.
-*   **Use a Cloud Storage Service for Media Files:** Use a cloud storage service such as Amazon S3 to store media files in a production environment.
-*   **Pin Dependencies:** Pin the dependencies in the `requirements.txt` file to specific versions to ensure that the project is always built with the same set of dependencies.
-*   **Create a `CONTRIBUTING.md` File:** Create a `CONTRIBUTING.md` file that provides guidelines for developers to contribute to the project.
-*   **Use Atomic Transactions:** Use atomic transactions when updating the database to ensure data consistency.
-*   **Implement Pessimistic Locking:** Implement pessimistic locking to prevent concurrent stock updates.
-*   **Implement Custom Exception Classes:** Create a set of custom exception classes to provide more structured and informative error messages.
-*   **Refactor Duplicated Code:** Refactor duplicated code to improve maintainability.
+*   **Authentication (`/auth/`):**
+    *   ارائه شده توسط `djoser` و `simplejwt`. شامل endpointهای ثبت‌نام، فعال‌سازی، ورود (JWT create/refresh)، تنظیم مجدد رمز عبور و مدیریت کاربر.
+    *   `Permission`: متفاوت (عمومی برای ثبت‌نام/ورود، احراز هویت شده برای مدیریت کاربر).
+*   **Shop (`/api/v1/`):**
+    *   `GET, POST, PUT, PATCH, DELETE /products/`: مدیریت کامل محصولات. `Permission`: [NEEDS VERIFICATION]
+    *   `GET /categories/`: لیست دسته‌بندی‌ها. `Permission`: عمومی.
+    *   `POST /products/<slug>/reviews/`: افزودن نظر به محصول. `Permission`: `IsAuthenticated`.
+*   **Cart (`/api/v1/`):**
+    *   `GET, POST, PUT, DELETE /cart/`: مدیریت کامل سبد خرید. `Permission`: عمومی (با مدیریت سشن).
+*   **Orders (`/api/v1/`):**
+    *   `GET, POST /orders/`: ایجاد و لیست کردن سفارشات. `Permission`: `IsAuthenticated`.
+    *   `GET /orders/<uuid:order_id>/`: مشاهده جزئیات سفارش. `Permission`: `IsAuthenticated` و مالک سفارش.
+*   **Coupons (`/api/v1/`):**
+    *   `POST /coupons/apply/`: اعمال کوپن روی سبد خرید. `Permission`: عمومی.
+*   **Payment (`/payment/`):**
+    *   `POST /process/<uuid:order_id>/`: شروع پرداخت. `Permission`: `IsAuthenticated`.
+    *   `GET /verify/`: تأیید پرداخت (Callback). `Permission`: عمومی.
+*   **Shipping (`/shipping/`):**
+    *   [NEEDS VERIFICATION] محتوای `shipping/urls.py` باید برای جزئیات بررسی شود.
+*   **SMS (`/sms/`):**
+    *   [NEEDS VERIFICATION] محتوای `sms/urls.py` باید برای جزئیات بررسی شود.
+
+---
+
+## B) مدل تهدید (Threat Model)
+
+### دارایی‌ها (Assets)
+
+*   **حساب کاربری و Session/Token:** توکن‌های JWT و اطلاعات سشن کاربران.
+*   **داده‌های سفارش و پرداخت:** اطلاعات شخصی، آدرس‌ها، تاریخچه خرید و وضعیت پرداخت.
+*   **قیمت‌ها و تخفیف‌ها:** منطق قیمت‌گذاری محصولات و اعمال کوپن‌ها.
+*   **موجودی کالا:** تعداد موجودی هر محصول.
+*   **کلیدهای API و وبهوک:** کلیدهای مخفی برای ارتباط با سرویس‌های خارجی (Zibal, Postex, SMS.ir).
+*   **فایل‌های آپلود شده:** تصاویر محصولات.
+
+### سطوح حمله (Attack Surfaces)
+
+*   **Endpoints احراز هویت:** `/auth/` (ثبت‌نام، ورود، بازیابی رمز عبور).
+*   **Endpoints تسویه حساب:** `/api/v1/orders/` (ایجاد سفارش)، `/api/v1/coupons/apply/`.
+*   **Endpoints جزئیات سفارش:** `/api/v1/orders/<uuid:order_id>/`.
+*   **Callback پرداخت:** `/payment/verify/`.
+*   **Endpoints ادمین:** `/admin/`.
+*   **Endpoints آپلود فایل:** فیلد `thumbnail` در `shop.Product`.
+
+### تهدیدهای کلیدی (Top Threats)
+
+#### 1. IDOR روی سفارشات (IDOR on Orders/Carts/Addresses)
+
+*   **Exploit Scenario:** یک کاربر احراز هویت شده با حدس زدن UUID یک سفارش متعلق به کاربر دیگر، تلاش می‌کند به جزئیات آن سفارش دسترسی پیدا کند.
+*   **Evidence & Controls:** `orders/views.py:OrderViewSet`, `orders/permissions.py:IsAdminOrOwner`, `orders/services.py:get_user_orders`.
+*   **Result:** **کنترل شده (Mitigated).** سیستم با استفاده از مجوزهای object-level و فیلترینگ queryset در لایه سرویس، به خوبی در برابر این تهدید محافظت شده است.
+
+#### 2. دستکاری قیمت (Price Tampering)
+
+*   **Exploit Scenario:** یک مهاجم هنگام ایجاد سفارش، قیمت محصولات را در درخواست API دستکاری می‌کند تا کالاها را با قیمت کمتری خریداری کند.
+*   **Evidence & Controls:** `orders/serializers.py:OrderCreateSerializer.save`. این متد قیمت آیتم در سبد خرید را با قیمت فعلی محصول در پایگاه داده (`product.price`) مقایسه می‌کند و هنگام ایجاد `OrderItem`، قیمت را مستقیماً از محصول قفل شده در دیتابیس می‌خواند.
+*   **Result:** **کنترل شده (Mitigated).** سیستم به خوبی در برابر این تهدید محافظت شده است.
+
+#### 3. سوءاستفاده از کوپن (Coupon Abuse)
+
+*   **Exploit Scenario:** چندین کاربر به طور همزمان از یک کوپن با محدودیت استفاده، فراتر از حد مجاز (`max_usage`) استفاده می‌کنند.
+*   **Evidence & Controls:** `orders/serializers.py:OrderCreateSerializer.save`. این متد کوپن را در ابتدای تراکنش با `select_for_update` قفل می‌کند، شرایط آن را دوباره بررسی می‌کند و تعداد استفاده (`usage_count`) را به صورت اتمی افزایش می‌دهد.
+*   **Result:** **کنترل شده (Mitigated).** سیستم به خوبی در برابر race condition در استفاده از کوپن محافظت شده است.
+
+#### 4. جعل/پخش مجدد وبهوک (Webhook Forgery/Replay)
+
+*   **Exploit Scenario:** یک مهاجم یک درخواست جعلی به endpoint وبهوک پرداخت (`/payment/verify/`) ارسال می‌کند تا یک سفارش را به عنوان "پرداخت شده" علامت‌گذاری کند.
+*   **Evidence & Controls:** `payment/services.py:verify_payment`. این تابع یک تماس سرور-به-سرور به درگاه برای تأیید پرداخت برقرار می‌کند و همچنین دارای بررسی Idempotency برای جلوگیری از حملات Replay است.
+*   **Result:** **کنترل شده (Mitigated).** سیستم به خوبی در برابر این تهدید محافظت شده است.
+
+#### 5. فروش بیش از حد (Race Condition Oversell)
+
+*   **Exploit Scenario:** دو کاربر به طور همزمان برای آخرین آیتم موجود از یک محصول، سفارش ثبت می‌کنند و سیستم به هر دو اجازه خرید می‌دهد.
+*   **Evidence & Controls:** `orders/serializers.py:OrderCreateSerializer.save`. این متد از `select_for_update` برای قفل کردن ردیف‌های محصول در پایگاه داده قبل از بررسی و کاهش موجودی استفاده می‌کند.
+*   **Result:** **کنترل شده (Mitigated).** این پیاده‌سازی صحیح از قفل‌گذاری بدبینانه، به طور مؤثری از این تهدید جلوگیری می‌کند.
+
+#### 6. آپلود مستقیم فایل ناامن (Insecure Direct File Upload)
+
+*   **Exploit Scenario:** یک مهاجم یک فایل مخرب (مانند شل اسکریپت) را با تغییر پسوند به عنوان تصویر محصول آپلود می‌کند.
+*   **Evidence & Controls:** `shop/models.py:Product.thumbnail` از اعتبارسنج سفارشی `shop.validators.FileValidator` استفاده می‌کند که نوع فایل را بر اساس محتوای باینری آن با `python-magic` بررسی می‌کند.
+*   **Result:** **کنترل شده (Mitigated).** سیستم به خوبی در برابر این تهدید محافظت شده است.
+
+#### 7. نبود محدودیت نرخ درخواست (Missing Rate Limiting)
+
+*   **Exploit Scenario:** یک مهاجم با ارسال هزاران درخواست به endpointهای حساس مانند ورود (`/auth/jwt/create/`) باعث حملات brute-force یا Denial of Service می‌شود.
+*   **Evidence & Controls:** `ecommerce_api/settings/base.py`: `DEFAULT_THROTTLE_RATES` به صورت عمومی تنظیم شده است (`400/day` برای ناشناس، `1000/day` برای کاربر).
+*   **Result:** **تا حدی کنترل شده (Partially Mitigated).** نرخ‌های عمومی وجود دارند اما برای نقاط حساس به اندازه کافی دقیق نیستند.
+*   **Fix:** برای endpointهای حساس‌تر مانند `login`, `password_reset`, `coupon_apply` باید با استفاده از `ratelimit` decorator یا کلاس‌های throttle سفارشی، نرخ‌های محدودیت خاص و سخت‌گیرانه‌تری (مانند ۵ بار در دقیقه) اعمال شود.
+
+---
+
+## C) حسابرسی پایایی و سازگاری (Reliability & Consistency Audit)
+
+### یکپارچگی تراکنش (Transactional Integrity)
+
+*   **نقاط کلیدی:**
+    *   **ایجاد سفارش:** این فرآیند که شامل ایجاد `Order`، ایجاد `OrderItem`ها، کاهش موجودی `Product` و افزایش تعداد استفاده `Coupon` است، حیاتی‌ترین عملیات تراکنشی است.
+    *   **لغو سفارش:** این فرآیند شامل تغییر وضعیت `Order` و بازگرداندن موجودی `Product` است.
+
+*   **بررسی‌ها:**
+    *   **ایجاد سفارش:**
+        *   **شواهد:** `orders/serializers.py:OrderCreateSerializer.save`
+        *   **کنترل:** کل فرآیند داخل یک بلاک `with transaction.atomic()` قرار دارد. این تضمین می‌کند که تمام عملیات‌های پایگاه داده یا با هم موفق می‌شوند یا در صورت بروز خطا، همگی `rollback` می‌شوند. استفاده از `select_for_update` برای قفل کردن محصولات و کوپن‌ها نیز یکپارچگی را در محیط‌های همزمان تضمین می‌کند.
+        *   **نتیجه:** **عالی.**
+    *   **لغو سفارش:**
+        *   **شواهد:** `orders/models.py:Order.save`, `orders/models.py:Order.restore_stock`
+        *   **کنترل:** منطق بازگرداندن موجودی از `models.F('stock') + item.quantity` استفاده می‌کند که یک عملیات اتمی در سطح پایگاه داده است و از race condition جلوگیری می‌کند.
+        *   **ریسک (پایین):** خود عملیات `save` مدل `Order` به طور پیش‌فرض در یک تراکنش قرار نمی‌گیرد. اگر پس از ذخیره وضعیت `CANCELED` و قبل از اتمام حلقه `restore_stock` خطایی رخ دهد، ممکن است وضعیت ناسازگار شود.
+        *   **توصیه:** متد `save` مدل `Order` را با `@transaction.atomic` دکوریت کنید تا کل عملیات ذخیره و بازگرداندن موجودی اتمی شود.
+
+### Idempotency
+
+*   **پرداخت و وبهوک:**
+    *   **شواهد:** `payment/services.py:verify_payment`
+    *   **کنترل:** اولین خط کد در این تابع بررسی می‌کند که آیا وضعیت پرداخت سفارش از قبل `SUCCESS` است یا خیر. اگر باشد، تابع بلافاصله بازمی‌گردد. این به طور مؤثری از پردازش مجدد یک callback موفق جلوگیری می‌کند.
+    *   **نتیجه:** **عالی.**
+*   **ایجاد سفارش:**
+    *   **شواهد:** `orders/views.py:OrderViewSet.create`
+    *   **کنترل:** هیچ کنترل idempotency صریحی برای جلوگیری از ایجاد سفارشات تکراری در صورت ارسال چند درخواست یکسان توسط کلاینت (مثلاً به دلیل مشکل شبکه) وجود ندارد.
+    *   **ریسک (متوسط):** یک کاربر می‌تواند به طور تصادفی یا عمدی چندین سفارش یکسان ایجاد کند که منجر به سردرگمی و هزینه اضافی (مثلاً برای لغو) می‌شود.
+    *   **توصیه:** یک کلید idempotency (مانند یک UUID تولید شده توسط کلاینت) را در هدر یا بدنه درخواست ایجاد سفارش بپذیرید. قبل از ایجاد سفارش، بررسی کنید که آیا سفارشی با این کلید قبلاً پردازش شده است یا خیر.
+
+### صحت رویدادها/عوارض جانبی (Event/Side-effect Correctness)
+
+*   **Celery Tasks:**
+    *   **شواهد:** `orders/services.py:create_order` تابع `send_order_confirmation_email.delay` را فراخوانی می‌کند. `payment/services.py:verify_payment` تابع `create_postex_shipment_task.delay` را فراخوانی می‌کند.
+    *   **تحلیل:**
+        *   ارسال چند ایمیل تأیید سفارش آزاردهنده است اما خطرناک نیست.
+        *   تلاش برای ایجاد چند بارنامه برای یک سفارش می‌تواند منجر به هزینه‌های اضافی و مشکلات لجستیکی شود.
+    *   **ریسک (متوسط):** تسک `create_postex_shipment_task` باید idempotent باشد. باید بررسی شود که آیا این تسک قبل از ایجاد بارنامه، وجود بارنامه قبلی برای سفارش را بررسی می‌کند یا خیر. [NEEDS VERIFICATION on `shipping/tasks.py`]
+    *   **توصیه:** تمام تسک‌هایی که با سیستم‌های خارجی تعامل دارند یا وضعیت را تغییر می‌ده دهند، باید به گونه‌ای طراحی شوند که اجرای مجدد آن‌ها ایمن (retry-safe) باشد.
+*   **Outbox Pattern:**
+    *   **شواهد:** سیستم از الگوی outbox استفاده نمی‌کند. تسک‌های Celery مستقیماً پس از اتمام تراکنش پایگاه داده فراخوانی می‌شوند (`transaction.on_commit` به صورت پیش‌فرض در نسخه‌های جدید جنگو برای `delay` استفاده می‌شود).
+    *   **ریسک (پایین):** در یک سناریوی بسیار نادر که در آن کامیت پایگاه داده موفقیت‌آمیز است اما broker پیام Celery در دسترس نیست، ممکن است یک عارضه جانبی (مانند ارسال ایمیل) هرگز اجرا نشود. برای اکثر برنامه‌ها، این ریسک قابل قبول است.
+    *   **نتیجه:** وضعیت موجود برای این سیستم قابل قبول است.
+
+### مدیریت خطا (Error Handling)
+
+*   **شواهد:** `ecommerce_api/settings/base.py` از `ecommerce_api.core.exceptions.custom_exception_handler` به عنوان exception handler پیش‌فرض DRF استفاده می‌کند.
+*   **تحلیل:**
+    *   **استانداردسازی:** این handler تمام خطاها را در یک ساختار JSON استاندارد (`{ "status": "error", "message": "...", "errors": {} }`) قرار می‌دهد که برای توسعه کلاینت عالی است.
+    *   **جلوگیری از نشت اطلاعات:** استثناهای پیش‌بینی نشده به عنوان یک خطای عمومی "Internal server error" با کد 500 به کلاینت نمایش داده می‌شوند، در حالی که جزئیات کامل خطا در سمت سرور لاگ می‌شود. این از نشت stack trace جلوگیری می‌کند.
+*   **نتیجه:** **عالی.** پیاده‌سازی مدیریت خطا قوی و امن است.
+
+---
+
+## D) حسابرسی عملکرد و مقیاس‌پذیری (Performance & Scalability Audit)
+
+### بهینه‌سازی کوئری و N+1
+
+*   **وضعیت:** خوب.
+*   **شواهد:**
+    *   `orders/services.py:get_user_orders`: از `prefetch_related("items__product", "user", "address", "coupon")` برای واکشی بهینه تمام روابط مربوط به سفارشات در یک کوئری استفاده می‌کند. این به طور مؤثری از مشکل N+1 در لیست سفارشات جلوگیری می‌کند.
+    *   `cart/cart.py:Cart.__iter__`: از `prefetch_related('product')` برای جلوگیری از کوئری‌های تکراری هنگام پیمایش آیتم‌های سبد خرید استفاده می‌کند.
+*   **تحلیل:** تیم توسعه آگاهی خوبی از مشکلات N+1 دارد و از ابزارهای بهینه‌سازی Django ORM به درستی استفاده می‌کند. این یک نقطه قوت بزرگ برای عملکرد سیستم است.
+*   **توصیه:** این رویه خوب باید در تمام ViewSetها و سرویس‌های دیگر نیز ادامه یابد.
+
+### ایندکس‌گذاری (Indexing)
+
+*   **وضعیت:** خوب.
+*   **شواهد:**
+    *   `shop/models.py`: مدل‌های `Product` و `Category` دارای ایندکس روی فیلدهای `slug` و `name` هستند که برای جستجو و فیلتر کردن رایج استفاده می‌شوند. `Review` دارای ایندکس روی `product` و `user` است.
+    *   `orders/models.py`: مدل `Order` دارای ایندکس روی `user` و `order_date` (نزولی) است که برای واکشی سریع سفارشات یک کاربر خاص، مرتب شده بر اساس تاریخ، بسیار کارآمد است.
+*   **تحلیل:** ایندکس‌های موجود به خوبی با الگوهای کوئری رایج (مانند "گرفتن تمام سفارشات این کاربر") مطابقت دارند.
+*   **توصیه (بهبود جزئی):**
+    *   در مدل `Order`، افزودن یک ایندкс ترکیبی روی `(user_id, status)` می‌تواند برای فیلتر کردن سفارشات یک کاربر با یک وضعیت خاص (مثلاً "سفارشات در حال پردازش من") مفید باشد.
+
+### صفحه‌بندی (Pagination)
+
+*   **وضعیت:** عالی.
+*   **شواهد:**
+    *   `ecommerce_api/settings/base.py`: `DEFAULT_PAGINATION_CLASS` به یک کلاس سفارشی (`ecommerce_api.utils.pagination.CustomPageNumberPagination`) تنظیم شده است.
+*   **تحلیل:** تمام endpointهایی که لیستی از نتایج را برمی‌گردانند (مانند لیست محصولات یا سفارشات) به طور پیش‌فرض صفحه‌بندی خواهند شد. این امر از پاسخ‌های بسیار بزرگ که می‌توانند سرور و کلاینت را تحت فشار قرار دهند، جلوگیری می‌کند.
+
+### استراتژی کش (Caching Strategy)
+
+*   **وضعیت:** متوسط.
+*   **شواهد:**
+    *   Redis به عنوان بک‌اند کش سراسری (`CACHES = {'default': env.cache('REDIS_URL')}`) پیکربندی شده است.
+    *   [NEEDS VERIFICATION] در کدهایی که تاکنون بررسی شده، استفاده صریح از API کش جنگو (مانند `cache.get`, `cache.set` یا دکوریتور `cache_page`) مشاهده نشده است.
+*   **تحلیل:** زیرساخت کش آماده است، اما به نظر می‌رسد از پتانسیل آن به طور کامل استفاده نمی‌شود.
+*   **توصیه:**
+    *   **کش کردن کاتالوگ:** Endpointهای لیست محصولات و دسته‌بندی‌ها که به ندرت تغییر می‌کنند، کاندیداهای عالی برای کش شدن هستند. می‌توان از `@cache_page` در `ProductViewSet` و `CategoryViewSet` استفاده کرد.
+    *   **کش کردن قیمت‌ها:** اگر منطق قیمت‌گذاری پیچیده‌ای وجود داشته باشد، نتایج آن می‌تواند کش شود.
+    *   **ابطال کش (Cache Invalidation):** برای ابطال کش هنگام تغییر داده‌ها، باید از سیگنال‌های جنگو (مانند `post_save`, `post_delete`) استفاده شود تا کلیدهای کش مربوطه حذف شوند.
+
+### عملیات ناهمزمان (Async Operations)
+
+*   **وضعیت:** عالی.
+*   **شواهد:**
+    *   Celery برای مدیریت وظایف پس‌زمینه پیکربندی شده است.
+    *   `orders/services.py`: ارسال ایمیل تأیید سفارش (`send_order_confirmation_email.delay`) به صورت ناهمزمان انجام می‌شود.
+    *   `payment/services.py`: ایجاد بارنامه پس از پرداخت موفق (`create_postex_shipment_task.delay`) به صورت ناهمزمان انجام می‌شود.
+*   **تحلیل:** جدا کردن عملیات‌های زمان‌بر و وابسته به شبке (مانند ارسال ایمیل و تماس با APIهای خارجی) از چرخه درخواست-پاسخ، زمان پاسخ API را به شدت بهبود می‌بخشد و تجربه کاربری بهتری را فراهم می‌کند.
+*   **نتیجه:** معماری سیستم به خوبی برای انجام کارهای ناهمزمان طراحی شده است.
+
+---
+
+## E) انطباق و حریم خصوصی (Compliance/Privacy)
+
+*   **ذخیره‌سازی اطلاعات پرداخت:**
+    *   **شواهد:** هیچ مدلی برای ذخیره اطلاعات حساس پرداخت مانند شماره کارت (PAN) یا CVV وجود ندارد. مدل `Order` فقط یک `payment_ref_id` را ذخیره می‌کند که یک شناسه تراکنش غیرحساس از درگاه پرداخت است.
+    *   **نتیجه:** **عالی.** سیستم از بهترین شیوه‌های امنیتی پیروی کرده و اطلاعات حساس پرداخت را ذخیره نمی‌کند.
+*   **اطلاعات شناسایی شخصی (PII):**
+    *   **شواهد:** مدل `Address` اطلاعات PII مانند آدرس، تلفن و غیره را ذخیره می‌کند.
+    *   **ریسک (پایین):** باید بررسی شود که آیا این اطلاعات در لاگ‌ها یا پیام‌های خطا ماسک می‌شوند یا خیر. `custom_exception_handler` از نشت اطلاعات در خطاها جلوگیری می‌کند، اما پیکربندی لاگ‌ها (`LOGGING` در `settings.py`) باید برای فیلتر کردن پارامترهای حساس بازبینی شود. [NEEDS VERIFICATION]
+    *   **توصیه:** اطمینان حاصل کنید که formatter لاگ‌ها به گونه‌ای پیکربندی شده است که فیلدهای حاوی PII را ماسک یا حذف کند.
+
+---
+
+## جدول ریسک (Risk Table)
+
+| ID  | عنوان                                       | شدت      | کامپوننت   | شواهد                                                   | سناریوی بهره‌برداری                                                                 | توصیه                                                                                              | تلاش |
+|:----|:-------------------------------------------|:----------|:-----------|:---------------------------------------------------------|:--------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------|:-------|
+| R-1 | عدم وجود کلید Idempotency در ایجاد سفارش   | متوسط    | Orders     | `orders/views.py:OrderViewSet.create`                    | کاربر به دلیل مشکل شبکه، دو بار روی دکمه "خرید" کلیک کرده و دو سفارش یکسان ایجاد می‌شود. | یک هدر `Idempotency-Key` (UUID) از کلاینت بپذیرید و از ایجاد سفارش تکراری با همان کلید جلوگیری کنید. | M      |
+| R-2 | نبود نرخ محدودیت خاص برای نقاط حساس       | متوسط    | Security   | `ecommerce_api/settings/base.py:DEFAULT_THROTTLE_RATES`  | مهاجم با brute-force کردن endpoint ورود، تلاش به حدس زدن رمز عبور می‌کند.                 | برای endpointهای حساس (login, coupon_apply, etc) با استفاده از دکوریتورها، نرخ‌های محدودیت سخت‌گیرانه‌تری اعمال کنید. | S      |
+| R-3 | تسک Celery غیر Idempotent برای حمل و نقل  | متوسط    | Shipping   | `payment/services.py`, `shipping/tasks.py` [?]           | یک تسک ایجاد بارنامه دو بار اجرا شده و دو بارنامه (و هزینه) برای یک سفارش ایجاد می‌شود.   | اطمینان حاصل کنید که تسک `create_postex_shipment_task` قبل از ایجاد، وجود بارنامه برای سفارش را بررسی می‌کند. | S      |
+| R-4 | عدم اتمی بودن عملیات لغو سفارش             | پایین     | Orders     | `orders/models.py:Order.save`                            | در حین بازگرداندن موجودی، خطایی رخ می‌دهد و سفارش لغو شده اما موجودی بازنگشته باقی می‌ماند. | متد `save` در مدل `Order` را با دکوریتور `@transaction.atomic` اتمی کنید.                        | S      |
+| R-5 | عدم استفاده کامل از کش                    | پایین     | Performance| `settings.py` (زیرساخت موجود است)                        | Endpointهای پربازدید کاتالوگ، بار غیرضروری روی پایگاه داده ایجاد می‌کنند.                | از `@cache_page` برای کش کردن endpointهای `Product` و `Category` و از سیگنال‌ها برای ابطال کش استفاده کنید. | M      |
+
+---
+
+## برنامه اقدام نهایی (Action Plan)
+
+### Top 5 Critical Fixes (اصلاحات حیاتی)
+
+*   **با توجه به اینکه هیچ ریسک با شدت بحرانی (Critical) یا بالا (High) شناسایی نشد، این بخش شامل مهم‌ترین بهبودها با شدت متوسط است.**
+
+1.  **(R-1) پیاده‌سازی کلید Idempotency برای ایجاد سفارش:** برای جلوگیری از سفارشات تکراری و مشکلات مالی/لجستیکی ناشی از آن.
+2.  **(R-2) اعمال نرخ محدودیت سخت‌گیرانه:** برای محافظت در برابر حملات brute-force روی endpointهای احراز هویت و اعمال کوپن.
+3.  **(R-3) اطمینان از Idempotent بودن تسک ایجاد بارنامه:** برای جلوگیری از هزینه‌های اضافی و خطاهای لجستیکی.
+4.  **(R-4) اتمی کردن عملیات لغو سفارش:** برای تضمین سازگاری داده‌ها در صورت بروز خطا.
+5.  **(R-5) پیاده‌سازی کش برای کاتالوگ:** به عنوان یک Quick Win برای بهبود قابل توجه عملکرد و کاهش بار پایگاه داده.
+
+### Quick Wins (پیروزی‌های سریع: ۱-۲ روز)
+
+1.  **(R-2) اعمال نرخ محدودیت سخت‌گیرانه.**
+2.  **(R-4) اتمی کردن عملیات لغو سفارش.**
+3.  **افزودن ایندکس ترکیبی `(user_id, status)` به مدل `Order`.**
+
+### برنامه ۲-۴ هفته‌ای
+
+1.  **هفته اول:**
+    *   اجرای تمام Quick Wins.
+    *   پیاده‌سازی کامل استراتژی کش برای کاتالوگ محصولات و دسته‌بندی‌ها (R-5).
+2.  **هفته دوم:**
+    *   پیاده‌سازی کلید Idempotency برای `OrderCreateSerializer` (R-1).
+    *   بررسی و اطمینان از Idempotent بودن تمام تسک‌های Celery حیاتی (R-3).
+3.  **هفته سوم و چهارم:**
+    *   بررسی و پیاده‌سازی توصیه‌های جزئی دیگر.
+    *   بررسی پیکربندی لاگ‌ها برای ماسک کردن PII.
+    *   نوشتن تست‌های جدید بر اساس برنامه تست زیر.
+
+---
+
+## برنامه تست فروشگاهی (Test Plan)
+
+| هدف تست                                   | گام‌ها                                                                                                                                                                         | انتظار (Assertions)                                                                                                                                | نقاط کد مرتبط                                                                 |
+|:-------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------|
+| **جلوگیری از فروش بیش از حد (Oversell)**    | ۱. یک محصول با موجودی ۱ ایجاد کن.<br>۲. دو درخواست `POST /api/v1/orders/` به صورت همزمان برای خرید آن محصول ارسال کن.                                                             | یک درخواست باید با کد `201 CREATED` موفق شود.<br>درخواست دیگر باید با کد `400 BAD REQUEST` و پیام خطای موجودی، ناموفق شود.<br>موجودی نهایی محصول باید ۰ باشد. | `orders/serializers.py:OrderCreateSerializer.save` (بلاک `select_for_update`) |
+| **جلوگیری از پخش مجدد وبهوک (Webhook Replay)** | ۱. یک سفارش ایجاد و پرداخت کن.<br>۲. callback موفق (`/payment/verify/`) را یک بار فراخوانی کن.<br>۳. همان callback را دوباره فراخوانی کن.                                      | فراخوانی اول باید موفق باشد و وضعیت سفارش `paid` شود.<br>فراخوانی دوم باید یک پاسخ موفقیت‌آمیز اما با پیامی مبنی بر اینکه "پرداخت قبلاً تأیید شده" برگرداند.<br>هیچ تغییری در وضعیت سفارش یا تسک‌های وابسته ایجاد نشود. | `payment/services.py:verify_payment` (بلاک idempotency)                         |
+| **جلوگیری از دستکاری قیمت (Price Tampering)** | ۱. یک محصول با قیمت ۱۰۰۰ ایجاد کن.<br>۲. آن را به سبد خرید اضافه کن.<br>۳. هنگام ایجاد سفارش، یک درخواست `POST /api/v1/orders/` ارسال کن که در آن قیمت محصول در سبد خرید (اگر امکان‌پذیر باشد) به ۱۰۰ تغییر داده شده. | درخواست باید با خطای `400 BAD REQUEST` و پیامی مبنی بر تغییر قیمت رد شود. یا اگر قیمت از سبد خرید خوانده می‌شود، قیمت نهایی در `OrderItem` باید ۱۰۰۰ باشد. | `orders/serializers.py:OrderCreateSerializer.save` (مقایسه قیمت)             |
+| **سازگاری لغو سفارش**                      | ۱. یک سفارش با محصولی که موجودی آن ۱۰ است ایجاد کن (موجودی باید به ۹ کاهش یابد).<br>۲. وضعیت سفارش را به `canceled` تغییر بده.                                                    | وضعیت سفارش باید `canceled` شود.<br>موجودی محصول باید به ۱۰ بازگردد.                                                                                | `orders/models.py:Order.save`, `restore_stock`                                |
+| **جلوگیری از IDOR در سفارشات**              | ۱. کاربر A یک سفارش ایجاد می‌کند.<br>۲. کاربر B با توکن خود تلاش می‌کند جزئیات سفارش کاربر A را با درخواست `GET /api/v1/orders/<order_A_id>/` مشاهده کند.                   | درخواست کاربر B باید با خطای `404 NOT FOUND` رد شود.                                                                                               | `orders/permissions.py:IsAdminOrOwner`, `orders/services.py:get_user_orders` |
