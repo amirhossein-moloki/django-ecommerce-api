@@ -15,7 +15,6 @@ from ecommerce_api.core.utils import get_client_ip
 from orders.models import Order
 from . import services
 from .models import PaymentTransaction
-from .tasks import process_successful_payment
 
 logger = getLogger(__name__)
 
