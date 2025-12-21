@@ -1,6 +1,7 @@
 from logging import getLogger
 
 from django.core.cache import cache
+from django.db.models import Min
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import (
     extend_schema_view,
@@ -21,7 +22,7 @@ from rest_framework.response import Response
 
 from ecommerce_api.core.mixins import PaginationMixin
 from ecommerce_api.core.permissions import IsOwnerOrStaff
-from shop.filters import ProductFilter, InStockFilterBackend, ProductSearchFilterBackend
+from shop.filters import ProductFilter, ProductSearchFilterBackend
 from .models import Product, Category
 from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
 from .serializers import ReviewSerializer
@@ -308,18 +309,17 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
     """
 
     queryset = Product.objects.select_related("user", "category").prefetch_related(
-        "tags", "reviews"
-    )
+        "tags", "reviews", "variants", "variants__option_values__option_value__option_type"
+    ).annotate(price=Min('variants__price'))
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrStaff]
     serializer_class = ProductSerializer
     filterset_class = ProductFilter
     filter_backends = [
         DjangoFilterBackend,
         OrderingFilter,
-        InStockFilterBackend,
         ProductSearchFilterBackend,
     ]
-    ordering_fields = [r"name", r"price", r"stock", r"created"]
+    ordering_fields = [r"name", r"created", "price"]
     lookup_field = r"slug"
 
     def get_permissions(self):

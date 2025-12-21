@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from shop.models import Category, Product, Review
+from shop.models import Category, Product, Review, ProductVariant
 from orders.models import Order, OrderItem
 
 User = get_user_model()
@@ -58,8 +58,11 @@ class ProductViewSetTest(APITestCase):
         self.user2 = User.objects.create_user(phone_number='+989123456783', username='user2', email='user2@example.com', password='password')
         self.category = Category.objects.create(name='Test Category')
         self.product = Product.objects.create(
-            name='Test Product', price=10, stock=5, category=self.category, user=self.user1,
+            name='Test Product', category=self.category, user=self.user1,
             weight=1, length=1, width=1, height=1
+        )
+        self.variant = ProductVariant.objects.create(
+            product=self.product, price=10, stock=5
         )
         self.list_url = reverse('api-v1:product-list')
         self.detail_url = reverse('api-v1:product-detail', kwargs={'slug': self.product.slug})
@@ -110,11 +113,14 @@ class ReviewViewSetTest(APITestCase):
         self.user2 = User.objects.create_user(phone_number='+989123456785', username='user2', email='user2@example.com', password='password')
         self.category = Category.objects.create(name='Test Category')
         self.product = Product.objects.create(
-            name='Test Product', price=10, stock=5, category=self.category, user=self.user1,
+            name='Test Product', category=self.category, user=self.user1,
             weight=1, length=1, width=1, height=1
         )
+        self.variant = ProductVariant.objects.create(
+            product=self.product, price=10, stock=5
+        )
         self.order = Order.objects.create(user=self.user1)
-        OrderItem.objects.create(order=self.order, product=self.product, quantity=1)
+        OrderItem.objects.create(order=self.order, variant=self.variant, quantity=1, price=self.variant.price)
         self.review = Review.objects.create(product=self.product, user=self.user1, rating=5, comment='Great!')
         self.list_url = reverse('api-v1:product-reviews-list', kwargs={'product_slug': self.product.slug})
         self.detail_url = reverse('api-v1:product-reviews-detail', kwargs={'product_slug': self.product.slug, 'pk': self.review.pk})
