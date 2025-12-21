@@ -3,8 +3,40 @@ from django.db.models import Q
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import Category, Product, Review
+from .models import Category, Product, Review, OptionType, OptionValue, ProductVariant
 from .recommender import Recommender
+
+
+class OptionValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OptionValue
+        fields = ['id', 'value']
+
+
+class OptionTypeSerializer(serializers.ModelSerializer):
+    values = OptionValueSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = OptionType
+        fields = ['id', 'name', 'values']
+
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    options = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'variant_id',
+            'sku',
+            'price',
+            'stock',
+            'image',
+            'options',
+        ]
+
+    def get_options(self, obj):
+        return {vov.option_value.option_type.name: vov.option_value.value for vov in obj.variant_options.all()}
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -107,6 +139,9 @@ class ProductSerializer(serializers.ModelSerializer):
         #     instance.tags.clear()
         return super().update(instance, validated_data)
 
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    options = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = [
@@ -114,8 +149,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "description",
-            "price",
-            "stock",
             "thumbnail",
             "detail_url",
             "category",
@@ -126,7 +159,19 @@ class ProductSerializer(serializers.ModelSerializer):
             "length",
             "width",
             "height",
+            "variants",
+            "options",
         ]
+
+    def get_options(self, obj):
+        options = {}
+        for variant in obj.variants.all():
+            for option in variant.variant_options.all():
+                option_type = option.option_value.option_type
+                if option_type.name not in options:
+                    options[option_type.name] = set()
+                options[option_type.name].add(option.option_value.value)
+        return [{ "name": key, "values": list(value) } for key, value in options.items()]
 
 
 class ReviewSerializer(serializers.ModelSerializer):

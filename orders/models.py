@@ -7,7 +7,7 @@ from django_prometheus.models import ExportModelOperationsMixin
 from simple_history.models import HistoricalRecords
 
 from coupons.models import Coupon
-from shop.models import Product
+from shop.models import ProductVariant
 from account.models import Address
 from django.core.exceptions import ValidationError
 
@@ -160,7 +160,7 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, related_name='order_items', on_delete=models.CASCADE)
+    variant = models.ForeignKey(ProductVariant, related_name='order_items', on_delete=models.CASCADE)
     product_name = models.CharField(max_length=255)
     product_sku = models.CharField(max_length=100, blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -171,7 +171,7 @@ class OrderItem(models.Model):
         verbose_name_plural = "Order Items"
         indexes = [
             models.Index(fields=['order']),
-            models.Index(fields=['product']),
+            models.Index(fields=['variant']),
         ]
         ordering = ["order"]
 
@@ -179,4 +179,4 @@ class OrderItem(models.Model):
         return self.price * self.quantity
 
     def __str__(self):
-        return f"Order Item: {self.product.name} (Order ID: {self.order.order_id})"
+        return f"Order Item: {self.variant.product.name} (Order ID: {self.order.order_id})"

@@ -74,22 +74,10 @@ class SoftDeleteQuerySet(models.QuerySet):
 
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
-        return SoftDeleteQuerySet(self.model, self.using).filter(
-            deleted_at__isnull=True
-        )
+        return super().get_queryset().filter(deleted_at__isnull=True)
 
     def all_with_deleted(self):
-        return SoftDeleteQuerySet(self.model, self.using)
-
-
-class InStockManager(SoftDeleteManager):
-    """
-    A custom manager that returns only products that are in stock (stock > 0)
-    and not soft-deleted.
-    """
-
-    def get_queryset(self):
-        return super().get_queryset().filter(stock__gt=0)
+        return super().get_queryset()
 
 
 validate_image = FileValidator(
@@ -109,23 +97,7 @@ class Product(SluggedModel):
         editable=False,
         help_text="The unique identifier for the product.",
     )
-    sku = models.CharField(
-        max_length=100,
-        unique=True,
-        blank=True,
-        null=True,
-        help_text="The stock keeping unit for the product.",
-    )
     description = models.TextField(help_text="A detailed description of the product.")
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0.0)],
-        help_text="The price of the product.",
-    )
-    stock = models.IntegerField(
-        validators=[MinValueValidator(0)], help_text="The number of items in stock."
-    )
     created = models.DateTimeField(
         auto_now_add=True, help_text="The date and time when the product was created."
     )
@@ -157,11 +129,10 @@ class Product(SluggedModel):
         on_delete=models.CASCADE,
         help_text="The user who created the product.",
     )
-    objects = SoftDeleteManager()  # The default manager.
+    objects = SoftDeleteManager.from_queryset(SoftDeleteQuerySet)()  # The default manager.
     all_objects = (
         models.Manager()
     )  # The manager for all objects, including deleted ones.
-    in_stock = InStockManager()  # The custom 'in_stock' manager.
     tags = TaggableManager(through=CustomTaggedItem, help_text="Tags for the product.")
     weight = models.DecimalField(
         max_digits=10,
@@ -349,3 +320,39 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.user} for {self.product} - {self.rating} stars"
+
+
+class OptionType(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+class OptionValue(models.Model):
+    option_type = models.ForeignKey(OptionType, related_name='values', on_delete=models.CASCADE)
+    value = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ('option_type', 'value')
+
+    def __str__(self):
+        return self.value
+
+class ProductVariant(models.Model):
+    variant_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(Product, related_name='variants', on_delete=models.CASCADE)
+    sku = models.CharField(max_length=100, unique=True, blank=True, null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)])
+    stock = models.IntegerField(validators=[MinValueValidator(0)])
+    image = models.ImageField(null=True, blank=True, upload_to=product_upload_to_unique, validators=[validate_image])
+    option_values = models.ManyToManyField(OptionValue, through='VariantOptionValue')
+
+    def __str__(self):
+        return f"{self.product.name} - {self.sku}"
+
+class VariantOptionValue(models.Model):
+    variant = models.ForeignKey(ProductVariant, related_name='variant_options', on_delete=models.CASCADE)
+    option_value = models.ForeignKey(OptionValue, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('variant', 'option_value')
