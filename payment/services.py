@@ -8,55 +8,89 @@ from .models import PaymentTransaction
 
 
 def process_payment(request, order_id):
-    order = get_object_or_404(Order, order_id=order_id, user=request.user)
-    if order.payment_status == Order.PaymentStatus.SUCCESS:
-        raise ValueError("This order has already been paid.")
-
-    # Check stock just before payment
-    for item in order.items.all():
-        if item.product.stock < item.quantity:
-            raise ValueError(f"Insufficient stock for product: {item.product.name}")
-
-    # The callback URL is now the verify URL, as Zibal will redirect the user here.
-    callback_url = request.build_absolute_uri(reverse("payment:verify"))
-    gateway = ZibalGateway()
-
     try:
-        # Assuming total_payable is in Toman, converting to Rials for Zibal
-        amount_in_rials = int(order.total_payable * 10)
-        response = gateway.create_payment_request(
-            amount=amount_in_rials,
-            order_id=order.order_id,
-            callback_url=callback_url
-        )
+        with transaction.atomic():
+            # Lock the order to prevent race conditions during payment processing.
+            order = Order.objects.select_for_update().get(order_id=order_id, user=request.user)
 
-        order.payment_gateway = 'zibal'
-        order.payment_track_id = response.get('trackId')
-        order.save()
+            if order.payment_status == Order.PaymentStatus.SUCCESS:
+                raise ValueError("This order has already been paid.")
 
-        PaymentTransaction.objects.create(
-            order=order,
-            track_id=order.payment_track_id,
-            event_type=PaymentTransaction.EventType.INITIATE,
-            status=PaymentTransaction.Status.PROCESSED,
-            amount=amount_in_rials,
-            result_code=str(response.get('result')),
-            message="Payment request created successfully.",
-            raw_payload={"order_id": str(order.order_id)},
-            gateway_response=response,
-        )
-        payment_url = f"https://gateway.zibal.ir/start/{response.get('trackId')}"
-        return payment_url
-    except ZibalGatewayError as e:
-        PaymentTransaction.objects.create(
-            order=order,
-            track_id=order.payment_track_id or "",
-            event_type=PaymentTransaction.EventType.INITIATE,
-            status=PaymentTransaction.Status.FAILED,
-            amount=int(order.total_payable * 10),
-            message=f"Failed to create payment request: {e}",
-        )
-        raise ValueError(f"Failed to create payment request: {e}")
+            # Atomically update item prices and check stock before any calculations.
+            # Lock the related products to prevent overselling race conditions.
+            for item in order.items.select_related('product').select_for_update(of=('self', 'product')):
+                if item.product.stock < item.quantity:
+                    raise ValueError(f"Insufficient stock for product: {item.product.name}")
+                # Snapshot the current price, in case it has changed since the order was created.
+                if item.price != item.product.price:
+                    item.price = item.product.price
+                    item.save(update_fields=['price'])
+
+            # Re-validate coupon with the most up-to-date prices.
+            if order.coupon:
+                if not order.coupon.is_valid():
+                    raise ValueError(f"The coupon '{order.coupon.code}' is no longer valid.")
+
+                if order.coupon.usage_count >= order.coupon.max_usage:
+                    raise ValueError(f"The coupon '{order.coupon.code}' has reached its usage limit.")
+
+                subtotal = order.get_total_cost_before_discount()
+                if subtotal < order.coupon.min_purchase_amount:
+                    raise ValueError(
+                        f"Order subtotal does not meet the minimum purchase amount of "
+                        f"{order.coupon.min_purchase_amount} for coupon '{order.coupon.code}'."
+                    )
+
+            # Recalculate all order totals based on the latest data.
+            order.calculate_total_payable()
+            order.save()
+
+            # The callback URL is now the verify URL, as Zibal will redirect the user here.
+            callback_url = request.build_absolute_uri(reverse("payment:verify"))
+            gateway = ZibalGateway()
+
+            # Assuming total_payable is in Toman, converting to Rials for Zibal
+            amount_in_rials = int(order.total_payable * 100)
+            response = gateway.create_payment_request(
+                amount=amount_in_rials,
+                order_id=str(order.order_id),
+                callback_url=callback_url
+            )
+
+            order.payment_gateway = 'zibal'
+            order.payment_track_id = response.get('trackId')
+            order.save(update_fields=['payment_gateway', 'payment_track_id', 'updated'])
+
+            PaymentTransaction.objects.create(
+                order=order,
+                track_id=order.payment_track_id,
+                event_type=PaymentTransaction.EventType.INITIATE,
+                status=PaymentTransaction.Status.PROCESSED,
+                amount=amount_in_rials,
+                result_code=str(response.get('result')),
+                message="Payment request created successfully.",
+                raw_payload={"order_id": str(order.order_id)},
+                gateway_response=response,
+            )
+            payment_url = f"https://gateway.zibal.ir/start/{response.get('trackId')}"
+            return payment_url
+
+    except Order.DoesNotExist:
+        raise ValueError("Order not found or you do not have permission to access it.")
+    except (ZibalGatewayError, ValueError) as e:
+        # Try to log the failure, but don't fail if the order can't be found.
+        order = Order.objects.filter(order_id=order_id, user=request.user).first()
+        if order:
+            PaymentTransaction.objects.create(
+                order=order,
+                track_id=order.payment_track_id or "",
+                event_type=PaymentTransaction.EventType.INITIATE,
+                status=PaymentTransaction.Status.FAILED,
+                amount=int(order.total_payable * 100) if order.total_payable else 0,
+                message=f"Failed to create payment request: {e}",
+            )
+        # Re-raise the original exception to be handled by the view.
+        raise e
 
 
 def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
@@ -100,7 +134,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
             if result in [100, 201]:
                 # Integrity Check: Verify amount and orderId match the gateway's response.
                 amount_from_gateway = response.get('amount')
-                expected_amount = int(order.total_payable * 10)  # Assuming Toman to Rials conversion
+                expected_amount = int(order.total_payable * 100)  # Assuming Toman to Rials conversion
 
                 if amount_from_gateway != expected_amount:
                     order.payment_status = Order.PaymentStatus.FAILED
