@@ -44,6 +44,13 @@ class PaymentTransaction(models.Model):
             models.Index(fields=["event_type", "status"]),
             models.Index(fields=["order", "created_at"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["track_id", "event_type", "status"],
+                condition=models.Q(status="processed", event_type="verify"),
+                name="unique_successful_verification",
+            )
+        ]
 
     def __str__(self):
         return f"PaymentTransaction({self.track_id}, {self.event_type}, {self.status})"

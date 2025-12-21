@@ -60,6 +60,14 @@ def process_payment(request, order_id):
 
 
 def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
+    # Idempotency Check: Prevent re-processing successful verifications.
+    if PaymentTransaction.objects.filter(
+        track_id=track_id,
+        event_type=PaymentTransaction.EventType.VERIFY,
+        status=PaymentTransaction.Status.PROCESSED
+    ).exists():
+        return "This payment has already been successfully verified."
+
     try:
         with transaction.atomic():
             order = Order.objects.select_for_update().get(payment_track_id=track_id)
