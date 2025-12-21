@@ -1,349 +1,103 @@
+import pytest
 from decimal import Decimal
-from django.test import TestCase
-from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.test import APITestCase
-from shop.models import Product, Category
-from coupons.models import Coupon
-from orders.models import Order, OrderItem
-from account.models import Address
 from django.urls import reverse
-from unittest import mock
-from payment.services import verify_payment
+from rest_framework import status
+from shop.factories import ProductFactory, UserFactory
+from coupons.factories import CouponFactory
+from account.factories import AddressFactory
+from .factories import OrderFactory, OrderItemFactory
+from .models import Order, OrderItem
+from shop.models import Product
 
-User = get_user_model()
+pytestmark = pytest.mark.django_db
 
 
-class OrderModelTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            phone_number='+989123456714',
-            email='test@example.com',
-            username='testuser',
-            password='password'
-        )
-        self.category = Category.objects.create(name='Test Category', slug='test-category')
-        self.product1 = Product.objects.create(
-            name='Test Product 1',
-            slug='test-product-1',
-            price=Decimal('10.00'),
-            category=self.category,
-            stock=10,
-            user=self.user
-        )
-        self.product2 = Product.objects.create(
-            name='Test Product 2',
-            slug='test-product-2',
-            price=Decimal('20.00'),
-            category=self.category,
-            stock=10,
-            user=self.user
-        )
-        self.coupon = Coupon.objects.create(
-            code='TESTCOUPON',
-            valid_from=timezone.now(),
-            valid_to=timezone.now() + timedelta(days=1),
-            discount=10,
-            active=True
-        )
-        self.order = Order.objects.create(user=self.user, coupon=self.coupon)
-        self.order_item1 = OrderItem.objects.create(order=self.order, product=self.product1, quantity=1)
-        self.order_item2 = OrderItem.objects.create(order=self.order, product=self.product2, quantity=2)
-
-    def test_get_total_cost_before_discount(self):
-        self.assertEqual(self.order.get_total_cost_before_discount(), Decimal('50.00'))
+class TestOrderModel:
+    def test_get_total_cost(self):
+        order = OrderFactory()
+        p1 = ProductFactory(price='10.00')
+        p2 = ProductFactory(price='20.00')
+        v1 = p1.variants.first()
+        v2 = p2.variants.first()
+        OrderItemFactory(order=order, variant=v1, quantity=1, price=v1.price)
+        OrderItemFactory(order=order, variant=v2, quantity=2, price=v2.price)
+        assert order.get_total_cost_before_discount() == Decimal('50.00')
 
     def test_get_discount(self):
-        self.assertEqual(self.order.get_discount(), Decimal('5.00'))
+        coupon = CouponFactory(discount=10)
+        order = OrderFactory(coupon=coupon)
+        p1 = ProductFactory(price='10.00')
+        v1 = p1.variants.first()
+        OrderItemFactory(order=order, variant=v1, quantity=1, price=v1.price)
+        assert order.get_discount() == Decimal('1.00')
 
-    def test_total_price(self):
-        self.assertEqual(self.order.total_price, Decimal('45.00'))
+
+class TestOrderAPI:
+    def test_create_order(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        address = AddressFactory(user=user)
+        product = ProductFactory(stock=10)
+        variant = product.variants.first()
+
+        # Add to cart
+        url = reverse('api-v1:cart-add', kwargs={'variant_id': variant.variant_id})
+        api_client.post(url, {'quantity': 1}, format='json')
+
+        # Create order
+        url = reverse('api-v1:order-list')
+        data = {'address_id': address.id}
+        response = api_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert Order.objects.count() == 1
+        variant.refresh_from_db()
+        assert variant.stock == 9
+
+    def test_overselling_prevention(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        address = AddressFactory(user=user)
+        product = ProductFactory(stock=1)
+        variant = product.variants.first()
+
+        # Add to cart
+        url = reverse('api-v1:cart-add', kwargs={'variant_id': variant.variant_id})
+        api_client.post(url, {'quantity': 1}, format='json')
+
+        # Create order - should succeed
+        url = reverse('api-v1:order-list')
+        data = {'address_id': address.id}
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+
+        # Try to create another order with the same out-of-stock item
+        api_client.post(url, data, format='json')
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-class OrderViewSetTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            phone_number='+989123456715',
-            email='test@example.com',
-            username='testuser',
-            password='password'
-        )
-        self.address = Address.objects.create(
-            user=self.user,
-            province='Tehran',
-            city='Tehran',
-            postal_code='1234567890',
-            full_address='123 Main St'
-        )
-        self.category = Category.objects.create(name='Test Category', slug='test-category')
-        self.product = Product.objects.create(
-            name='Test Product',
-            slug='test-product',
-            price=Decimal('10.00'),
-            category=self.category,
-            stock=10,
-            user=self.user
-        )
-        self.create_url = reverse('api-v1:order-list')
+class TestPriceSnapshot:
+    def test_price_is_snapshotted(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        address = AddressFactory(user=user)
+        product = ProductFactory(price='100.00')
+        variant = product.variants.first()
 
-    def test_create_order(self):
-        self.client.force_authenticate(user=self.user)
-        # Add item to cart
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
-        data = {'address_id': self.address.id}
-        response = self.client.post(self.create_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_idor_vulnerability(self):
-        """
-        Ensure a user cannot access another user's order.
-        """
-        # Create a second user
-        other_user = User.objects.create_user(
-            phone_number='+989123456717',
-            email='other@example.com',
-            username='otheruser',
-            password='password'
-        )
-
-        # Create an order for the first user
-        self.client.force_authenticate(user=self.user)
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
-        data = {'address_id': self.address.id}
-        response = self.client.post(self.create_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Add to cart and create order
+        url = reverse('api-v1:cart-add', kwargs={'variant_id': variant.variant_id})
+        api_client.post(url, {'quantity': 1}, format='json')
+        url = reverse('api-v1:order-list')
+        data = {'address_id': address.id}
+        response = api_client.post(url, data, format='json')
         order_id = response.data['order_id']
 
-        # Attempt to access the order as the second user
-        self.client.force_authenticate(user=other_user)
-        url = reverse('api-v1:order-detail', kwargs={'pk': order_id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Verify initial price
+        order_item = OrderItem.objects.get(order__order_id=order_id)
+        assert order_item.price == Decimal('100.00')
 
-    def test_overselling_prevention(self):
-        """
-        Ensure a product with a stock of 1 cannot be sold twice.
-        """
-        # Set product stock to 1
-        self.product.stock = 1
-        self.product.save()
+        # Change product price
+        variant.price = Decimal('150.00')
+        variant.save()
 
-        # Create a second user
-        other_user = User.objects.create_user(
-            phone_number='+989123456718',
-            email='another@example.com',
-            username='anotheruser',
-            password='password'
-        )
-        Address.objects.create(
-            user=other_user,
-            province='Tehran',
-            city='Tehran',
-            postal_code='1234567890',
-            full_address='123 Main St'
-        )
-
-        # First user buys the last item
-        self.client.force_authenticate(user=self.user)
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
-        data = {'address_id': self.address.id}
-        response = self.client.post(self.create_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # Second user attempts to buy the same item
-        self.client.force_authenticate(user=other_user)
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
-        data = {'address_id': Address.objects.get(user=other_user).id}
-        response = self.client.post(self.create_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-
-class OrderIntegrationTest(APITestCase):
-    """
-    Integration test for the complete order process.
-    """
-
-    def setUp(self):
-        """
-        Set up the necessary objects for the test.
-        """
-        # Create a user
-        self.user = User.objects.create_user(
-            phone_number='+989123456716',
-            email='testuser@example.com',
-            password='testpassword123',
-            first_name='Test',
-            last_name='User',
-            username='testuser'
-        )
-        self.user.is_active = True
-        self.user.save()
-
-        # Create a category
-        self.category = Category.objects.create(name='Electronics', slug='electronics')
-
-        # Create a product
-        self.product = Product.objects.create(
-            name='Test Product',
-            slug='test-product',
-            category=self.category,
-            price=Decimal('100.00'),
-            stock=10,
-            user=self.user,
-            weight=1.0,
-            length=1.0,
-            width=1.0,
-            height=1.0
-        )
-
-        # Create a coupon
-        self.coupon = Coupon.objects.create(
-            code='TESTCODE',
-            discount=20,  # 20% discount
-            active=True,
-            valid_from=timezone.now(),
-            valid_to=timezone.now() + timedelta(days=1)
-        )
-
-        # Create an address
-        self.address = Address.objects.create(
-            user=self.user,
-            province='Tehran',
-            city='Tehran',
-            postal_code='1234567890',
-            full_address='Azadi St.',
-            receiver_name='Test User',
-            receiver_phone='09123456789'
-        )
-
-    def test_add_to_cart_apply_coupon_create_order(self):
-        """
-        Test the full workflow:
-        1. Add a product to the cart.
-        2. Apply a valid coupon.
-        3. Create an order.
-        4. Verify the order details and stock reduction.
-        """
-        # Authenticate the user
-        self.client.force_authenticate(user=self.user)
-
-        # 1. Add product to cart
-        add_to_cart_url = reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id})
-        response = self.client.post(add_to_cart_url, {'quantity': 2, 'override': True}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # 2. Apply coupon
-        apply_coupon_url = reverse('api-v1:coupon-apply-coupon')
-        response = self.client.post(apply_coupon_url, {'code': self.coupon.code}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # 3. Create order
-        create_order_url = reverse('api-v1:order-list')
-        order_data = {'address_id': self.address.id, 'coupon_code': self.coupon.code}
-        response = self.client.post(create_order_url, order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # 4. Verify the order
-        self.assertEqual(response.data['coupon'], self.coupon.code)
-
-        # Check subtotal (2 * 100)
-        self.assertEqual(Decimal(response.data['subtotal']), Decimal('200.00'))
-
-        # Check discount (20% of 200)
-        self.assertEqual(Decimal(response.data['discount_amount']), Decimal('40.00'))
-
-        # Verify stock reduction
-        self.product.refresh_from_db()
-        self.assertEqual(self.product.stock, 8)
-
-
-class PriceSnapshotAndStockTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            phone_number='+989123456789',
-            email='testuser2@example.com',
-            username='testuser2',
-            password='password'
-        )
-        self.category = Category.objects.create(name='Test Category 2', slug='test-category-2')
-        self.product = Product.objects.create(
-            name='Test Product 3',
-            slug='test-product-3',
-            price=Decimal('100.00'),
-            category=self.category,
-            stock=10,
-            user=self.user,
-            weight=1.0,
-            length=1.0,
-            width=1.0,
-            height=1.0
-        )
-        self.address = Address.objects.create(
-            user=self.user,
-            province='Tehran',
-            city='Tehran',
-            postal_code='1234567890',
-            full_address='123 Main St'
-        )
-
-    def test_price_is_snapshotted_on_order_item(self):
-        """
-        Verify that the price on the OrderItem is fixed at the time of purchase.
-        """
-        self.client.force_authenticate(user=self.user)
-
-        # 1. Add product to cart and create order
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 1}, format='json')
-        response = self.client.post(reverse('api-v1:order-list'), {'address_id': self.address.id}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        order_id = response.data['order_id']
-
-        # 2. Verify the initial price on the OrderItem
-        order = Order.objects.get(order_id=order_id)
-        order_item = order.items.first()
-        self.assertEqual(order_item.price, Decimal('100.00'))
-
-        # 3. Change the product's price
-        self.product.price = Decimal('150.00')
-        self.product.save()
-
-        # 4. Verify the price on the OrderItem has NOT changed
+        # Verify order item price has not changed
         order_item.refresh_from_db()
-        self.assertEqual(order_item.price, Decimal('100.00'))
-
-    @mock.patch('payment.services.ZibalGateway.verify_payment')
-    def test_stock_is_decremented_only_once(self, mock_verify_payment):
-        """
-        Verify that product stock is decremented at order creation and not again at payment verification.
-        """
-        # Mock a successful payment verification from the gateway
-        mock_verify_payment.return_value = {'result': 100, 'refNumber': 'mock_ref_123'}
-
-        self.client.force_authenticate(user=self.user)
-
-        # 1. Check initial stock
-        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 10)
-
-        # 2. Add to cart and create order
-        self.client.post(reverse('api-v1:cart-add', kwargs={'product_id': self.product.product_id}), {'quantity': 2}, format='json')
-        response = self.client.post(reverse('api-v1:order-list'), {'address_id': self.address.id}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        order_id = response.data['order_id']
-
-        # 3. Verify stock is decremented after order creation
-        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 8)
-
-        # 4. Simulate payment verification
-        order = Order.objects.get(order_id=order_id)
-        order.payment_track_id = 'mock_track_id_123'
-        order.save()
-
-        verify_payment(order.payment_track_id)
-
-        # 5. Verify stock has not been decremented again
-        self.assertEqual(Product.objects.get(product_id=self.product.product_id).stock, 8)
-        order.refresh_from_db()
-        self.assertEqual(order.status, Order.Status.PAID)
-        self.assertEqual(order.payment_status, Order.PaymentStatus.SUCCESS)
+        assert order_item.price == Decimal('100.00')

@@ -67,7 +67,7 @@ urlpatterns = [
         path('', include('coupons.urls')),
         path('chat/', include('chat.urls')),
     ], 'api-v1'))),
-    path('payment/', include('payment.urls', namespace='payment')),
+    path('payment/', include('payment.urls')),
     path('admin/', admin.site.urls),
     path(
         'sitemap.xml',

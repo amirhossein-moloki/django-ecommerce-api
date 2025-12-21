@@ -1,45 +1,54 @@
-import itertools
+import factory
 from decimal import Decimal
-
 from account.factories import UserFactory
-from .models import Category, Product, Review
-
-_category_counter = itertools.count()
-_product_counter = itertools.count()
+from .models import Category, Product, Review, ProductVariant, OptionValue
 
 
-def CategoryFactory(**kwargs):
-    idx = next(_category_counter)
-    defaults = {"name": f"Category {idx}", "slug": f"category-{idx}"}
-    defaults.update(kwargs)
-    return Category.objects.create(**defaults)
+class CategoryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Category
+
+    name = factory.Sequence(lambda n: f'Category {n}')
+    slug = factory.LazyAttribute(lambda o: f'category-{o.name.lower().replace(" ", "-")}')
 
 
-def ProductFactory(**kwargs):
-    idx = next(_product_counter)
-    defaults = {
-        "user": kwargs.get("user") or UserFactory(),
-        "category": kwargs.get("category") or CategoryFactory(),
-        "name": kwargs.get("name") or f"Product {idx}",
-        "slug": kwargs.get("slug") or f"product-{idx}",
-        "description": kwargs.get("description") or "Sample product description",
-        "price": kwargs.get("price") or Decimal("100.00"),
-        "stock": kwargs.get("stock") or 10,
-        "weight": kwargs.get("weight") or Decimal("1.00"),
-        "length": kwargs.get("length") or Decimal("1.00"),
-        "width": kwargs.get("width") or Decimal("1.00"),
-        "height": kwargs.get("height") or Decimal("1.00"),
-    }
-    defaults.update(kwargs)
-    return Product.objects.create(**defaults)
+class ProductFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Product
+
+    name = factory.Sequence(lambda n: f'Product {n}')
+    description = 'Sample product description'
+    category = factory.SubFactory(CategoryFactory)
+    user = factory.SubFactory(UserFactory)
+    weight = Decimal('1.00')
+
+    @factory.post_generation
+    def variants(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for variant_data in extracted:
+                ProductVariantFactory(product=self, **variant_data)
+        else:
+            # Default variant
+            ProductVariantFactory(product=self, **kwargs)
 
 
-def ReviewFactory(**kwargs):
-    defaults = {
-        "product": kwargs.get("product") or ProductFactory(),
-        "user": kwargs.get("user") or UserFactory(),
-        "rating": kwargs.get("rating") or 3,
-        "comment": kwargs.get("comment") or "Test review comment",
-    }
-    defaults.update(kwargs)
-    return Review.objects.create(**defaults)
+class ProductVariantFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ProductVariant
+
+    product = factory.SubFactory(ProductFactory)
+    price = Decimal('100.00')
+    stock = 10
+    sku = factory.Sequence(lambda n: f'SKU-{n}')
+
+
+class ReviewFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Review
+
+    product = factory.SubFactory(ProductFactory)
+    user = factory.SubFactory(UserFactory)
+    rating = 3
+    comment = 'Test review comment'

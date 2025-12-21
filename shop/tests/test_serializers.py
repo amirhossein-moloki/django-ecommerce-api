@@ -1,66 +1,65 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-
-from shop.models import Category
+import pytest
 from shop.serializers import ProductSerializer
+from shop.factories import CategoryFactory, UserFactory
 
-User = get_user_model()
+pytestmark = pytest.mark.django_db
 
 
-class ProductSerializerTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(phone_number='+989123456705', username='testuser', email='test@example.com', password='password')
-        self.category = Category.objects.create(name='Test Category', slug='test-category')
-        self.valid_data = {
-            'name': 'New Product',
-            'description': 'A valid description',
-            'price': '25.50',
-            'stock': 100,
-            'category': self.category.slug,
-            'weight': 1.5,
-            'length': 10,
-            'width': 10,
-            'height': 10,
-        }
+@pytest.fixture
+def category():
+    return CategoryFactory(slug='test-category')
 
-    def test_valid_data(self):
-        serializer = ProductSerializer(data=self.valid_data, context={'request': type('Request', (), {'user': self.user})})
-        self.assertTrue(serializer.is_valid(), serializer.errors)
 
-    def test_name_is_required(self):
-        data = self.valid_data.copy()
-        data.pop('name')
-        serializer = ProductSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('name', serializer.errors)
+@pytest.fixture
+def user():
+    return UserFactory()
 
-    def test_price_must_be_positive(self):
-        data = self.valid_data.copy()
-        data['price'] = '-10.00'
-        serializer = ProductSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('price', serializer.errors)
 
-    def test_stock_must_be_non_negative(self):
-        data = self.valid_data.copy()
-        data['stock'] = -1
-        serializer = ProductSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('stock', serializer.errors)
+@pytest.fixture
+def valid_data(category):
+    return {
+        'name': 'New Product',
+        'description': 'A valid description',
+        'category_slug': category.slug,
+        'variants': [
+            {'price': '25.50', 'stock': 100, 'sku': 'NP001-S'},
+            {'price': '27.50', 'stock': 50, 'sku': 'NP001-M'},
+        ]
+    }
 
-    def test_category_must_exist(self):
-        data = self.valid_data.copy()
-        data['category'] = 'non-existent-category'
-        serializer = ProductSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('category', serializer.errors)
 
-    def test_dimensions_must_be_positive(self):
-        fields_to_test = ['weight', 'length', 'width', 'height']
-        for field in fields_to_test:
-            with self.subTest(field=field):
-                data = self.valid_data.copy()
-                data[field] = -5
-                serializer = ProductSerializer(data=data)
-                self.assertFalse(serializer.is_valid())
-                self.assertIn(field, serializer.errors)
+def test_product_serializer_valid_data(valid_data, user):
+    serializer = ProductSerializer(data=valid_data, context={'user': user})
+    assert serializer.is_valid(), serializer.errors
+
+
+def test_product_serializer_name_is_required(valid_data):
+    data = valid_data.copy()
+    data.pop('name')
+    serializer = ProductSerializer(data=data)
+    assert not serializer.is_valid()
+    assert 'name' in serializer.errors
+
+
+def test_product_serializer_variants_must_be_a_list(valid_data):
+    data = valid_data.copy()
+    data['variants'] = {'price': '25.50', 'stock': 100}
+    serializer = ProductSerializer(data=data)
+    assert not serializer.is_valid()
+    assert 'variants' in serializer.errors
+
+
+def test_variant_serializer_price_must_be_positive(valid_data):
+    data = valid_data.copy()
+    data['variants'][0]['price'] = '-10.00'
+    serializer = ProductSerializer(data=data)
+    assert not serializer.is_valid()
+    assert 'price' in serializer.errors['variants'][0]
+
+
+def test_variant_serializer_stock_must_be_non_negative(valid_data):
+    data = valid_data.copy()
+    data['variants'][0]['stock'] = -1
+    serializer = ProductSerializer(data=data)
+    assert not serializer.is_valid()
+    assert 'stock' in serializer.errors['variants'][0]

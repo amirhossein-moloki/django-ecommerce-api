@@ -1,10 +1,6 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
+from .views import CouponViewSet
 
-from coupons import views
-
-router = DefaultRouter()
-router.register('coupon', views.CouponViewSet, basename='coupon')
-
-urlpatterns = []
-
-urlpatterns += router.urls
+urlpatterns = [
+    path('coupons/apply/', CouponViewSet.as_view({'post': 'apply_coupon'}), name='coupon-apply'),
+]
