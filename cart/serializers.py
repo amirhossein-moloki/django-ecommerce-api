@@ -1,6 +1,9 @@
 import decimal
 
 from drf_spectacular.utils import extend_schema_field
+from decimal import Decimal
+from django.core.validators import MaxValueValidator
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from shop.serializers import ProductSerializer
@@ -50,5 +53,9 @@ class CartSerializer(serializers.Serializer):
 
 
 class AddToCartSerializer(serializers.Serializer):
-    quantity = serializers.IntegerField(min_value=1, default=1)
+    quantity = serializers.IntegerField(
+        min_value=1,
+        default=1,
+        validators=[MaxValueValidator(50, message="Cannot add more than 50 items.")]
+    )
     override = serializers.BooleanField(default=False)

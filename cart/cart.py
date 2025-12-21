@@ -70,11 +70,11 @@ class Cart:
                 cart_item.quantity += quantity
             cart_item.save()
 
-    def remove(self, product):
+    def remove(self, product_id):
         """
         Removes a product from the cart.
         """
-        CartItem.objects.filter(cart=self.cart, product=product).delete()
+        CartItem.objects.filter(cart=self.cart, product_id=product_id).delete()
 
     def __iter__(self):
         """
