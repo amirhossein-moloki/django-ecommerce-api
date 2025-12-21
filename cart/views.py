@@ -7,10 +7,13 @@ from drf_spectacular.utils import (
 )
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from .serializers import CartSerializer, AddToCartSerializer
 from . import services
+from shop.models import Product
 
 logger = getLogger(__name__)
 
@@ -52,6 +55,8 @@ class CartViewSet(viewsets.ViewSet):
     """
     A viewset for viewing and editing cart items.
     """
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
     queryset = None
     lookup_field = 'product_id'
     lookup_url_kwarg = 'product_id'
@@ -98,32 +103,32 @@ class CartViewSet(viewsets.ViewSet):
         },
     )
     def add_to_cart(self, request, product_id=None):
-        """
-        Add a product to the cart or update its quantity.
-
-        Args:
-            request: The HTTP request object containing the product data.
-            product_id: The ID of the product to add or update.
-
-        Returns:
-            Response: A JSON response indicating success or failure.
-        """
         serializer = AddToCartSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
             services.add_to_cart(
                 request,
                 product_id,
                 data.get('quantity', 1),
-                data.get('override', False)
+                data.get('override', False),
             )
             return Response(
                 {'message': 'Product added/updated in cart'},
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
-        else:
-            logger.error(f"Invalid data provided in cart post: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            logger.warning(f"Add to cart validation error: {e.detail}")
+            return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(
+                f"Unexpected error adding product to cart: {e}", exc_info=True
+            )
+            return Response(
+                {'error': 'An unexpected error occurred.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=True, methods=['delete'], url_path='remove')
     @extend_schema(
@@ -147,14 +152,26 @@ class CartViewSet(viewsets.ViewSet):
             Response: A JSON response indicating success or failure.
         """
         try:
-            services.remove_from_cart(request, product_id)
+            product = Product.objects.get(product_id=product_id)
+            services.remove_from_cart(request, product.product_id)
             return Response(
                 {'message': 'Product removed from cart'},
                 status=status.HTTP_200_OK
             )
+        except Product.DoesNotExist:
+            logger.warning(f"Product with id {product_id} not found for removal.")
+            return Response(
+                {'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
-            logger.error(f"Error removing product from cart: {e}", exc_info=True)
-            raise
+            logger.error(
+                f"Unexpected error removing product {product_id} from cart: {e}",
+                exc_info=True,
+            )
+            return Response(
+                {'error': 'An unexpected error occurred.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=False, methods=['delete'], url_path='clear')
     @extend_schema(
