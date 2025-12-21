@@ -102,13 +102,14 @@ class CouponViewSet(viewsets.ModelViewSet):
             logger.error(f"Error deactivating coupon: {e}", exc_info=True)
             raise
 
+    @method_decorator(ratelimit(key='user', rate='5/m', method='POST', block=True))
     @method_decorator(ratelimit(key='ip', rate='10/m', method='POST', block=True))
     @action(
         detail=False,
         methods=['post'],
         url_path='apply-coupon',
         url_name='apply-coupon',
-        permission_classes=[permissions.AllowAny]
+        permission_classes=[permissions.IsAuthenticated]
     )
     def apply(self, request):
         """
