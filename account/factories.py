@@ -35,6 +35,6 @@ class AddressFactory(factory.django.DjangoModelFactory):
     province = 'Test Province'
     city = 'Test City'
     postal_code = factory.Faker('zipcode')
-    address_detail = '123 Test Street'
+    full_address = '123 Test Street'
     receiver_name = 'Test Receiver'
-    receiver_phone_number = factory.Sequence(lambda n: f'+1999999{n:05d}')
+    receiver_phone = factory.Sequence(lambda n: f'+1999999{n:05d}')
