@@ -13,6 +13,8 @@ class OrderFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     address = factory.SubFactory(AddressFactory)
     status = Order.Status.PENDING
+    shipping_cost = Decimal('0.00')
+    tax_amount = Decimal('0.00')
 
 
 class OrderItemFactory(factory.django.DjangoModelFactory):
