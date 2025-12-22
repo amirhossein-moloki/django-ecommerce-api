@@ -12,5 +12,5 @@ class CouponFactory(factory.django.DjangoModelFactory):
     valid_from = factory.LazyFunction(timezone.now)
     valid_to = factory.LazyFunction(lambda: timezone.now() + timedelta(days=7))
     discount = 10
-    max_usage_count = 100
-    is_active = True
+    max_usage = 100
+    active = True

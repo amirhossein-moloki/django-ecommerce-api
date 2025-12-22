@@ -18,12 +18,12 @@ def process_payment(request, order_id):
 
             # Atomically update item prices and check stock before any calculations.
             # Lock the related products to prevent overselling race conditions.
-            for item in order.items.select_related('product').select_for_update(of=('self', 'product')):
-                if item.product.stock < item.quantity:
-                    raise ValueError(f"Insufficient stock for product: {item.product.name}")
+            for item in order.items.select_related('variant__product').select_for_update(of=('self', 'variant')):
+                if item.variant.stock < item.quantity:
+                    raise ValueError(f"Insufficient stock for product: {item.variant.product.name}")
                 # Snapshot the current price, in case it has changed since the order was created.
-                if item.price != item.product.price:
-                    item.price = item.product.price
+                if item.price != item.variant.price:
+                    item.price = item.variant.price
                     item.save(update_fields=['price'])
 
             # Re-validate coupon with the most up-to-date prices.
