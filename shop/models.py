@@ -175,6 +175,12 @@ class Product(SluggedModel):
     reviews_count = models.IntegerField(
         default=0, help_text="The number of reviews for the product."
     )
+    is_fragile = models.BooleanField(
+        default=False, help_text="Is the product fragile?"
+    )
+    is_liquid = models.BooleanField(
+        default=False, help_text="Does the product contain liquid?"
+    )
 
     class Meta:
         verbose_name = "Product"
