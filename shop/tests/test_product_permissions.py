@@ -25,7 +25,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category)
         api_client.force_authenticate(user=owner)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         data = {'name': 'Updated Name', 'price': 150.00}
         response = api_client.patch(url, data)
 
@@ -39,7 +39,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category, name='Original Name')
         api_client.force_authenticate(user=other_user)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         data = {'name': 'Updated Name'}
         response = api_client.patch(url, data)
 
@@ -53,7 +53,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category)
         api_client.force_authenticate(user=admin)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         data = {'name': 'Admin Updated Name'}
         response = api_client.patch(url, data)
 
@@ -66,7 +66,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category)
         api_client.force_authenticate(user=owner)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -79,7 +79,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category)
         api_client.force_authenticate(user=other_user)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -91,7 +91,7 @@ class TestProductViewSetPermissions:
         product = ProductFactory(user=owner, category=category)
         api_client.force_authenticate(user=admin)
 
-        url = reverse('api-v1:shop:products-detail', kwargs={'slug': product.slug})
+        url = reverse('api-v1:product-detail', kwargs={'slug': product.slug})
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_204_NO_CONTENT

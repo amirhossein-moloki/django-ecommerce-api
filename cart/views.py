@@ -13,7 +13,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from .serializers import CartSerializer, AddToCartSerializer
 from . import services
-from shop.models import Product
+from shop.models import ProductVariant
 
 logger = getLogger(__name__)
 
@@ -31,23 +31,23 @@ logger = getLogger(__name__)
         },
     ),
     add_to_cart=extend_schema(
-        operation_id="cart_add_product",
-        description="Add a product to the cart or update its quantity.",
+        operation_id="cart_add_variant",
+        description="Add a product variant to the cart or update its quantity.",
         tags=["Cart"],
         request=AddToCartSerializer,
         responses={
-            200: OpenApiResponse(description="Product added/updated in cart."),
+            200: OpenApiResponse(description="Product variant added/updated in cart."),
             400: OpenApiResponse(description="Invalid quantity provided."),
-            404: OpenApiResponse(description="Product not found."),
+            404: OpenApiResponse(description="Product variant not found."),
         },
     ),
     remove_from_cart=extend_schema(
-        operation_id="cart_remove_product",
-        description="Remove a product from the cart.",
+        operation_id="cart_remove_variant",
+        description="Remove a product variant from the cart.",
         tags=["Cart"],
         responses={
-            200: OpenApiResponse(description="Product removed from cart."),
-            404: OpenApiResponse(description="Product not found."),
+            200: OpenApiResponse(description="Product variant removed from cart."),
+            404: OpenApiResponse(description="Product variant not found."),
         },
     ),
 )
@@ -58,8 +58,8 @@ class CartViewSet(viewsets.ViewSet):
     throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     queryset = None
-    lookup_field = 'product_id'
-    lookup_url_kwarg = 'product_id'
+    lookup_field = 'variant_id'
+    lookup_url_kwarg = 'variant_id'
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -91,18 +91,7 @@ class CartViewSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='add')
-    @extend_schema(
-        operation_id="cart_add_product",
-        description="Add or update a product in the cart.",
-        tags=["Cart"],
-        request=AddToCartSerializer,
-        responses={
-            200: OpenApiResponse(description="Product added/updated in cart."),
-            400: OpenApiResponse(description="Invalid quantity provided."),
-            404: OpenApiResponse(description="Product not found."),
-        },
-    )
-    def add_to_cart(self, request, product_id=None):
+    def add_to_cart(self, request, variant_id=None):
         serializer = AddToCartSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -110,7 +99,7 @@ class CartViewSet(viewsets.ViewSet):
         try:
             services.add_to_cart(
                 request,
-                product_id,
+                variant_id,
                 data.get('quantity', 1),
                 data.get('override', False),
             )
@@ -121,6 +110,11 @@ class CartViewSet(viewsets.ViewSet):
         except ValidationError as e:
             logger.warning(f"Add to cart validation error: {e.detail}")
             return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except ProductVariant.DoesNotExist:
+            logger.warning(f"ProductVariant with id {variant_id} not found.")
+            return Response(
+                {'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(
                 f"Unexpected error adding product to cart: {e}", exc_info=True
@@ -131,41 +125,31 @@ class CartViewSet(viewsets.ViewSet):
             )
 
     @action(detail=True, methods=['delete'], url_path='remove')
-    @extend_schema(
-        operation_id="cart_remove_product",
-        description="Remove a product from the cart.",
-        tags=["Cart"],
-        responses={
-            200: OpenApiResponse(description="Product removed from cart."),
-            404: OpenApiResponse(description="Product not found."),
-        },
-    )
-    def remove_from_cart(self, request, product_id=None):
+    def remove_from_cart(self, request, variant_id=None):
         """
         Remove a product from the cart.
 
         Args:
             request: The HTTP request object.
-            product_id: The ID of the product to remove.
+            variant_id: The ID of the product variant to remove.
 
         Returns:
             Response: A JSON response indicating success or failure.
         """
         try:
-            product = Product.objects.get(product_id=product_id)
-            services.remove_from_cart(request, product.product_id)
+            services.remove_from_cart(request, variant_id)
             return Response(
                 {'message': 'Product removed from cart'},
                 status=status.HTTP_200_OK
             )
-        except Product.DoesNotExist:
-            logger.warning(f"Product with id {product_id} not found for removal.")
+        except ProductVariant.DoesNotExist:
+            logger.warning(f"ProductVariant with id {variant_id} not found for removal.")
             return Response(
                 {'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             logger.error(
-                f"Unexpected error removing product {product_id} from cart: {e}",
+                f"Unexpected error removing product {variant_id} from cart: {e}",
                 exc_info=True,
             )
             return Response(

@@ -32,7 +32,7 @@ class Cart:
                     for item in session_cart.items.all():
                         cart_item, item_created = CartItem.objects.get_or_create(
                             cart=cart,
-                            product=item.product,
+                            variant=item.variant,
                             defaults={'quantity': item.quantity}
                         )
                         if not item_created:
@@ -53,13 +53,13 @@ class Cart:
 
         self.cart = cart
 
-    def add(self, product, quantity=1, override_quantity=False):
+    def add(self, variant, quantity=1, override_quantity=False):
         """
-        Adds a product to the cart or updates its quantity.
+        Adds a product variant to the cart or updates its quantity.
         """
         cart_item, created = CartItem.objects.get_or_create(
             cart=self.cart,
-            product=product,
+            variant=variant,
             defaults={'quantity': quantity}
         )
 
@@ -70,22 +70,22 @@ class Cart:
                 cart_item.quantity += quantity
             cart_item.save()
 
-    def remove(self, product_id):
+    def remove(self, variant):
         """
-        Removes a product from the cart.
+        Removes a product variant from the cart.
         """
-        CartItem.objects.filter(cart=self.cart, product_id=product_id).delete()
+        CartItem.objects.filter(cart=self.cart, variant=variant).delete()
 
     def __iter__(self):
         """
-        Iterates over the items in the cart, yielding product details.
+        Iterates over the items in the cart, yielding variant details.
         """
-        for item in self.cart.items.prefetch_related('product'):
+        for item in self.cart.items.prefetch_related('variant__product'):
             yield {
-                'product': item.product,
+                'variant': item.variant,
                 'quantity': item.quantity,
-                'price': item.product.price,
-                'total_price': item.product.price * item.quantity,
+                'price': item.variant.price,
+                'total_price': item.variant.price * item.quantity,
             }
 
     def __len__(self):
@@ -98,7 +98,7 @@ class Cart:
         """
         Calculates the total price of all items in the cart.
         """
-        return sum(item.product.price * item.quantity for item in self.cart.items.all())
+        return sum(item.variant.price * item.quantity for item in self.cart.items.all())
 
     def clear(self):
         """

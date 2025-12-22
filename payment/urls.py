@@ -1,6 +1,5 @@
 from django.urls import path
-
-from payment.views import PaymentProcessAPIView, PaymentVerifyAPIView
+from .views import PaymentProcessAPIView, PaymentVerifyAPIView
 
 app_name = 'payment'
 

@@ -1,33 +1,27 @@
+import factory
 from decimal import Decimal
-
 from account.factories import AddressFactory, UserFactory
 from coupons.factories import CouponFactory
-from shop.factories import ProductFactory
+from shop.factories import ProductFactory, ProductVariantFactory
 from .models import Order, OrderItem
 
 
-def OrderFactory(**kwargs):
-    defaults = {
-        "user": kwargs.get("user") or UserFactory(),
-        "address": kwargs.get("address") or AddressFactory(),
-        "status": kwargs.get("status") or Order.Status.PENDING,
-        "coupon": kwargs.get("coupon") or CouponFactory(),
-    }
-    defaults.setdefault(
-        "discount_amount", getattr(defaults["coupon"], "discount_percent", 0)
-    )
-    defaults.update(kwargs)
-    return Order.objects.create(**defaults)
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    user = factory.SubFactory(UserFactory)
+    address = factory.SubFactory(AddressFactory)
+    status = Order.Status.PENDING
 
 
-def OrderItemFactory(**kwargs):
-    order = kwargs.get("order") or OrderFactory()
-    product = kwargs.get("product") or ProductFactory()
-    defaults = {
-        "order": order,
-        "product": product,
-        "quantity": kwargs.get("quantity") or 1,
-        "price": kwargs.get("price") or Decimal(product.price),
-    }
-    defaults.update(kwargs)
-    return OrderItem.objects.create(**defaults)
+class OrderItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OrderItem
+
+    order = factory.SubFactory(OrderFactory)
+    variant = factory.SubFactory(ProductVariantFactory)
+    quantity = 1
+    price = factory.LazyAttribute(lambda o: o.variant.price)
+    product_name = factory.LazyAttribute(lambda o: o.variant.product.name)
+    product_sku = factory.LazyAttribute(lambda o: o.variant.sku)
