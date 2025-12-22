@@ -97,16 +97,16 @@ THIRD_PARTY_APPS = [
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
-    'shop.apps.ShopConfig',  # Shop application for managing products
-    'cart.apps.CartConfig',  # Cart application for managing shopping carts
+    'shop',  # Shop application for managing products
+    'cart',  # Cart application for managing shopping carts
     'orders',  # Orders application for managing customer orders
-    'coupons.apps.CouponsConfig',  # Coupons application for discounts
+    'coupons',  # Coupons application for discounts
 
-    'chat.apps.ChatConfig',  # Chat application for real-time communication
-    'payment.apps.PaymentConfig',  # Payment application for processing transactions
-    'account.apps.AccountConfig',  # Account application for user management
-    'shipping.apps.ShippingConfig',
-    'sms.apps.SmsConfig',
+    'chat',  # Chat application for real-time communication
+    'payment',  # Payment application for processing transactions
+    'account',  # Account application for user management
+    'shipping',
+    'sms',
 ]
 
 # Combine all applications into the INSTALLED_APPS setting

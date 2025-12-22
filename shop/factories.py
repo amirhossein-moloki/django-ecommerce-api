@@ -1,3 +1,4 @@
+
 import factory
 from decimal import Decimal
 from account.factories import UserFactory
@@ -21,6 +22,11 @@ class ProductFactory(factory.django.DjangoModelFactory):
     category = factory.SubFactory(CategoryFactory)
     user = factory.SubFactory(UserFactory)
     weight = Decimal('1.00')
+    length = Decimal('10.00')
+    width = Decimal('10.00')
+    height = Decimal('10.00')
+    is_fragile = False
+    is_liquid = False
 
     @factory.post_generation
     def variants(self, create, extracted, **kwargs):

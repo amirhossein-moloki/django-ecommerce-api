@@ -12,7 +12,11 @@ from ecommerce_api.core.api_standard_response import ApiResponse
 User = get_user_model()
 
 
+from django_ratelimit.decorators import ratelimit
+
+
 class RequestOTP(APIView):
+    @ratelimit(key='data:phone', rate='3/m', block=True)
     def post(self, request):
         phone = request.data.get("phone")
         if not phone:
