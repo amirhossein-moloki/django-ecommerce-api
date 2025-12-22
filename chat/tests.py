@@ -43,7 +43,7 @@ class TestProductChatAPI:
         url = reverse('api-v1:product-chat', kwargs={'product_id': product.product_id})
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 5
+        assert len(response.data['data']['messages']) == 5
 
 
 # @pytest.mark.asyncio

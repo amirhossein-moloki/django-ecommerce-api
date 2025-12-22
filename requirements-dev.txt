@@ -10,3 +10,4 @@ pytest-cov
 coverage
 factory-boy
 pytest-mock
+pytest-asyncio==0.23.7
