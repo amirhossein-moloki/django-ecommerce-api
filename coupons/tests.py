@@ -13,7 +13,7 @@ class TestCouponModel:
         assert valid_coupon.is_valid()
 
     def test_is_invalid(self):
-        invalid_coupon = CouponFactory.create(is_active=False)
+        invalid_coupon = CouponFactory.create(active=False)
         assert not invalid_coupon.is_valid()
 
 
@@ -31,4 +31,4 @@ class TestCouponAPI:
         url = reverse('api-v1:coupon-apply')
         data = {'code': 'INVALID'}
         response = api_client.post(url, data)
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

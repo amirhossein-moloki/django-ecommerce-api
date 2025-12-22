@@ -70,7 +70,16 @@ logger = getLogger(__name__)
 class CouponViewSet(viewsets.ModelViewSet):
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action == 'apply':
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAdminUser]
+        return [permission() for permission in permission_classes]
 
     def update(self, request, *args, **kwargs):
         """
