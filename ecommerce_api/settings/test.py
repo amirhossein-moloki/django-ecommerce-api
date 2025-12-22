@@ -25,10 +25,10 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [mw for mw in MIDDLEWARE if 'debug_toolbar' not in mw]
 
-# Use dummy cache for tests to avoid side effects
+# Use in-memory cache for tests to ensure rate-limiting works
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
 
