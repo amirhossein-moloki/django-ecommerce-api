@@ -1,3 +1,4 @@
+
 import requests
 from abc import ABC, abstractmethod
 from django.conf import settings
@@ -42,7 +43,11 @@ class PostexShippingProvider(ShippingProvider):
 
     def _handle_response(self, response, context_message):
         if 200 <= response.status_code < 300:
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                # Handle cases where the response is successful but not valid JSON
+                raise ShippingProviderError(f"{context_message}: Malformed JSON response", status_code=response.status_code)
 
         try:
             error_data = response.json()
@@ -53,15 +58,12 @@ class PostexShippingProvider(ShippingProvider):
         raise ShippingProviderError(f"{context_message}: {error_data}", status_code=response.status_code)
 
     def create_shipment(self, order):
-        # Assuming each product has dimensions and properties. Aggregating them is complex.
-        # For simplicity, we'll use the dimensions of the largest item and sum the weights.
-        # A more advanced implementation would use a packing algorithm.
-        total_weight = int(sum(item.product.weight * item.quantity for item in order.items.all()))
-        max_length = max(item.product.length for item in order.items.all())
-        max_width = max(item.product.width for item in order.items.all())
-        max_height = max(item.product.height for item in order.items.all())
-        is_fragile = any(item.product.is_fragile for item in order.items.all())
-        is_liquid = any(item.product.is_liquid for item in order.items.all())
+        total_weight = int(sum(item.variant.product.weight * item.quantity for item in order.items.all()))
+        max_length = max(item.variant.product.length for item in order.items.all())
+        max_width = max(item.variant.product.width for item in order.items.all())
+        max_height = max(item.variant.product.height for item in order.items.all())
+        is_fragile = any(item.variant.product.is_fragile for item in order.items.all())
+        is_liquid = any(item.variant.product.is_liquid for item in order.items.all())
 
         parcels = [{
             "to": {
@@ -75,7 +77,7 @@ class PostexShippingProvider(ShippingProvider):
                     "postal_code": order.address.postal_code,
                 }
             },
-            "parcel_items": [{"name": item.product.name, "count": item.quantity, "amount": int(item.product.price)} for item in order.items.all()],
+            "parcel_items": [{"name": item.product_name, "count": item.quantity, "amount": int(item.price)} for item in order.items.all()],
             "parcel_properties": {
                 "total_weight": total_weight,
                 "total_value": int(order.total_payable),
@@ -115,10 +117,10 @@ class PostexShippingProvider(ShippingProvider):
             raise ShippingProviderError(f"{context}: {e}")
 
     def get_shipping_quote(self, order):
-        total_weight = int(sum(item.product.weight * item.quantity for item in order.items.all()))
-        max_length = max(item.product.length for item in order.items.all())
-        max_width = max(item.product.width for item in order.items.all())
-        max_height = max(item.product.height for item in order.items.all())
+        total_weight = int(sum(item.variant.product.weight * item.quantity for item in order.items.all()))
+        max_length = max(item.variant.product.length for item in order.items.all())
+        max_width = max(item.variant.product.width for item in order.items.all())
+        max_height = max(item.variant.product.height for item in order.items.all())
 
         parcels = [{
             "to_city_code": order.address.city_code,
