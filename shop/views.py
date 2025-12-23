@@ -24,6 +24,7 @@ from ecommerce_api.core.mixins import PaginationMixin
 from ecommerce_api.core.permissions import IsOwnerOrStaff
 from shop.filters import ProductFilter, ProductSearchFilterBackend
 from .models import Product, Category
+from .recommender import Recommender
 from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
 from .serializers import ReviewSerializer
 from . import services
@@ -354,6 +355,40 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             logger.error(
                 "Error creating product for user id: %s: %s",
                 self.request.user.id,
+                e,
+                exc_info=True,
+            )
+            return Response(
+                {"detail": "An unexpected error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="recommendations",
+        url_name="recommendations",
+    )
+    def recommendations(self, request, slug=None):
+        """
+        Get product recommendations for a given product.
+        """
+        try:
+            product = self.get_object()
+            recommender = Recommender()
+            # It expects a list of products, even if it's just one
+            recommended_products = recommender.suggest_products_for([product])
+            serializer = self.get_serializer(recommended_products, many=True)
+            return Response(serializer.data)
+        except Product.DoesNotExist:
+            return Response(
+                {"detail": "Product not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            logger.error(
+                "Error getting recommendations for product slug %s: %s",
+                slug,
                 e,
                 exc_info=True,
             )
