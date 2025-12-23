@@ -26,7 +26,7 @@ class Recommender:
                     r.zincrby(self.get_product_key(product_id), 1, with_id)
 
     def suggest_products_for(self, products, max_results=6):
-        product_ids = [str(p.product_id) for p in products]
+        product_ids = [p.id for p in products]
         if len(products) == 1:
             # only 1 product
             suggestions = r.zrange(
@@ -46,13 +46,16 @@ class Recommender:
             suggestions = r.zrange(tmp_key, 0, -1, desc=True)[:max_results]
             # remove the temporary key
             r.delete(tmp_key)
-        suggested_products_ids = [str(id) for id in suggestions]
+
+        # redis returns bytes, so we decode them to utf-8 and cast to int
+        suggested_products_ids = [int(id) for id in suggestions]
+
         # get suggested products and sort by order of appearance
         suggested_products = list(
-            Product.objects.filter(product_id__in=suggested_products_ids)
+            Product.objects.filter(id__in=suggested_products_ids)
         )
         suggested_products.sort(
-            key=lambda x: suggested_products_ids.index(x.product_id)
+            key=lambda x: suggested_products_ids.index(x.id)
         )
         return suggested_products
 
