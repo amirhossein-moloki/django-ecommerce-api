@@ -32,8 +32,7 @@ def category():
 def product(category):
     return ProductFactory(
         category=category,
-        price=Decimal("10.00"),
-        stock=10
+        variants=[{'price': Decimal("10.00"), 'stock': 10}]
     )
 
 @pytest.fixture

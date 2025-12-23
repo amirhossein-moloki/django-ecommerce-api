@@ -15,7 +15,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def product_a():
-    return ProductFactory(name='Product A', price=Decimal('10.00'), stock=10)
+    return ProductFactory(name='Product A', variants=[{'price': Decimal('10.00'), 'stock': 10}])
 
 @pytest.fixture
 def variant_a(product_a):
@@ -23,7 +23,7 @@ def variant_a(product_a):
 
 @pytest.fixture
 def product_b():
-    return ProductFactory(name='Product B', price=Decimal('25.00'), stock=10)
+    return ProductFactory(name='Product B', variants=[{'price': Decimal('25.00'), 'stock': 10}])
 
 @pytest.fixture
 def variant_b(product_b):
