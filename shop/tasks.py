@@ -23,7 +23,7 @@ def update_user_recommendations(user_id):
         # so we can't get cart items. We'll rely on order history for now.
 
         recent_order_products = Product.objects.filter(
-            order_items__order__user=user
+            variants__order_items__order__user=user
         ).distinct()[:20]
         recommendation_base.extend(recent_order_products)
 

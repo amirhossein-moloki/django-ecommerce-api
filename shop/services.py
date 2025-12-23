@@ -3,7 +3,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from orders.models import Order
+from orders.models import Order, OrderItem
 from .models import Product, Review, Category
 
 
@@ -31,8 +31,8 @@ def get_reviews_for_product(product_slug: str):
 def create_review(user, product_slug: str, validated_data: dict):
     product = get_object_or_404(Product, slug=product_slug)
 
-    completed_order_exists = product.order_items.filter(
-        order__user=user, order__status=Order.Status.PAID
+    completed_order_exists = OrderItem.objects.filter(
+        variant__product=product, order__user=user, order__status=Order.Status.PAID
     ).exists()
 
     if not completed_order_exists:
