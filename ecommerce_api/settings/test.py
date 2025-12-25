@@ -1,52 +1,111 @@
-import os
+from pathlib import Path
 
-# Set dummy environment variables for testing before importing base settings
-os.environ.setdefault('SECRET_KEY', 'dummy-secret-key-for-testing')
-os.environ.setdefault('DEBUG', 'False')
-os.environ.setdefault('ALLOWED_HOSTS', 'testserver')
-os.environ.setdefault('DATABASE_URL', 'sqlite:////tmp/test_db.sqlite3')
-os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
-os.environ.setdefault('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-os.environ.setdefault('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-os.environ.setdefault('EMAIL_URL', 'consolemail://')
-os.environ.setdefault('GOOGLE_OAUTH2_KEY', 'dummy-key')
-os.environ.setdefault('GOOGLE_OAUTH2_SECRET', 'dummy-secret')
-os.environ.setdefault('ZIBAL_MERCHANT_ID', 'dummy-zibal-merchant')
-os.environ.setdefault('ZIBAL_WEBHOOK_SECRET', 'dummy-zibal-secret')
-os.environ.setdefault('SMS_IR_OTP_TEMPLATE_ID', '123456')
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-from .base import *  # noqa: E402, F403
+SECRET_KEY = "a-super-secret-key-for-testing"
+DEBUG = False
+TESTING = True
 
-# Override settings for a predictable test environment
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# Remove development-only dependencies that are not available in CI/test environments
-INSTALLED_APPS = [
-    app for app in INSTALLED_APPS if app not in {'debug_toolbar', 'django_extensions'}
+# Application definition
+DJANGO_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
+    'django.contrib.staticfiles',
+    'django.contrib.postgres',
 ]
-MIDDLEWARE = [mw for mw in MIDDLEWARE if 'debug_toolbar' not in mw]
+THIRD_PARTY_APPS = [
+    'taggit',
+    'drf_spectacular',
+    'django_filters',
+    'rest_framework',
+    'djoser',
+    'simple_history',
+    'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
+]
+CUSTOM_APPS = [
+    'shop',
+    'cart',
+    'orders',
+    'coupons',
+    'chat',
+    'payment',
+    'account',
+    'shipping',
+    'sms',
+    'discounts.apps.DiscountsConfig',
+]
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
 
-# Use in-memory cache for tests to ensure rate-limiting works
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'ecommerce_api.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+}
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+]
+
+AUTH_PASSWORD_VALIDATORS = []
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = 'static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = 'account.UserAccount'
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
 
-# Use in-memory channel layer for tests
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'ecommerce_api.utils.pagination.CustomPageNumberPagination',
 }
 
-# Use a database-backed session engine for tests
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-
-# Make Celery tasks execute synchronously for tests
-CELERY_TASK_ALWAYS_EAGER = True
-
-# Disable logging during tests to keep the output clean
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': True,
-}
+SITE_ID = 1
+REDIS_URL = "redis://localhost:6379/1"

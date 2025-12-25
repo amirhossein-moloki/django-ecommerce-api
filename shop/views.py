@@ -321,6 +321,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         ProductSearchFilterBackend,
     ]
     ordering_fields = [r"name", r"created", "price"]
+    ordering = ["-created"]
     lookup_field = r"slug"
 
     def get_permissions(self):
