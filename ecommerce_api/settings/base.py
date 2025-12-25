@@ -107,6 +107,7 @@ CUSTOM_APPS = [
     'account',  # Account application for user management
     'shipping',
     'sms',
+    'discounts.apps.DiscountsConfig',
 ]
 
 # Combine all applications into the INSTALLED_APPS setting

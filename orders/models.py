@@ -10,6 +10,7 @@ from coupons.models import Coupon
 from shop.models import ProductVariant
 from account.models import Address
 from django.core.exceptions import ValidationError
+from discounts.models import Discount
 
 User = get_user_model()
 
@@ -34,7 +35,7 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
     order_date = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
-    coupon = models.ForeignKey(Coupon, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
+    discount = models.ForeignKey(Discount, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
     currency = models.CharField(max_length=3, default='IRT')
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     payment_gateway = models.CharField(max_length=50, blank=True)

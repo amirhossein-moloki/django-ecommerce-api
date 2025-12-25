@@ -8,6 +8,7 @@ from cart.cart import Cart
 from coupons.models import Coupon
 from orders.models import Order, OrderItem
 from shop.models import Product
+from discounts.services import DiscountService
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -48,10 +49,10 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderCreateSerializer(serializers.Serializer):
     """
     Serializer for creating a new order.
-    Handles the logic of order creation from the user's cart.
+    Handles the logic of order creation from the user's cart using the new discount system.
     """
     address_id = serializers.IntegerField()
-    coupon_code = serializers.CharField(required=False, allow_blank=True)
+    discount_code = serializers.CharField(required=False, allow_blank=True)
 
     def validate_address_id(self, value):
         """
@@ -65,110 +66,82 @@ class OrderCreateSerializer(serializers.Serializer):
         return address
 
     def validate(self, data):
-        """
-        Validate coupon against cart details.
-        """
+        """Validate discount code."""
         cart = Cart(self.context['request'])
-        coupon_code = data.get('coupon_code')
-
-        if not coupon_code:
-            data['coupon'] = None
-            return data
-
-        try:
-            coupon = Coupon.objects.get(code__iexact=coupon_code, active=True)
-        except Coupon.DoesNotExist:
-            raise ValidationError({'coupon_code': 'The entered coupon is invalid.'})
-
-        if not coupon.is_valid():
-            raise ValidationError({'coupon_code': 'Coupon is not valid at this time.'})
-        if coupon.usage_count >= coupon.max_usage:
-            raise ValidationError({'coupon_code': 'This coupon has reached its usage limit.'})
-        if cart.get_total_price() < coupon.min_purchase_amount:
-            raise ValidationError({
-                'coupon_code': f"A minimum purchase of {coupon.min_purchase_amount} is required to use this coupon."
-            })
-
-        data['coupon'] = coupon
+        user = self.context['request'].user
+        code = data.get('discount_code')
+        if code:
+            # Check if the discount code is valid
+            applicable_discounts = DiscountService.get_applicable_discounts(cart, user, discount_code=code)
+            if not applicable_discounts.exists():
+                raise ValidationError({'discount_code': 'This discount code is invalid or has expired.'})
         return data
 
     def save(self, **kwargs):
         """
-        Create and save the order and its items from the cart.
+        Create and save the order and its items from the cart, applying the best discount.
         """
         cart = Cart(self.context['request'])
         if len(cart) == 0:
             raise ValidationError('Your cart is empty.')
 
-        validated_data = self.validated_data
-        address = validated_data['address_id']
-        coupon = validated_data.get('coupon')
         user = self.context['request'].user
+        address = self.validated_data['address_id']
+        discount_code = self.validated_data.get('discount_code')
 
         with transaction.atomic():
-            # Lock products before processing to prevent race conditions.
-            product_ids = [item['product'].product_id for item in cart]
-            locked_products = list(Product.objects.select_for_update().filter(product_id__in=product_ids))
+            # Apply discount (either coded or automatic)
+            discount_amount, discount_object = DiscountService.apply_discount(cart, user, discount_code)
 
-            if len(locked_products) != len(product_ids):
-                raise ValidationError("Some products in your cart could not be found or are no longer available.")
+            # Lock products to prevent race conditions
+            variant_ids = [item['variant'].variant_id for item in cart]
+            locked_variants = list(ProductVariant.objects.select_for_update().filter(variant_id__in=variant_ids))
 
-            locked_products_map = {p.product_id: p for p in locked_products}
+            if len(locked_variants) != len(variant_ids):
+                raise ValidationError("Some products in your cart are no longer available.")
 
-            # Re-validate coupon inside the transaction to prevent race conditions
-            if coupon:
-                locked_coupon = Coupon.objects.select_for_update().get(pk=coupon.pk)
-                if not locked_coupon.is_valid() or locked_coupon.usage_count >= locked_coupon.max_usage:
-                    raise ValidationError({'coupon_code': 'This coupon is no longer valid.'})
+            locked_variants_map = {v.variant_id: v for v in locked_variants}
 
-                # Set coupon on the cart model for discount calculation
-                cart.cart.coupon = locked_coupon
-                cart.cart.save()
-
-            # Create the order
+            # Create the order with discount information
             order = Order.objects.create(
                 user=user,
                 address=address,
-                coupon=coupon,
-                discount_amount=cart.get_discount() if coupon else 0
+                discount=discount_object,
+                discount_amount=discount_amount
             )
 
-            if coupon:
-                # Increment usage count on the locked instance
-                locked_coupon.increment_usage_count()
-
-            # Create order items and update product stock
             items_to_create = []
-            products_to_update = []
+            variants_to_update = []
 
             for item in cart:
-                # Use the locked product instance for fresh data
-                product = locked_products_map.get(item['product'].product_id)
+                variant = locked_variants_map.get(item['variant'].variant_id)
 
-                # Re-validate stock and price at the moment of purchase
-                if product.stock < item['quantity']:
-                    raise ValidationError(f"Not enough stock for {product.name}.")
-                if item['price'] != product.price:
-                    raise ValidationError(
-                        f"The price of {product.name} has changed. Please review your cart and try again."
-                    )
+                # Re-validate stock at the moment of purchase
+                if variant.stock < item['quantity']:
+                    raise ValidationError(f"Not enough stock for {variant.product.name}.")
 
-                product.stock -= item['quantity']
-                products_to_update.append(product)
+                # Price snapshotting is handled by the Cart logic, assuming it's up-to-date
+
+                variant.stock -= item['quantity']
+                variants_to_update.append(variant)
 
                 items_to_create.append(
                     OrderItem(
                         order=order,
-                        product=product,
-                        product_name=product.name,
-                        product_sku=product.sku,
+                        variant=variant,
+                        product_name=variant.product.name,
+                        product_sku=variant.sku,
                         quantity=item['quantity'],
-                        price=product.price
+                        price=item['price'] # Use price from cart to preserve it at time of order
                     )
                 )
 
             OrderItem.objects.bulk_create(items_to_create)
-            Product.objects.bulk_update(products_to_update, ['stock'])
+            ProductVariant.objects.bulk_update(variants_to_update, ['stock'])
+
+            # Record discount usage after the order is successfully created
+            if discount_object:
+                DiscountService.record_discount_usage(discount_object, user)
 
             # Set shipping and tax (assuming fixed values for now)
             order.shipping_cost = Decimal('15.00')
@@ -178,7 +151,6 @@ class OrderCreateSerializer(serializers.Serializer):
             order.calculate_total_payable()
             order.save()
 
-            # Clear the cart
             cart.clear()
 
             return order

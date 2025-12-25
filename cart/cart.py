@@ -110,24 +110,19 @@ class Cart:
             del self.session[settings.CART_SESSION_ID]
             self.session.modified = True
 
-    @property
-    def coupon(self):
-        """
-        Retrieves the currently applied coupon from the database cart.
-        """
-        return self.cart.coupon
-
     def get_discount(self):
         """
-        Calculates the discount amount based on the currently applied coupon.
+        Calculates the best automatic discount for the cart using the DiscountService.
         """
-        if self.coupon:
-            return (self.coupon.discount / Decimal(100)) * self.get_total_price()
-        return Decimal(0)
+        from discounts.services import DiscountService
+        # For the cart display, we only consider automatic discounts. Coded discounts are applied at checkout.
+        discount_amount, _ = DiscountService.apply_discount(self, self.user)
+        return discount_amount
 
     def get_total_price_after_discount(self):
         """
-        Calculates the total price of the cart after applying the discount.
+        Calculates the total price of the cart after applying the best discount.
+        This method now ignores the old coupon system.
         """
         return self.get_total_price() - self.get_discount()
 
