@@ -32,8 +32,7 @@ def category():
 def product(category):
     return ProductFactory(
         category=category,
-        price=Decimal("10.00"),
-        stock=10
+        variants=[{'price': Decimal("10.00"), 'stock': 10}]
     )
 
 @pytest.fixture
@@ -59,7 +58,7 @@ class TestCartAPI:
         response = api_client.post(url, {'quantity': 51}, format='json')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'Cannot add more than 50 items' in response.data['quantity'][0]
+        assert 'Cannot add more than 50 items' in str(response.data['message'])
 
     def test_add_to_cart_out_of_stock(self, api_client, user, variant):
         variant.stock = 0
@@ -69,14 +68,14 @@ class TestCartAPI:
         response = api_client.post(url, {'quantity': 1}, format='json')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data['error'] == 'This product is out of stock.'
+        assert 'This product is out of stock.' in response.data['message']
 
     def test_add_to_cart_insufficient_stock(self, api_client, user, variant):
         url = reverse('api-v1:cart-add', kwargs={'variant_id': variant.variant_id})
         response = api_client.post(url, {'quantity': 11}, format='json')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'Only 10 more items can be added' in response.data['error']
+        assert 'Only 10 more items can be added' in response.data['message']
 
     def test_remove_from_cart(self, api_client, user, variant):
         # First, add the product to the cart
@@ -100,7 +99,7 @@ class TestCartAPI:
         response = api_client.delete(remove_url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.data['error'] == 'Product not found.'
+        assert response.data['message'] == 'Product not found.'
 
     def test_clear_cart(self, api_client, user, variant):
         # First, add the product to the cart

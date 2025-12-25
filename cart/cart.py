@@ -49,6 +49,7 @@ class Cart:
                 self.session.cycle_key()
                 session_key = self.session.session_key
                 self.session[settings.CART_SESSION_ID] = session_key
+                self.session.modified = True
             cart, created = CartModel.objects.get_or_create(session_key=session_key)
 
         self.cart = cart
@@ -104,10 +105,10 @@ class Cart:
         """
         Removes all items from the cart.
         """
-        self.cart.items.all().delete()
-        if not self.user.is_authenticated:
-            self.cart.coupon = None
-            self.cart.save()
+        self.cart.delete()
+        if settings.CART_SESSION_ID in self.session:
+            del self.session[settings.CART_SESSION_ID]
+            self.session.modified = True
 
     @property
     def coupon(self):
