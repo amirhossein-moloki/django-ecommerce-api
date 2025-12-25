@@ -15,7 +15,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def product_a():
-    return ProductFactory(name='Product A', price=Decimal('10.00'), stock=10)
+    return ProductFactory(name='Product A', variants=[{'price': Decimal('10.00'), 'stock': 10}])
 
 @pytest.fixture
 def variant_a(product_a):
@@ -23,7 +23,7 @@ def variant_a(product_a):
 
 @pytest.fixture
 def product_b():
-    return ProductFactory(name='Product B', price=Decimal('25.00'), stock=10)
+    return ProductFactory(name='Product B', variants=[{'price': Decimal('25.00'), 'stock': 10}])
 
 @pytest.fixture
 def variant_b(product_b):
@@ -63,8 +63,10 @@ class TestCartLogic:
         cart = Cart(anonymous_request)
         cart.add(variant=variant_a, quantity=2)
 
-        assert str(variant_a.variant_id) in cart.cart
-        assert cart.cart[str(variant_a.variant_id)]['quantity'] == 2
+        db_cart = DbCart.objects.get(session_key=anonymous_request.session.session_key)
+        cart_item = CartItem.objects.get(cart=db_cart, variant=variant_a)
+
+        assert cart_item.quantity == 2
         assert len(cart) == 2
 
     def test_add_to_cart_authenticated(self, authenticated_request, variant_a):

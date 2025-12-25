@@ -11,6 +11,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from ecommerce_api.core.api_standard_response import ApiResponse
 from .serializers import CartSerializer, AddToCartSerializer
 from . import services
 from shop.models import ProductVariant
@@ -109,19 +110,19 @@ class CartViewSet(viewsets.ViewSet):
             )
         except ValidationError as e:
             logger.warning(f"Add to cart validation error: {e.detail}")
-            return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+            return ApiResponse.error(message=str(e.detail), status_code=status.HTTP_400_BAD_REQUEST)
         except ProductVariant.DoesNotExist:
             logger.warning(f"ProductVariant with id {variant_id} not found.")
-            return Response(
-                {'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND
+            return ApiResponse.error(
+                message='Product not found.', status_code=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             logger.error(
                 f"Unexpected error adding product to cart: {e}", exc_info=True
             )
-            return Response(
-                {'error': 'An unexpected error occurred.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            return ApiResponse.error(
+                message='An unexpected error occurred.',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=True, methods=['delete'], url_path='remove')
@@ -144,17 +145,17 @@ class CartViewSet(viewsets.ViewSet):
             )
         except ProductVariant.DoesNotExist:
             logger.warning(f"ProductVariant with id {variant_id} not found for removal.")
-            return Response(
-                {'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND
+            return ApiResponse.error(
+                message='Product not found.', status_code=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             logger.error(
                 f"Unexpected error removing product {variant_id} from cart: {e}",
                 exc_info=True,
             )
-            return Response(
-                {'error': 'An unexpected error occurred.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            return ApiResponse.error(
+                message='An unexpected error occurred.',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=False, methods=['delete'], url_path='clear')
@@ -176,5 +177,7 @@ class CartViewSet(viewsets.ViewSet):
         Returns:
             Response: An empty response with a 204 status code.
         """
-        services.clear_cart(request)
+        cart = services.get_cart_data(request)
+        if cart:
+            services.clear_cart(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
