@@ -111,3 +111,5 @@ REST_FRAMEWORK = {
 }
 
 SITE_ID = 1
+
+REDIS_URL = "redis://localhost:6379/1"

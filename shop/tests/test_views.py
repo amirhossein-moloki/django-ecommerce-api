@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 from account.tests.factories import UserFactory
 from orders.models import Order
 from orders.tests.factories import OrderFactory, OrderItemFactory
+from shop.models import Product
 from shop.tests.factories import ProductFactory, CategoryFactory, ReviewFactory
 
 pytestmark = pytest.mark.django_db
@@ -54,6 +55,8 @@ class TestProductViewSet:
         response = api_client.post(url, data)
         assert response.status_code == 201
         assert response.data["name"] == "New Test Product"
+        # In the actual serializer, the user object is returned, not just the username.
+        # So we check for the user's ID.
         assert response.data["user"]["id"] == user.id
 
     def test_create_product_unauthenticated(self, api_client):
@@ -102,6 +105,8 @@ class TestProductViewSet:
         url = reverse("api-v1:product-detail", kwargs={"slug": product.slug})
         response = api_client.delete(url)
         assert response.status_code == 204
+        assert not Product.objects.filter(pk=product.pk).exists()
+
 
     def test_product_filtering_by_category(self, api_client):
         """

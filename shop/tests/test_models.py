@@ -135,6 +135,30 @@ class TestRatingSignal:
         assert product.rating == 4.00
         assert product.reviews_count == 1
 
+
+class TestShopUtils:
+    def test_search_products(self):
+        from shop.utils import search_products
+        from shop.models import Product
+
+        p1 = ProductFactory(name="A Test Product", description="Some description")
+        p2 = ProductFactory(name="Another Thing", description="A test of searching")
+        ProductFactory(name="Irrelevant")
+
+        # Search by name
+        results = search_products(Product.objects.all(), "Test Product")
+        assert p1 in results
+        assert p2 not in results
+
+        # Search by description
+        results = search_products(Product.objects.all(), "searching")
+        assert p2 in results
+        assert p1 not in results
+
+        # No search term
+        results = search_products(Product.objects.all(), None)
+        assert results.count() == 3
+
         # Create second review
         review2 = ReviewFactory(product=product, user=user2, rating=5)
         product.refresh_from_db()
