@@ -28,12 +28,7 @@ class ProductFactory(DjangoModelFactory):
     def variants(self, create, extracted, **kwargs):
         if not create:
             return
-
-        if extracted:
-            for variant_data in extracted:
-                ProductVariantFactory(product=self, **variant_data)
-        else:
-            # Create at least one variant if none are provided
+        if not self.variants.exists():
             ProductVariantFactory(product=self)
 
 

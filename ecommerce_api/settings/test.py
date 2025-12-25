@@ -71,7 +71,6 @@ TEMPLATES = [
     },
 ]
 
-# Use in-memory database for tests
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -79,7 +78,6 @@ DATABASES = {
     }
 }
 
-# Use a fast password hasher for tests
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
@@ -95,11 +93,9 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'account.UserAccount'
 
-# Use in-memory cache for tests
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
     }
 }
 
@@ -108,8 +104,8 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'ecommerce_api.utils.pagination.CustomPageNumberPagination',
 }
 
 SITE_ID = 1
-
 REDIS_URL = "redis://localhost:6379/1"
