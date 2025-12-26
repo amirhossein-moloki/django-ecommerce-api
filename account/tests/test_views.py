@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from account.models import UserAccount, Profile
+from account.models import UserAccount
 from sms.models import OTPCode
 
 
@@ -17,6 +17,9 @@ class TestAccountViews(APITestCase):
         self.complete_profile_url = reverse("auth:complete-profile")
         self.me_url = reverse("auth:current_user")
         self.logout_url = reverse("auth:jwt-destroy")
+        self.refresh_url = reverse("auth:jwt-refresh")
+        self.verify_url = reverse("auth:jwt-verify")
+        self.staff_check_url = reverse("auth:staff_check")
 
         self.user_phone = "+989123456789"
         self.user_data = {
@@ -83,6 +86,21 @@ class TestAccountViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Invalid OTP", str(response.content))
 
+    def test_verify_otp_failed_attempts_deactivates_after_five(self):
+        OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+            failed_attempts=4,
+        )
+        response = self.client.post(
+            self.verify_otp_url, {"phone": self.user_phone, "code": "654321"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        otp = OTPCode.objects.get(phone=self.user_phone)
+        self.assertEqual(otp.failed_attempts, 5)
+        self.assertFalse(otp.is_active)
+
     def test_verify_otp_expired_code(self):
         otp = OTPCode.objects.create(
             phone=self.user_phone,
@@ -95,6 +113,19 @@ class TestAccountViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("OTP has expired", str(response.content))
 
+    def test_verify_otp_inactive_code(self):
+        OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+            is_active=False,
+        )
+        response = self.client.post(
+            self.verify_otp_url, {"phone": self.user_phone, "code": "123456"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Invalid OTP", str(response.content))
+
     def test_get_me_authenticated(self):
         refresh = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
@@ -106,6 +137,32 @@ class TestAccountViews(APITestCase):
     def test_get_me_unauthenticated(self):
         response = self.client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_put_me_updates_profile(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        payload = {"username": "updateduser", "first_name": "Updated"}
+        response = self.client.put(self.me_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "updateduser")
+        self.assertEqual(self.user.first_name, "Updated")
+
+    def test_patch_me_updates_profile(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        payload = {"last_name": "UpdatedLast"}
+        response = self.client.patch(self.me_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.last_name, "UpdatedLast")
+
+    def test_delete_me_removes_user(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        response = self.client.delete(self.me_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(UserAccount.objects.filter(pk=self.user.pk).exists())
 
     def test_complete_profile_success(self):
         new_user = UserAccount.objects.create_user(
@@ -137,6 +194,45 @@ class TestAccountViews(APITestCase):
         response = self.client.patch(self.complete_profile_url, profile_data)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_check_for_staff_user(self):
+        self.user.is_staff = True
+        self.user.save()
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        response = self.client.get(self.staff_check_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["is_staff"])
+
+    def test_staff_check_for_non_staff_user(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        response = self.client.get(self.staff_check_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["is_staff"])
+
+    def test_token_refresh_success(self):
+        refresh = RefreshToken.for_user(self.user)
+        response = self.client.post(self.refresh_url, {"refresh": str(refresh)})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+        self.assertIn("access", response.data["data"])
+
+    def test_token_refresh_invalid(self):
+        response = self.client.post(self.refresh_url, {"refresh": "invalidtoken"})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_token_verify_success(self):
+        refresh = RefreshToken.for_user(self.user)
+        response = self.client.post(
+            self.verify_url, {"token": str(refresh.access_token)}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+
+    def test_token_verify_invalid(self):
+        response = self.client.post(self.verify_url, {"token": "invalidtoken"})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_success(self):
         refresh = RefreshToken.for_user(self.user)
