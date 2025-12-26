@@ -13,10 +13,10 @@ class ApiResponse:
 
     @staticmethod
     def success(
-            data: Any = None,
-            message: str = "Success",
-            status_code: int = status.HTTP_200_OK,
-            meta: Optional[Dict] = None
+        data: Any = None,
+        message: str = "Success",
+        status_code: int = status.HTTP_200_OK,
+        meta: Optional[Dict] = None,
     ) -> Response:
         """
         Generate a standardized success response.
@@ -43,9 +43,9 @@ class ApiResponse:
 
     @staticmethod
     def error(
-            message: str = "An error occurred",
-            status_code: int = status.HTTP_400_BAD_REQUEST,
-            errors: Optional[Dict] = None
+        message: str = "An error occurred",
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+        errors: Optional[Dict] = None,
     ) -> Response:
         """
         Generate a standardized error response.
@@ -81,11 +81,13 @@ class ApiResponse:
         """
         if drf_response.status_code >= 400:
             return ApiResponse.error(
-                message=drf_response.data.get('detail', 'An error occurred'),  # Extract error message or use default
+                message=drf_response.data.get(
+                    "detail", "An error occurred"
+                ),  # Extract error message or use default
                 status_code=drf_response.status_code,  # Use the status code from the DRF response
-                errors=drf_response.data  # Include the error details from the DRF response
+                errors=drf_response.data,  # Include the error details from the DRF response
             )
         return ApiResponse.success(
             data=drf_response.data,  # Include the data from the DRF response
-            status_code=drf_response.status_code  # Use the status code from the DRF response
+            status_code=drf_response.status_code,  # Use the status code from the DRF response
         )

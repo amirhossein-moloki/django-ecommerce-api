@@ -9,15 +9,15 @@ from .cart import Cart
 def get_cart_data(request):
     cart = Cart(request)
     return {
-        'items': [
+        "items": [
             {
-                'variant': item['variant'],
-                'quantity': item['quantity'],
-                'total_price': item['total_price'],
+                "variant": item["variant"],
+                "quantity": item["quantity"],
+                "total_price": item["total_price"],
             }
             for item in cart
         ],
-        'total_price': cart.get_total_price(),
+        "total_price": cart.get_total_price(),
     }
 
 
@@ -37,8 +37,7 @@ def add_to_cart(request, variant_id, quantity=1, override_quantity=False):
                 current_quantity = item.quantity
     else:
         if str(variant.variant_id) in cart.cart:
-            current_quantity = cart.cart[str(variant.variant_id)]['quantity']
-
+            current_quantity = cart.cart[str(variant.variant_id)]["quantity"]
 
     if override_quantity:
         total_quantity = quantity

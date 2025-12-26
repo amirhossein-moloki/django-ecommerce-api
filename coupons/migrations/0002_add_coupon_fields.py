@@ -7,23 +7,31 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('coupons', '0001_initial'),
+        ("coupons", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='coupon',
-            name='max_usage',
-            field=models.PositiveIntegerField(default=1, verbose_name='Maximum Usage'),
+            model_name="coupon",
+            name="max_usage",
+            field=models.PositiveIntegerField(default=1, verbose_name="Maximum Usage"),
         ),
         migrations.AddField(
-            model_name='coupon',
-            name='min_purchase_amount',
-            field=models.DecimalField(decimal_places=2, default=0.0, max_digits=10, validators=[django.core.validators.MinValueValidator(0.0)], verbose_name='Minimum Purchase Amount'),
+            model_name="coupon",
+            name="min_purchase_amount",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0.0,
+                max_digits=10,
+                validators=[django.core.validators.MinValueValidator(0.0)],
+                verbose_name="Minimum Purchase Amount",
+            ),
         ),
         migrations.AddField(
-            model_name='coupon',
-            name='usage_count',
-            field=models.PositiveIntegerField(default=0, editable=False, verbose_name='Usage Count'),
+            model_name="coupon",
+            name="usage_count",
+            field=models.PositiveIntegerField(
+                default=0, editable=False, verbose_name="Usage Count"
+            ),
         ),
     ]

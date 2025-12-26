@@ -309,9 +309,16 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         - Includes a product recommendation feature.
     """
 
-    queryset = Product.objects.select_related("user", "category").prefetch_related(
-        "tags", "reviews", "variants", "variants__option_values__option_value__option_type"
-    ).annotate(price=Min('variants__price'))
+    queryset = (
+        Product.objects.select_related("user", "category")
+        .prefetch_related(
+            "tags",
+            "reviews",
+            "variants",
+            "variants__option_values__option_value__option_type",
+        )
+        .annotate(price=Min("variants__price"))
+    )
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrStaff]
     serializer_class = ProductSerializer
     filterset_class = ProductFilter

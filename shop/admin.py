@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Category, Product, OptionType, OptionValue, ProductVariant, VariantOptionValue
+from .models import (
+    Category,
+    Product,
+    OptionType,
+    OptionValue,
+    ProductVariant,
+    VariantOptionValue,
+)
 
 admin.site.register(OptionType)
 admin.site.register(OptionValue)

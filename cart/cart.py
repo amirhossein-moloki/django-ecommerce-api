@@ -33,7 +33,7 @@ class Cart:
                         cart_item, item_created = CartItem.objects.get_or_create(
                             cart=cart,
                             variant=item.variant,
-                            defaults={'quantity': item.quantity}
+                            defaults={"quantity": item.quantity},
                         )
                         if not item_created:
                             cart_item.quantity += item.quantity
@@ -59,9 +59,7 @@ class Cart:
         Adds a product variant to the cart or updates its quantity.
         """
         cart_item, created = CartItem.objects.get_or_create(
-            cart=self.cart,
-            variant=variant,
-            defaults={'quantity': quantity}
+            cart=self.cart, variant=variant, defaults={"quantity": quantity}
         )
 
         if not created:
@@ -81,12 +79,12 @@ class Cart:
         """
         Iterates over the items in the cart, yielding variant details.
         """
-        for item in self.cart.items.prefetch_related('variant__product'):
+        for item in self.cart.items.prefetch_related("variant__product"):
             yield {
-                'variant': item.variant,
-                'quantity': item.quantity,
-                'price': item.variant.price,
-                'total_price': item.variant.price * item.quantity,
+                "variant": item.variant,
+                "quantity": item.quantity,
+                "price": item.variant.price,
+                "total_price": item.variant.price * item.quantity,
             }
 
     def __len__(self):
@@ -115,6 +113,7 @@ class Cart:
         Calculates the best automatic discount for the cart using the DiscountService.
         """
         from discounts.services import DiscountService
+
         # For the cart display, we only consider automatic discounts. Coded discounts are applied at checkout.
         discount_amount, _ = DiscountService.apply_discount(self, self.user)
         return discount_amount

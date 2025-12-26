@@ -36,7 +36,12 @@ class TestProductViewSet:
         category = CategoryFactory()
         api_client.force_authenticate(user=user)
         url = reverse("api-v1:product-list")
-        data = {"name": "Test Create", "description": "desc", "category": category.pk, "weight": 1}
+        data = {
+            "name": "Test Create",
+            "description": "desc",
+            "category": category.pk,
+            "weight": 1,
+        }
         response = api_client.post(url, data)
         assert response.status_code == 201
         assert response.data["name"] == "Test Create"
@@ -50,12 +55,15 @@ class TestCategoryViewSet:
         assert response.status_code == 200
         assert response.data["count"] == 3
 
+
 class TestReviewViewSet:
     def test_create_review_permission(self, api_client):
         user = UserFactory()
         product = ProductFactory()
         api_client.force_authenticate(user=user)
-        url = reverse("api-v1:product-reviews-list", kwargs={"product_slug": product.slug})
+        url = reverse(
+            "api-v1:product-reviews-list", kwargs={"product_slug": product.slug}
+        )
         response = api_client.post(url, {"rating": 5})
         assert response.status_code == 403
 
@@ -65,7 +73,9 @@ class TestReviewViewSet:
         order = OrderFactory(user=user, status=Order.Status.PAID)
         OrderItemFactory(order=order, variant__product=product)
         api_client.force_authenticate(user=user)
-        url = reverse("api-v1:product-reviews-list", kwargs={"product_slug": product.slug})
+        url = reverse(
+            "api-v1:product-reviews-list", kwargs={"product_slug": product.slug}
+        )
         response = api_client.post(url, {"rating": 4})
         assert response.status_code == 201
         assert response.data["rating"] == 4

@@ -26,7 +26,9 @@ logger = getLogger(__name__)
         tags=["Payments"],
         responses={
             201: OpenApiResponse(description="Zibal payment URL created successfully."),
-            400: OpenApiResponse(description="Order ID is missing or invalid request data.")
+            400: OpenApiResponse(
+                description="Order ID is missing or invalid request data."
+            ),
         },
     )
 )
@@ -37,19 +39,16 @@ class PaymentProcessAPIView(APIView):
         order_id = kwargs.get("order_id")
         if not order_id:
             return ApiResponse.error(
-                message="Order ID is required.",
-                status_code=status.HTTP_400_BAD_REQUEST
+                message="Order ID is required.", status_code=status.HTTP_400_BAD_REQUEST
             )
         try:
             payment_url = services.process_payment(request, order_id)
             return ApiResponse.success(
-                data={"payment_url": payment_url},
-                status_code=status.HTTP_201_CREATED
+                data={"payment_url": payment_url}, status_code=status.HTTP_201_CREATED
             )
         except ValueError as e:
             return ApiResponse.error(
-                message=str(e),
-                status_code=status.HTTP_400_BAD_REQUEST
+                message=str(e), status_code=status.HTTP_400_BAD_REQUEST
             )
 
 
@@ -63,7 +62,9 @@ from .gateways import ZibalGatewayError
         tags=["Payments"],
         responses={
             200: OpenApiResponse(description="Payment verified successfully."),
-            400: OpenApiResponse(description="Invalid callback request or verification failed."),
+            400: OpenApiResponse(
+                description="Invalid callback request or verification failed."
+            ),
             404: OpenApiResponse(description="Order not found for the given trackId."),
         },
     )
@@ -75,22 +76,23 @@ class PaymentVerifyAPIView(APIView):
     It then immediately calls the verification service to confirm the payment
     with Zibal's server, ensuring a secure verification process.
     """
+
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
-        track_id = request.query_params.get('trackId')
-        success = request.query_params.get('success')
-        success_value = success if success is not None else ''
-        raw_payload = {'trackId': track_id, 'success': success_value}
-        signature = request.headers.get('X-Zibal-Signature', '')
+        track_id = request.query_params.get("trackId")
+        success = request.query_params.get("success")
+        success_value = success if success is not None else ""
+        raw_payload = {"trackId": track_id, "success": success_value}
+        signature = request.headers.get("X-Zibal-Signature", "")
         client_ip = get_client_ip(request)
-        allowed_ips = getattr(settings, 'ZIBAL_ALLOWED_IPS', [])
+        allowed_ips = getattr(settings, "ZIBAL_ALLOWED_IPS", [])
 
         if not track_id:
             logger.error("Zibal callback received without trackId.")
             return ApiResponse.error(
                 message="Required parameter 'trackId' is missing.",
-                status_code=status.HTTP_400_BAD_REQUEST
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         if client_ip and allowed_ips and client_ip not in allowed_ips:
@@ -110,8 +112,8 @@ class PaymentVerifyAPIView(APIView):
             )
 
         expected_signature = hmac.new(
-            getattr(settings, 'ZIBAL_WEBHOOK_SECRET', '').encode('utf-8'),
-            urlencode(sorted(raw_payload.items())).encode('utf-8'),
+            getattr(settings, "ZIBAL_WEBHOOK_SECRET", "").encode("utf-8"),
+            urlencode(sorted(raw_payload.items())).encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
 
@@ -131,8 +133,10 @@ class PaymentVerifyAPIView(APIView):
                 status_code=status.HTTP_403_FORBIDDEN,
             )
 
-        if success_value != '1':
-            logger.warning(f"Zibal callback for trackId {track_id} indicates a failed or canceled payment.")
+        if success_value != "1":
+            logger.warning(
+                f"Zibal callback for trackId {track_id} indicates a failed or canceled payment."
+            )
             PaymentTransaction.objects.create(
                 order=Order.objects.filter(payment_track_id=track_id).first(),
                 track_id=track_id,
@@ -145,7 +149,7 @@ class PaymentVerifyAPIView(APIView):
             )
             return ApiResponse.error(
                 message="Payment was not successful or was canceled by the user.",
-                status_code=status.HTTP_400_BAD_REQUEST
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -157,10 +161,7 @@ class PaymentVerifyAPIView(APIView):
             )
             # In a real frontend application, you would redirect the user to a success page.
             # For an API, returning a success message is appropriate.
-            return ApiResponse.success(
-                message=message,
-                status_code=status.HTTP_200_OK
-            )
+            return ApiResponse.success(message=message, status_code=status.HTTP_200_OK)
         except Order.DoesNotExist:
             logger.error(f"Verification failed: No order found for trackId {track_id}.")
             PaymentTransaction.objects.create(
@@ -174,13 +175,11 @@ class PaymentVerifyAPIView(APIView):
                 message="Order not found for provided trackId.",
             )
             return ApiResponse.error(
-                message="Order not found.",
-                status_code=status.HTTP_404_NOT_FOUND
+                message="Order not found.", status_code=status.HTTP_404_NOT_FOUND
             )
         except (ValueError, ZibalGatewayError) as e:
             logger.error(f"Payment verification error for trackId {track_id}: {e}")
             # In a real frontend application, you would redirect the user to a failure page.
             return ApiResponse.error(
-                message=str(e),
-                status_code=status.HTTP_400_BAD_REQUEST
+                message=str(e), status_code=status.HTTP_400_BAD_REQUEST
             )

@@ -9,12 +9,15 @@ User = get_user_model()
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for handling the current user's profile, combining User and Profile fields."""
+
     # Serialize fields from the User model directly
     first_name = serializers.CharField(source="user.first_name", required=False)
     last_name = serializers.CharField(source="user.last_name", required=False)
     email = serializers.EmailField(source="user.email", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
-    password = serializers.CharField(write_only=True, required=True, source="user.password")
+    password = serializers.CharField(
+        write_only=True, required=True, source="user.password"
+    )
     phone_number = serializers.CharField(source="user.phone_number", required=False)
 
     # Fields from the Profile model
@@ -27,14 +30,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            "username", "email", "password", "first_name", "last_name",
-            "phone_number", "profile_pic",
+            "username",
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "profile_pic",
         ]
 
     def validate_profile_pic(self, value):
         """Validate that the uploaded profile picture does not exceed 2MB."""
         if value and value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError("Profile picture size should not exceed 2MB.")
+            raise serializers.ValidationError(
+                "Profile picture size should not exceed 2MB."
+            )
         return value
 
     def validate_phone_number(self, value):
@@ -45,7 +55,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return value  # Allow blank phone numbers if the field is optional
 
         import re
-        pattern = r'^\+?1?\d{9,15}$'
+
+        pattern = r"^\+?1?\d{9,15}$"
         if not re.match(pattern, value):
             raise serializers.ValidationError(
                 "Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
@@ -99,13 +110,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class RefreshTokenSerializer(serializers.Serializer):
-    refresh = serializers.CharField(required=True, help_text="Refresh token to be blacklisted")
+    refresh = serializers.CharField(
+        required=True, help_text="Refresh token to be blacklisted"
+    )
 
 
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['id', 'province', 'city', 'city_code', 'postal_code', 'full_address', 'receiver_name', 'receiver_phone']
+        fields = [
+            "id",
+            "province",
+            "city",
+            "city_code",
+            "postal_code",
+            "full_address",
+            "receiver_name",
+            "receiver_phone",
+        ]
 
 
 class CompleteProfileSerializer(serializers.ModelSerializer):
@@ -113,7 +135,7 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'email')
+        fields = ("first_name", "last_name", "email")
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -121,9 +143,9 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        instance.first_name = validated_data.get('first_name', instance.first_name)
-        instance.last_name = validated_data.get('last_name', instance.last_name)
-        instance.email = validated_data.get('email', instance.email)
+        instance.first_name = validated_data.get("first_name", instance.first_name)
+        instance.last_name = validated_data.get("last_name", instance.last_name)
+        instance.email = validated_data.get("email", instance.email)
         instance.is_profile_complete = True
         instance.is_active = True
         instance.save()

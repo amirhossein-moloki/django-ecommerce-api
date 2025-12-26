@@ -1,7 +1,12 @@
 from logging import getLogger
 
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, extend_schema_view
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiResponse,
+    OpenApiParameter,
+    extend_schema_view,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,12 +24,23 @@ logger = getLogger(__name__)
         description="Retrieve paginated chat messages for a specific product.",
         tags=["Chat"],
         parameters=[
-            OpenApiParameter(name="page", type=int, description="Page number (default: 1)", required=False),
-            OpenApiParameter(name="page_size", type=int,
-                             description="Number of messages per page (default: 5, max: 50)", required=False),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                description="Page number (default: 1)",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="page_size",
+                type=int,
+                description="Number of messages per page (default: 5, max: 50)",
+                required=False,
+            ),
         ],
         responses={
-            200: OpenApiResponse(description="Paginated chat messages retrieved successfully."),
+            200: OpenApiResponse(
+                description="Paginated chat messages retrieved successfully."
+            ),
             404: OpenApiResponse(description="Product not found."),
         },
     )
@@ -43,11 +59,12 @@ class ProductChatAPIView(PaginationMixin, APIView):
             # Security fix: Filter messages to only include those where the
             # current user is either the sender or the recipient.
             user = request.user
-            messages = Message.objects.filter(
-                product_id=product.product_id
-            ).filter(
-                Q(sender=user) | Q(recipient=user)
-            ).select_related("sender", "recipient").order_by("-id")
+            messages = (
+                Message.objects.filter(product_id=product.product_id)
+                .filter(Q(sender=user) | Q(recipient=user))
+                .select_related("sender", "recipient")
+                .order_by("-id")
+            )
             paginator = self.pagination_class()
             paginated_messages = paginator.paginate_queryset(messages, request)
             messages_data = [
@@ -59,11 +76,18 @@ class ProductChatAPIView(PaginationMixin, APIView):
                 }
                 for message in reversed(paginated_messages)
             ]
-            return paginator.get_paginated_response({
-                "product": product.name,
-                "product_url": product.get_absolute_url(),
-                "messages": messages_data
-            })
+            return paginator.get_paginated_response(
+                {
+                    "product": product.name,
+                    "product_url": product.get_absolute_url(),
+                    "messages": messages_data,
+                }
+            )
         except Exception as e:
-            logger.error(f"Error retrieving chat messages for product id {product_id}: {e}", exc_info=True)
-            return Response({"error": "An error occurred retrieving chat messages."}, status=500)
+            logger.error(
+                f"Error retrieving chat messages for product id {product_id}: {e}",
+                exc_info=True,
+            )
+            return Response(
+                {"error": "An error occurred retrieving chat messages."}, status=500
+            )

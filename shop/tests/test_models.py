@@ -43,15 +43,15 @@ class TestReviewModel:
 class TestThumbnailValidator:
     def create_dummy_image(self, size_kb, image_format="jpeg"):
         image_file = io.BytesIO()
-        image = Image.new('RGB', (100, 100), 'white')
+        image = Image.new("RGB", (100, 100), "white")
         image.save(image_file, image_format)
         while image_file.tell() < size_kb * 1024:
-            image_file.write(b'\\0')
+            image_file.write(b"\\0")
         image_file.seek(0)
         return image_file
 
     def test_thumbnail_max_size_validation(self):
-        large_file_content = self.create_dummy_image(2049) # > 2MB
+        large_file_content = self.create_dummy_image(2049)  # > 2MB
         large_file = SimpleUploadedFile(
             "large_image.jpg", large_file_content.read(), content_type="image/jpeg"
         )

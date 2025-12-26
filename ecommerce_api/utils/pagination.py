@@ -8,11 +8,11 @@ class CustomPageNumberPagination(PageNumberPagination):
     # Default number of items per page
     page_size = 10
     # Query parameter to allow clients to set the page size
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     # Maximum allowed page size
     max_page_size = 100
     # Query parameter for the page number
-    page_query_param = 'page'
+    page_query_param = "page"
 
     def get_paginated_response(self, data):
         """
@@ -27,13 +27,15 @@ class CustomPageNumberPagination(PageNumberPagination):
         return ApiResponse.success(
             data=data,  # The paginated data
             meta={
-                'pagination': {
-                    'next': self.get_next_link(),  # URL for the next page, if available
-                    'previous': self.get_previous_link(),  # URL for the previous page, if available
-                    'count': self.page.paginator.count,  # Total number of items
-                    'current_page': self.page.number,  # Current page number
-                    'total_pages': self.page.paginator.num_pages,  # Total number of pages
-                    'page_size': self.get_page_size(self.request)  # Number of items per page
+                "pagination": {
+                    "next": self.get_next_link(),  # URL for the next page, if available
+                    "previous": self.get_previous_link(),  # URL for the previous page, if available
+                    "count": self.page.paginator.count,  # Total number of items
+                    "current_page": self.page.number,  # Current page number
+                    "total_pages": self.page.paginator.num_pages,  # Total number of pages
+                    "page_size": self.get_page_size(
+                        self.request
+                    ),  # Number of items per page
                 }
-            }
+            },
         )

@@ -20,6 +20,6 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(user_logged_in)
 def update_last_login_ip(sender, request, user, **kwargs):
-    user.last_login_ip = request.META.get('REMOTE_ADDR')
+    user.last_login_ip = request.META.get("REMOTE_ADDR")
     user.last_login = timezone.now()
     user.save()

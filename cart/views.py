@@ -27,7 +27,7 @@ logger = getLogger(__name__)
         responses={
             200: OpenApiResponse(
                 response=CartSerializer,
-                description="Cart details retrieved successfully."
+                description="Cart details retrieved successfully.",
             ),
         },
     ),
@@ -56,14 +56,15 @@ class CartViewSet(viewsets.ViewSet):
     """
     A viewset for viewing and editing cart items.
     """
+
     throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     queryset = None
-    lookup_field = 'variant_id'
-    lookup_url_kwarg = 'variant_id'
+    lookup_field = "variant_id"
+    lookup_url_kwarg = "variant_id"
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return None  # For schema generation
 
     @extend_schema(
@@ -73,7 +74,7 @@ class CartViewSet(viewsets.ViewSet):
         responses={
             200: OpenApiResponse(
                 response=CartSerializer,
-                description="Cart details retrieved successfully."
+                description="Cart details retrieved successfully.",
             ),
         },
     )
@@ -88,10 +89,10 @@ class CartViewSet(viewsets.ViewSet):
             Response: A JSON response containing the cart details and total price.
         """
         cart_data = services.get_cart_data(request)
-        serializer = CartSerializer(cart_data, context={'request': request})
+        serializer = CartSerializer(cart_data, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'], url_path='add')
+    @action(detail=True, methods=["post"], url_path="add")
     def add_to_cart(self, request, variant_id=None):
         serializer = AddToCartSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -101,31 +102,31 @@ class CartViewSet(viewsets.ViewSet):
             services.add_to_cart(
                 request,
                 variant_id,
-                data.get('quantity', 1),
-                data.get('override', False),
+                data.get("quantity", 1),
+                data.get("override", False),
             )
             return Response(
-                {'message': 'Product added/updated in cart'},
+                {"message": "Product added/updated in cart"},
                 status=status.HTTP_200_OK,
             )
         except ValidationError as e:
             logger.warning(f"Add to cart validation error: {e.detail}")
-            return ApiResponse.error(message=str(e.detail), status_code=status.HTTP_400_BAD_REQUEST)
+            return ApiResponse.error(
+                message=str(e.detail), status_code=status.HTTP_400_BAD_REQUEST
+            )
         except ProductVariant.DoesNotExist:
             logger.warning(f"ProductVariant with id {variant_id} not found.")
             return ApiResponse.error(
-                message='Product not found.', status_code=status.HTTP_404_NOT_FOUND
+                message="Product not found.", status_code=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            logger.error(
-                f"Unexpected error adding product to cart: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error adding product to cart: {e}", exc_info=True)
             return ApiResponse.error(
-                message='An unexpected error occurred.',
+                message="An unexpected error occurred.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @action(detail=True, methods=['delete'], url_path='remove')
+    @action(detail=True, methods=["delete"], url_path="remove")
     def remove_from_cart(self, request, variant_id=None):
         """
         Remove a product from the cart.
@@ -140,13 +141,14 @@ class CartViewSet(viewsets.ViewSet):
         try:
             services.remove_from_cart(request, variant_id)
             return Response(
-                {'message': 'Product removed from cart'},
-                status=status.HTTP_200_OK
+                {"message": "Product removed from cart"}, status=status.HTTP_200_OK
             )
         except ProductVariant.DoesNotExist:
-            logger.warning(f"ProductVariant with id {variant_id} not found for removal.")
+            logger.warning(
+                f"ProductVariant with id {variant_id} not found for removal."
+            )
             return ApiResponse.error(
-                message='Product not found.', status_code=status.HTTP_404_NOT_FOUND
+                message="Product not found.", status_code=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             logger.error(
@@ -154,11 +156,11 @@ class CartViewSet(viewsets.ViewSet):
                 exc_info=True,
             )
             return ApiResponse.error(
-                message='An unexpected error occurred.',
+                message="An unexpected error occurred.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @action(detail=False, methods=['delete'], url_path='clear')
+    @action(detail=False, methods=["delete"], url_path="clear")
     @extend_schema(
         operation_id="cart_clear",
         description="Clear all items from the cart.",

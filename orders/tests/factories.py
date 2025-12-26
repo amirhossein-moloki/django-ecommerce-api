@@ -1,7 +1,8 @@
 import factory
 from factory.django import DjangoModelFactory
+
+from account.tests.factories import UserFactory, AddressFactory
 from orders.models import Order, OrderItem
-from account.tests.factories import UserFactory
 from shop.tests.factories import ProductVariantFactory
 
 
@@ -10,7 +11,7 @@ class OrderFactory(DjangoModelFactory):
         model = Order
 
     user = factory.SubFactory(UserFactory)
-    status = factory.Faker("random_element", elements=[s[0] for s in Order.Status.choices])
+    address = factory.SubFactory(AddressFactory, user=factory.SelfAttribute("..user"))
 
 
 class OrderItemFactory(DjangoModelFactory):
@@ -20,4 +21,4 @@ class OrderItemFactory(DjangoModelFactory):
     order = factory.SubFactory(OrderFactory)
     variant = factory.SubFactory(ProductVariantFactory)
     quantity = factory.Faker("random_int", min=1, max=5)
-    price = factory.LazyAttribute(lambda o: o.variant.price)
+    price = factory.SelfAttribute("variant.price")
