@@ -1,4 +1,3 @@
-from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
 from shop.models import ProductVariant
@@ -23,21 +22,21 @@ def get_cart_data(request):
 
 def add_to_cart(request, variant_id, quantity=1, override_quantity=False):
     cart = Cart(request)
-    variant = get_object_or_404(ProductVariant, variant_id=variant_id)
+    try:
+        variant = ProductVariant.objects.get(variant_id=variant_id)
+    except ProductVariant.DoesNotExist:
+        # Re-raise the exception to be caught by the view layer.
+        raise
 
     if variant.stock == 0:
         raise ValidationError("This product is out of stock.")
 
     # This logic should be in the Cart class itself, but for now, we adapt the service
     current_quantity = 0
-    if request.user.is_authenticated:
-        if cart.cart:
-            item = cart.cart.items.filter(variant=variant).first()
-            if item:
-                current_quantity = item.quantity
-    else:
-        if str(variant.variant_id) in cart.cart:
-            current_quantity = cart.cart[str(variant.variant_id)]["quantity"]
+    if cart.cart:
+        item = cart.cart.items.filter(variant=variant).first()
+        if item:
+            current_quantity = item.quantity
 
     if override_quantity:
         total_quantity = quantity
@@ -55,7 +54,10 @@ def add_to_cart(request, variant_id, quantity=1, override_quantity=False):
 
 def remove_from_cart(request, variant_id):
     cart = Cart(request)
-    variant = get_object_or_404(ProductVariant, variant_id=variant_id)
+    try:
+        variant = ProductVariant.objects.get(variant_id=variant_id)
+    except ProductVariant.DoesNotExist:
+        raise
     cart.remove(variant)
 
 
