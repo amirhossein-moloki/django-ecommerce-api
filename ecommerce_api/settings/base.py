@@ -223,8 +223,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "400/day",
-        "user": "1000/day",
+        "anon": env("DRF_ANON_THROTTLE_RATE", default="400/day"),
+        "user": env("DRF_USER_THROTTLE_RATE", default="1000/day"),
     },
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
@@ -248,9 +248,14 @@ SIMPLE_JWT = {
 
 # API Documentation Settings
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Hypex eCommerce API Documentation",
-    "DESCRIPTION": "A scalable RESTful eCommerce API using Django, JWT auth, Redis caching, Celery for task scheduling, advanced search, tagging, and personalized results.",
-    "VERSION": "1.2.6",
+    "TITLE": env(
+        "API_DOCS_TITLE", default="Hypex eCommerce API Documentation"
+    ),
+    "DESCRIPTION": env(
+        "API_DOCS_DESCRIPTION",
+        default="A scalable RESTful eCommerce API using Django, JWT auth, Redis caching, Celery for task scheduling, advanced search, tagging, and personalized results.",
+    ),
+    "VERSION": env("API_DOCS_VERSION", default="1.2.6"),
     "SERVE_INCLUDE_SCHEMA": True,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "SORT_OPERATIONS": True,
