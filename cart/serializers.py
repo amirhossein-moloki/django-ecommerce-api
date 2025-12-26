@@ -6,12 +6,12 @@ from django.core.validators import MaxValueValidator
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from shop.serializers import ProductSerializer
+from shop.serializers import ProductVariantSerializer
 
 
 class CartSerializer(serializers.Serializer):
     class CartItemSerializer(serializers.Serializer):
-        product = ProductSerializer()
+        variant = ProductVariantSerializer()
         quantity = serializers.IntegerField(
             min_value=1
         )  # Ensure quantity is at least 1
