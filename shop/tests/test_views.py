@@ -5,8 +5,10 @@ from rest_framework.test import APIClient
 from account.tests.factories import UserFactory
 from orders.models import Order
 from orders.tests.factories import OrderFactory, OrderItemFactory
+from unittest.mock import patch
 from shop.models import Product
 from shop.tests.factories import ProductFactory, CategoryFactory, ReviewFactory
+from fakeredis import FakeRedis
 
 pytestmark = pytest.mark.django_db
 
@@ -22,17 +24,19 @@ class TestProductViewSet:
         url = reverse("api-v1:product-list")
         response = api_client.get(url)
         assert response.status_code == 200
-        assert response.data["count"] == 5
+        assert len(response.data["data"]) == 5
 
-    def test_retrieve_product(self, api_client):
+    @patch("shop.recommender.redis.from_url")
+    def test_retrieve_product(self, mock_redis_from_url, api_client):
+        mock_redis_from_url.return_value = FakeRedis()
         product = ProductFactory()
         url = reverse("api-v1:product-detail", kwargs={"slug": product.slug})
         response = api_client.get(url)
         assert response.status_code == 200
-        assert response.data["slug"] == product.slug
+        assert response.data["data"]["slug"] == product.slug
 
     def test_create_product(self, api_client):
-        user = UserFactory()
+        user = UserFactory(is_staff=True)
         category = CategoryFactory()
         api_client.force_authenticate(user=user)
         url = reverse("api-v1:product-list")
@@ -40,11 +44,14 @@ class TestProductViewSet:
             "name": "Test Create",
             "description": "desc",
             "category": category.pk,
-            "weight": 1,
+            "weight": "1.00",
+            "length": "10.00",
+            "width": "10.00",
+            "height": "10.00",
         }
         response = api_client.post(url, data)
         assert response.status_code == 201
-        assert response.data["name"] == "Test Create"
+        assert response.data["data"]["name"] == "Test Create"
 
 
 class TestCategoryViewSet:
@@ -53,7 +60,7 @@ class TestCategoryViewSet:
         url = reverse("api-v1:category-list")
         response = api_client.get(url)
         assert response.status_code == 200
-        assert response.data["count"] == 3
+        assert len(response.data["data"]) == 3
 
 
 class TestReviewViewSet:

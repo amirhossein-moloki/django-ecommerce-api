@@ -42,44 +42,58 @@ class TestAccountViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_verify_otp_success_existing_user_login(self):
-        otp = OTPCode.objects.create(phone=self.user_phone, code="123456")
+        otp = OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+        )
         response = self.client.post(
             self.verify_otp_url, {"phone": self.user_phone, "code": "123456"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data['data'])
-        self.assertIn("refresh", response.data['data'])
-        self.assertTrue(response.data['data']["is_profile_complete"])
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertTrue(response.data["is_profile_complete"])
 
     def test_verify_otp_success_new_user_signup(self):
         new_phone = "+989120000000"
-        otp = OTPCode.objects.create(phone=new_phone, code="123456")
+        otp = OTPCode.objects.create(
+            phone=new_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+        )
         response = self.client.post(
             self.verify_otp_url, {"phone": new_phone, "code": "123456"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data['data'])
-        self.assertIn("refresh", response.data['data'])
-        self.assertFalse(response.data['data']["is_profile_complete"])
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertFalse(response.data["is_profile_complete"])
         self.assertTrue(UserAccount.objects.filter(phone_number=new_phone).exists())
 
     def test_verify_otp_invalid_code(self):
-        OTPCode.objects.create(phone=self.user_phone, code="123456")
+        OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+        )
         response = self.client.post(
             self.verify_otp_url, {"phone": self.user_phone, "code": "654321"}
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Invalid OTP", response.data['message'])
+        self.assertIn("Invalid OTP", response.data["detail"])
 
     def test_verify_otp_expired_code(self):
-        otp = OTPCode.objects.create(phone=self.user_phone, code="123456")
-        otp.expires_at = timezone.now() - timezone.timedelta(minutes=5)
-        otp.save()
+        otp = OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() - timezone.timedelta(minutes=5),
+        )
         response = self.client.post(
             self.verify_otp_url, {"phone": self.user_phone, "code": "123456"}
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("OTP has expired", response.data['message'])
+        self.assertIn("OTP has expired", response.data["detail"])
 
     def test_get_me_authenticated(self):
         refresh = RefreshToken.for_user(self.user)
@@ -136,4 +150,4 @@ class TestAccountViews(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
 
         response = self.client.post(self.logout_url, {"refresh": "invalidtoken"})
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

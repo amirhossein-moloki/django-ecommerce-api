@@ -7,7 +7,7 @@ from account.models import Address
 from cart.cart import Cart
 from coupons.models import Coupon
 from orders.models import Order, OrderItem
-from shop.models import Product
+from shop.models import Product, ProductVariant
 from discounts.services import DiscountService
 
 

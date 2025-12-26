@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 def get_user_orders(user):
     if user.is_staff:
         return Order.objects.prefetch_related(
-            "items__product", "user", "address", "coupon"
+            "items__variant__product", "user", "address"
         )
     return Order.objects.filter(user=user).prefetch_related(
-        "items__product", "user", "address", "coupon"
+        "items__variant__product", "user", "address"
     )
 
 
