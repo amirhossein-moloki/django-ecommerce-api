@@ -1,0 +1,580 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-8.4.2, pluggy-1.6.0
+django: version: 5.2, settings: ecommerce_api.settings.test (from ini)
+rootdir: /app
+configfile: pytest.ini
+plugins: locust-2.42.6, requests-mock-1.12.1, asyncio-0.23.7, mock-3.15.1, Faker-39.0.0, django-4.11.1, cov-7.0.0, anyio-4.9.0, env-1.2.0
+asyncio: mode=Mode.STRICT
+collected 102 items
+
+account/tests/test_views.py ....F...FF..                                 [ 11%]
+cart/tests/test_services.py ............                                 [ 23%]
+cart/tests/test_views.py .........                                       [ 32%]
+coupons/tests/test_services.py .......                                   [ 39%]
+discounts/tests/test_services.py ..................                      [ 56%]
+orders/tests/test_models.py ......                                       [ 62%]
+orders/tests/test_serializers.py ....                                    [ 66%]
+orders/tests/test_services.py ...                                        [ 69%]
+orders/tests/test_views.py .F..F                                         [ 74%]
+shop/tests/test_models.py .......                                        [ 81%]
+shop/tests/test_services.py .....                                        [ 86%]
+shop/tests/test_views.py .FF...                                          [ 92%]
+payment/tests/test_gateways.py ........                                  [100%]
+
+=================================== FAILURES ===================================
+__________________ TestAccountViews.test_logout_invalid_token __________________
+
+self = <account.tests.test_views.TestAccountViews testMethod=test_logout_invalid_token>
+
+    def test_logout_invalid_token(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+
+        response = self.client.post(self.logout_url, {"refresh": "invalidtoken"})
+>       self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+E       AssertionError: 500 != 400
+
+account/tests/test_views.py:153: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    account.views:views.py:271 Error during logout: Token is invalid
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 258, in _load
+    signing_input, crypto_segment = jwt.rsplit(b".", 1)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/backends.py", line 160, in decode
+    return jwt.decode(
+           ^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jwt.py", line 211, in decode
+    decoded = self.decode_complete(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jwt.py", line 152, in decode_complete
+    decoded = api_jws.decode_complete(
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 199, in decode_complete
+    payload, signing_input, header, signature = self._load(jwt)
+                                                ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 261, in _load
+    raise DecodeError("Not enough segments") from err
+jwt.exceptions.DecodeError: Not enough segments
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/tokens.py", line 64, in __init__
+    self.payload = token_backend.decode(token, verify=verify)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/backends.py", line 177, in decode
+    raise TokenBackendError(_("Token is invalid")) from ex
+rest_framework_simplejwt.exceptions.TokenBackendError: Token is invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/account/views.py", line 264, in post
+    token = RefreshToken(refresh_token)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/tokens.py", line 68, in __init__
+    raise TokenError(_("Token is invalid"))
+rest_framework_simplejwt.exceptions.TokenError: Token is invalid
+ERROR    ecommerce_api.core.exceptions:exceptions.py:48 Internal server error occurred
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 258, in _load
+    signing_input, crypto_segment = jwt.rsplit(b".", 1)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/backends.py", line 160, in decode
+    return jwt.decode(
+           ^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jwt.py", line 211, in decode
+    decoded = self.decode_complete(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jwt.py", line 152, in decode_complete
+    decoded = api_jws.decode_complete(
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 199, in decode_complete
+    payload, signing_input, header, signature = self._load(jwt)
+                                                ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/jwt/api_jws.py", line 261, in _load
+    raise DecodeError("Not enough segments") from err
+jwt.exceptions.DecodeError: Not enough segments
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/tokens.py", line 64, in __init__
+    self.payload = token_backend.decode(token, verify=verify)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/backends.py", line 177, in decode
+    raise TokenBackendError(_("Token is invalid")) from ex
+rest_framework_simplejwt.exceptions.TokenBackendError: Token is invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/account/views.py", line 264, in post
+    token = RefreshToken(refresh_token)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework_simplejwt/tokens.py", line 68, in __init__
+    raise TokenError(_("Token is invalid"))
+rest_framework_simplejwt.exceptions.TokenError: Token is invalid
+ERROR    django.request:log.py:248 Internal Server Error: /auth/token/destroy/
+________________ TestAccountViews.test_verify_otp_expired_code _________________
+
+self = <account.tests.test_views.TestAccountViews testMethod=test_verify_otp_expired_code>
+
+    def test_verify_otp_expired_code(self):
+        otp = OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() - timezone.timedelta(minutes=5),
+        )
+        response = self.client.post(
+            self.verify_otp_url, {"phone": self.user_phone, "code": "123456"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+>       self.assertIn("OTP has expired", response.data["detail"])
+                                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'detail'
+
+account/tests/test_views.py:96: KeyError
+------------------------------ Captured log call -------------------------------
+WARNING  django.request:log.py:248 Bad Request: /auth/verify-otp/
+________________ TestAccountViews.test_verify_otp_invalid_code _________________
+
+self = <account.tests.test_views.TestAccountViews testMethod=test_verify_otp_invalid_code>
+
+    def test_verify_otp_invalid_code(self):
+        OTPCode.objects.create(
+            phone=self.user_phone,
+            code="123456",
+            expires_at=timezone.now() + timezone.timedelta(minutes=2),
+        )
+        response = self.client.post(
+            self.verify_otp_url, {"phone": self.user_phone, "code": "654321"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+>       self.assertIn("Invalid OTP", response.data["detail"])
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'detail'
+
+account/tests/test_views.py:84: KeyError
+------------------------------ Captured log call -------------------------------
+WARNING  django.request:log.py:248 Bad Request: /auth/verify-otp/
+______________________ test_order_list_authenticated_user ______________________
+
+api_client = <rest_framework.test.APIClient object at 0x7ff6e81b4590>
+
+    def test_order_list_authenticated_user(api_client):
+        """
+        Test that authenticated users can only list their own orders.
+        """
+        user1 = UserFactory()
+        user2 = UserFactory()
+        OrderFactory(user=user1)
+        OrderFactory(user=user2)
+
+        api_client.force_authenticate(user=user1)
+        url = reverse("api-v1:orders-list")
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+>       assert len(response.data) == 1
+E       assert 4 == 1
+E        +  where 4 = len({'data': [{'order_id': 'a9c6423c-308e-4165-a728-24fd0b1ce5b7', 'user': 'markthompson80', 'address': '8373 Gregory Junc...Success', 'meta': {'pagination': {'count': 1, 'current_page': 1, 'next': None, 'page_size': 10, ...}}, 'success': True})
+E        +    where {'data': [{'order_id': 'a9c6423c-308e-4165-a728-24fd0b1ce5b7', 'user': 'markthompson80', 'address': '8373 Gregory Junc...Success', 'meta': {'pagination': {'count': 1, 'current_page': 1, 'next': None, 'page_size': 10, ...}}, 'success': True} = <Response status_code=200, "application/json">.data
+
+orders/tests/test_views.py:43: AssertionError
+__________________ test_order_creation_insufficient_stock_api __________________
+
+api_client = <rest_framework.test.APIClient object at 0x7ff6e80b7b00>
+
+    def test_order_creation_insufficient_stock_api(api_client):
+        """
+        Test that creating an order with insufficient stock fails.
+        """
+        user = UserFactory()
+        address = AddressFactory(user=user)
+        variant = ProductVariantFactory(stock=2)
+
+        # Add item to cart via API
+        api_client.force_authenticate(user=user)
+        add_to_cart_url = reverse(
+            "api-v1:cart-add", kwargs={"variant_id": variant.variant_id}
+        )
+        api_client.post(add_to_cart_url, {"quantity": 5})
+        url = reverse("api-v1:orders-list")
+        data = {"address_id": address.id}
+
+        response = api_client.post(url, data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+>       assert "Not enough stock" in response.data[0]
+                                     ^^^^^^^^^^^^^^^^
+E       KeyError: 0
+
+orders/tests/test_views.py:115: KeyError
+------------------------------ Captured log call -------------------------------
+WARNING  cart.views:views.py:113 Add to cart validation error: [ErrorDetail(string='Cannot add 5 items. Only 2 more items can be added.', code='invalid')]
+WARNING  django.request:log.py:248 Bad Request: /api/v1/cart/add/2c24a297-17a4-4e5c-a947-bad5ead7d86c/
+WARNING  django.request:log.py:248 Bad Request: /api/v1/orders/
+___________________ TestProductViewSet.test_retrieve_product ___________________
+
+self = <shop.tests.test_views.TestProductViewSet object at 0x7ff6e9960290>
+api_client = <rest_framework.test.APIClient object at 0x7ff6e7f84da0>
+
+    def test_retrieve_product(self, api_client):
+        product = ProductFactory()
+        url = reverse("api-v1:product-detail", kwargs={"slug": product.slug})
+        response = api_client.get(url)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response status_code=500, "application/json">.status_code
+
+shop/tests/test_views.py:31: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    ecommerce_api.core.exceptions:exceptions.py:48 Internal server error occurred
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 357, in connect
+    sock = self.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/retry.py", line 62, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 358, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 730, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 718, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/shop/views.py", line 453, in retrieve
+    cache.set(cache_key, serializer.data, 60 * 60)  # 1 hour
+                         ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/serializers.py", line 573, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/serializers.py", line 540, in to_representation
+    ret[field.field_name] = field.to_representation(attribute)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/fields.py", line 1870, in to_representation
+    return method(value)
+           ^^^^^^^^^^^^^
+  File "/app/shop/serializers.py", line 207, in get_recommended_products
+    for product in recommender.suggest_products_for([obj], max_results=5)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/shop/recommender.py", line 32, in suggest_products_for
+    suggestions = r.zrange(
+                  ^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/commands/core.py", line 4523, in zrange
+    return self.zrevrange(name, start, end, withscores, score_cast_func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/commands/core.py", line 4566, in zrevrange
+    return self.execute_command(*pieces, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/client.py", line 559, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/client.py", line 565, in _execute_command
+    conn = self.connection or pool.get_connection(command_name, **options)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 1422, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/redis/connection.py", line 363, in connect
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+ERROR    django.request:log.py:248 Internal Server Error: /api/v1/products/similar-idea-2025-12-26/
+____________________ TestProductViewSet.test_create_product ____________________
+
+self = <shop.tests.test_views.TestProductViewSet object at 0x7ff6e9961a90>
+api_client = <rest_framework.test.APIClient object at 0x7ff6e7ee8650>
+
+    def test_create_product(self, api_client):
+        user = UserFactory()
+        category = CategoryFactory()
+        api_client.force_authenticate(user=user)
+        url = reverse("api-v1:product-list")
+        data = {
+            "name": "Test Create",
+            "description": "desc",
+            "category": category.pk,
+            "weight": 1,
+            "length": 1,
+            "width": 1,
+            "height": 1,
+        }
+        response = api_client.post(url, data)
+>       assert response.status_code == 201
+E       assert 400 == 201
+E        +  where 400 = <Response status_code=400, "application/json">.status_code
+
+shop/tests/test_views.py:49: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  django.request:log.py:248 Bad Request: /api/v1/products/
+=============================== warnings summary ===============================
+../home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/django/db/backends/utils.py:98
+  /home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/django/db/backends/utils.py:98: RuntimeWarning: Accessing the database during app initialization is discouraged. To fix this warning, avoid executing queries in AppConfig.ready() or when your app modules are imported.
+    warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+
+cart/tests/test_services.py: 37 warnings
+cart/tests/test_views.py: 27 warnings
+discounts/tests/test_services.py: 52 warnings
+orders/tests/test_models.py: 9 warnings
+orders/tests/test_serializers.py: 7 warnings
+orders/tests/test_services.py: 6 warnings
+orders/tests/test_views.py: 8 warnings
+shop/tests/test_models.py: 8 warnings
+shop/tests/test_services.py: 7 warnings
+shop/tests/test_views.py: 11 warnings
+  /home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/factory/django.py:182: DeprecationWarning: UserFactory._after_postgeneration will stop saving the instance after postgeneration hooks in the next major release.
+  If the save call is extraneous, set skip_postgeneration_save=True in the UserFactory.Meta.
+  To keep saving the instance, move the save call to your postgeneration hooks or override _after_postgeneration.
+    warnings.warn(
+
+cart/tests/test_views.py::TestCartAPI::test_get_cart_authenticated_user_with_items
+cart/tests/test_views.py::TestCartAPI::test_api_cart_merges_on_login
+shop/tests/test_views.py::TestProductViewSet::test_list_products
+shop/tests/test_views.py::TestProductViewSet::test_retrieve_product
+shop/tests/test_views.py::TestProductViewSet::test_create_product
+  /home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/rest_framework/fields.py:992: UserWarning: min_value should be an integer or Decimal instance.
+    warnings.warn("min_value should be an integer or Decimal instance.")
+
+discounts/tests/test_services.py: 34 warnings
+orders/tests/test_models.py: 3 warnings
+orders/tests/test_serializers.py: 3 warnings
+orders/tests/test_services.py: 1 warning
+orders/tests/test_views.py: 2 warnings
+shop/tests/test_models.py: 5 warnings
+shop/tests/test_services.py: 8 warnings
+shop/tests/test_views.py: 8 warnings
+  /home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/factory/django.py:182: DeprecationWarning: ProductFactory._after_postgeneration will stop saving the instance after postgeneration hooks in the next major release.
+  If the save call is extraneous, set skip_postgeneration_save=True in the ProductFactory.Meta.
+  To keep saving the instance, move the save call to your postgeneration hooks or override _after_postgeneration.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                                                                   Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------------------------
+account/__init__.py                                                                        0      0   100%
+account/admin.py                                                                          33     12    64%   81, 87-89, 112-121, 127-129
+account/apps.py                                                                            6      0   100%
+account/emails.py                                                                         16     16     0%   1-29
+account/factories.py                                                                      31     31     0%   1-40
+account/migrations/0001_initial.py                                                        11      0   100%
+account/migrations/0002_address.py                                                         6      0   100%
+account/migrations/0003_useraccount_is_profile_complete_and_more.py                        5      0   100%
+account/migrations/0004_alter_useraccount_phone_number.py                                  5      0   100%
+account/migrations/__init__.py                                                             0      0   100%
+account/models.py                                                                         75     12    84%   41, 48, 52, 60-69, 128
+account/permissions.py                                                                     5      0   100%
+account/serializers.py                                                                    53     14    74%   38-51, 84-86, 90
+account/signals.py                                                                        24      7    71%   11-16, 40-41
+account/tests/__init__.py                                                                  0      0   100%
+account/tests/factories.py                                                                30      0   100%
+account/tests/test_views.py                                                               89      0   100%
+account/urls.py                                                                            4      0   100%
+account/utils.py                                                                           3      1    67%   11
+account/views.py                                                                         167     43    74%   102-126, 142, 145, 148, 151, 154, 170-181, 202-213, 231-239, 277, 290, 324, 337, 354, 368, 412
+cart/__init__.py                                                                           0      0   100%
+cart/admin.py                                                                              0      0   100%
+cart/apps.py                                                                               4      0   100%
+cart/cart.py                                                                              61      9    85%   44-45, 108-109, 115-119, 126, 133
+cart/middleware.py                                                                        12      0   100%
+cart/migrations/0001_initial.py                                                            7      0   100%
+cart/migrations/0002_initial.py                                                            6      0   100%
+cart/migrations/__init__.py                                                                0      0   100%
+cart/models.py                                                                            20      4    80%   27-29, 44
+cart/serializers.py                                                                       38      8    79%   36-42, 56-59
+cart/services.py                                                                          35      3    91%   42, 59-60
+cart/tests/__init__.py                                                                     0      0   100%
+cart/tests/factories.py                                                                   47      0   100%
+cart/tests/test_services.py                                                              159      0   100%
+cart/tests/test_views.py                                                                  91      0   100%
+cart/urls.py                                                                               3      0   100%
+cart/views.py                                                                             61     11    82%   67-68, 122-124, 146-158
+chat/__init__.py                                                                           0      0   100%
+chat/admin.py                                                                             12      1    92%   27
+chat/apps.py                                                                               4      0   100%
+chat/consumers.py                                                                         69     69     0%   1-202
+chat/factories.py                                                                         10     10     0%   1-13
+chat/migrations/0001_initial.py                                                            5      0   100%
+chat/migrations/0002_initial.py                                                            7      0   100%
+chat/migrations/__init__.py                                                                0      0   100%
+chat/models.py                                                                            14      1    93%   33
+chat/routing.py                                                                            3      3     0%   1-5
+chat/serializer.py                                                                         0      0   100%
+chat/tests/__init__.py                                                                     0      0   100%
+chat/tests/factories.py                                                                    0      0   100%
+chat/urls.py                                                                               3      0   100%
+chat/views.py                                                                             29     15    48%   52-91
+coupons/__init__.py                                                                        0      0   100%
+coupons/admin.py                                                                           7      0   100%
+coupons/apps.py                                                                            4      0   100%
+coupons/factories.py                                                                      13     13     0%   1-16
+coupons/migrations/0001_initial.py                                                         6      0   100%
+coupons/migrations/0002_add_coupon_fields.py                                               5      0   100%
+coupons/migrations/__init__.py                                                             0      0   100%
+coupons/models.py                                                                         28      4    86%   40-41, 50, 53
+coupons/serializers.py                                                                    15      7    53%   22-30
+coupons/services.py                                                                       27      9    67%   28-33, 37-39
+coupons/tests/__init__.py                                                                  0      0   100%
+coupons/tests/factories.py                                                                 0      0   100%
+coupons/tests/test_services.py                                                            61      0   100%
+coupons/urls.py                                                                            3      0   100%
+coupons/views.py                                                                          54     32    41%   84-88, 94-103, 109-118, 133-149
+create_dirs.py                                                                             3      3     0%   1-4
+discounts/__init__.py                                                                      0      0   100%
+discounts/admin.py                                                                        21      2    90%   50, 54
+discounts/apps.py                                                                          4      0   100%
+discounts/migrations/0001_initial.py                                                       8      0   100%
+discounts/migrations/0002_discount_code.py                                                 4      0   100%
+discounts/migrations/__init__.py                                                           0      0   100%
+discounts/models.py                                                                       50      4    92%   57, 61, 87, 109
+discounts/services.py                                                                     73      1    99%   62
+discounts/tests/__init__.py                                                                0      0   100%
+discounts/tests/factories.py                                                               0      0   100%
+discounts/tests/test_services.py                                                         157      2    99%   58, 69
+discounts/views.py                                                                         1      1     0%   1
+ecommerce_api/__init__.py                                                                  2      0   100%
+ecommerce_api/asgi.py                                                                     10     10     0%   10-26
+ecommerce_api/celery.py                                                                    6      0   100%
+ecommerce_api/core/__init__.py                                                             0      0   100%
+ecommerce_api/core/api_standard_response.py                                               21      3    86%   82-90
+ecommerce_api/core/exceptions.py                                                          16      0   100%
+ecommerce_api/core/mixins.py                                                               3      0   100%
+ecommerce_api/core/permissions.py                                                          8      5    38%   11-17
+ecommerce_api/core/renderers.py                                                           23      2    91%   27, 35
+ecommerce_api/core/utils.py                                                                6      5    17%   6-11
+ecommerce_api/settings/__init__.py                                                         0      0   100%
+ecommerce_api/settings/base.py                                                            95     12    87%   356-372
+ecommerce_api/settings/development.py                                                      5      5     0%   1-20
+ecommerce_api/settings/production.py                                                       7      7     0%   1-43
+ecommerce_api/settings/test.py                                                            13      0   100%
+ecommerce_api/urls.py                                                                     22      6    73%   43, 110-117
+ecommerce_api/utils/__init__.py                                                            0      0   100%
+ecommerce_api/utils/file_handling.py                                                       5      2    60%   6-7
+ecommerce_api/utils/pagination.py                                                          9      0   100%
+ecommerce_api/views.py                                                                     3      1    67%   8
+ecommerce_api/wsgi.py                                                                      4      4     0%   10-16
+locustfile.py                                                                             56     56     0%   1-88
+manage.py                                                                                 13     13     0%   4-28
+orders/__init__.py                                                                         0      0   100%
+orders/admin.py                                                                           14      0   100%
+orders/apps.py                                                                             4      0   100%
+orders/factories.py                                                                       23     23     0%   1-29
+orders/migrations/0001_initial.py                                                         10      0   100%
+orders/migrations/0002_initial.py                                                          6      0   100%
+orders/migrations/0003_remove_historicalorder_coupon_remove_order_coupon_and_more.py       5      0   100%
+orders/migrations/__init__.py                                                              0      0   100%
+orders/models.py                                                                         106      2    98%   164-165
+orders/permissions.py                                                                      8      3    62%   6-8
+orders/serializers.py                                                                     78      5    94%   91-95, 127, 176
+orders/services.py                                                                        22      2    91%   33-34
+orders/tasks.py                                                                           26      9    65%   35-37, 45-53
+orders/tests/__init__.py                                                                   0      0   100%
+orders/tests/factories.py                                                                 17      0   100%
+orders/tests/test_models.py                                                               71      0   100%
+orders/tests/test_serializers.py                                                          54      0   100%
+orders/tests/test_services.py                                                             48      0   100%
+orders/tests/test_views.py                                                                69      4    94%   44, 116-118
+orders/urls.py                                                                             6      0   100%
+orders/views.py                                                                           25      2    92%   64, 74
+payment/__init__.py                                                                        0      0   100%
+payment/admin.py                                                                           8      0   100%
+payment/apps.py                                                                            4      0   100%
+payment/gateways.py                                                                       53      2    96%   14, 18
+payment/migrations/0001_initial.py                                                         7      0   100%
+payment/migrations/__init__.py                                                             0      0   100%
+payment/models.py                                                                         34      1    97%   56
+payment/services.py                                                                      102     93     9%   11-103, 108-239
+payment/tests/__init__.py                                                                  0      0   100%
+payment/tests/factories.py                                                                45     45     0%   1-64
+payment/tests/test_gateways.py                                                            44      0   100%
+payment/tests/test_services.py                                                             0      0   100%
+payment/tests/test_views.py                                                                0      0   100%
+payment/urls.py                                                                            4      0   100%
+payment/views.py                                                                          63     39    38%   39-50, 83-183
+shipping/__init__.py                                                                       0      0   100%
+shipping/apps.py                                                                           4      0   100%
+shipping/models.py                                                                         0      0   100%
+shipping/providers.py                                                                    103     80    22%   13-14, 20, 24, 28, 33-36, 39, 45-63, 68-127, 130-139, 142-181, 184-193, 196-205
+shipping/tasks.py                                                                         30     23    23%   14-61
+shipping/tests/__init__.py                                                                 0      0   100%
+shipping/tests/factories.py                                                                0      0   100%
+shipping/urls.py                                                                           4      0   100%
+shipping/views.py                                                                         44     32    27%   14-26, 34-80
+shop/__init__.py                                                                           0      0   100%
+shop/admin.py                                                                             22      0   100%
+shop/apps.py                                                                               6      0   100%
+shop/consumers.py                                                                         47     47     0%   1-113
+shop/custom_taggit.py                                                                     11      0   100%
+shop/factories.py                                                                         44     44     0%   1-61
+shop/feeds.py                                                                             17      4    76%   15, 18, 21, 24
+shop/filters.py                                                                           22      6    73%   29-33, 36-38
+shop/migrations/0001_initial.py                                                           12      0   100%
+shop/migrations/0002_auto_20240726_1000.py                                                 4      0   100%
+shop/migrations/__init__.py                                                                0      0   100%
+shop/models.py                                                                           148     23    84%   56, 59, 64-66, 69, 72, 80, 212-213, 215, 232-235, 238-239, 242, 259-260, 264, 328, 335, 348, 370
+shop/recommender.py                                                                       32     18    44%   8-10, 20-26, 37-59
+shop/routing.py                                                                            3      3     0%   1-5
+shop/serializers.py                                                                      101     27    73%   101-121, 125, 131-135, 138-143, 173-176, 197-198, 209-218
+shop/services.py                                                                          35      4    89%   14, 28, 48, 54
+shop/signals.py                                                                           17      0   100%
+shop/sitemaps.py                                                                           9      2    78%   11, 14
+shop/tasks.py                                                                             24     24     0%   1-46
+shop/tests/__init__.py                                                                     0      0   100%
+shop/tests/factories.py                                                                   39      0   100%
+shop/tests/test_models.py                                                                 68      0   100%
+shop/tests/test_services.py                                                               43      0   100%
+shop/tests/test_views.py                                                                  59      2    97%   32, 50
+shop/urls.py                                                                              11      0   100%
+shop/utils.py                                                                             13      5    62%   5, 17, 25-37
+shop/validators.py                                                                        17      0   100%
+shop/views.py                                                                            151     55    64%   119, 126-128, 159, 165-172, 340, 356-369, 384-403, 412-414, 420-422, 435, 450, 454, 468-487, 582
+sms/__init__.py                                                                            0      0   100%
+sms/apps.py                                                                                4      0   100%
+sms/migrations/0001_initial.py                                                             5      0   100%
+sms/migrations/0002_otpcode_failed_attempts_otpcode_is_active.py                           4      0   100%
+sms/migrations/__init__.py                                                                 0      0   100%
+sms/models.py                                                                             13      1    92%   17
+sms/providers.py                                                                          75     54    28%   13-14, 20, 24, 38-53, 56-58, 64-101, 104-137
+sms/tests/__init__.py                                                                      0      0   100%
+sms/tests/factories.py                                                                     0      0   100%
+sms/urls.py                                                                                4      0   100%
+sms/views.py                                                                              48     33    31%   17-44, 51-84
+--------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                                   4383   1196    73%
+=========================== short test summary info ============================
+FAILED account/tests/test_views.py::TestAccountViews::test_logout_invalid_token
+FAILED account/tests/test_views.py::TestAccountViews::test_verify_otp_expired_code
+FAILED account/tests/test_views.py::TestAccountViews::test_verify_otp_invalid_code
+FAILED orders/tests/test_views.py::test_order_list_authenticated_user - asser...
+FAILED orders/tests/test_views.py::test_order_creation_insufficient_stock_api
+FAILED shop/tests/test_views.py::TestProductViewSet::test_retrieve_product - ...
+FAILED shop/tests/test_views.py::TestProductViewSet::test_create_product - as...
+================= 7 failed, 95 passed, 242 warnings in 13.89s ==================

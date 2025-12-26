@@ -267,6 +267,12 @@ class TokenDestroyView(TokenBlacklistView):
                 {"message": "Successfully logged out"},
                 status=status.HTTP_205_RESET_CONTENT,
             )
+        except TokenError as e:
+            logger.warning(f"Logout failed for an invalid token: {e}")
+            return Response(
+                {"detail": "Token is invalid or expired"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
             raise
@@ -327,6 +333,8 @@ class RequestOTP(APIView):
             )
 
 
+from rest_framework_simplejwt.exceptions import TokenError
+
 class VerifyOTP(APIView):
     def post(self, request):
         phone = request.data.get("phone")
@@ -335,7 +343,7 @@ class VerifyOTP(APIView):
 
         if not phone or not code:
             return Response(
-                {"error": "Phone and code are required"},
+                {"detail": "Phone and code are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -354,19 +362,19 @@ class VerifyOTP(APIView):
                     active_otp.is_active = False
                 active_otp.save()
             return Response(
-                {"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if otp.is_expired():
             otp.is_active = False
             otp.save()
             return Response(
-                {"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if not otp.is_active:
             return Response(
-                {"error": "OTP is not active"}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": "OTP is not active"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         otp.used = True

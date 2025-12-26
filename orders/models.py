@@ -146,15 +146,12 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
 
     def get_discount(self):
         """
-        Calculate the discount amount for the order based on the associated coupon.
+        Return the pre-calculated discount amount stored in the model.
 
         Returns:
-            Decimal: The discount amount. Returns 0 if no coupon is applied.
+            Decimal: The discount amount.
         """
-        total_cost = self.get_total_cost_before_discount()
-        if self.coupon:
-            return total_cost * (self.coupon.discount / Decimal(100))
-        return Decimal(0)
+        return self.discount_amount
 
     @property
     def total_price(self):
