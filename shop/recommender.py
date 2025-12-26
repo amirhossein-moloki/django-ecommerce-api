@@ -4,7 +4,7 @@ from django.conf import settings
 from .models import Product
 
 # connect to redis
-if "test" in sys.argv:
+if "test" in sys.argv or getattr(settings, "TESTING", False):
     from fakeredis import FakeRedis
 
     r = FakeRedis()
@@ -48,14 +48,17 @@ class Recommender:
             r.delete(tmp_key)
 
         # redis returns bytes, so we decode them to utf-8 and cast to int
-        suggested_products_ids = [int(id) for id in suggestions]
+        suggested_products_ids = [
+            suggestion.decode("utf-8") if isinstance(suggestion, bytes) else str(suggestion)
+            for suggestion in suggestions
+        ]
 
         # get suggested products and sort by order of appearance
         suggested_products = list(
             Product.objects.filter(product_id__in=suggested_products_ids)
         )
         suggested_products.sort(
-            key=lambda x: suggested_products_ids.index(x.product_id)
+            key=lambda x: suggested_products_ids.index(str(x.product_id))
         )
         return suggested_products
 

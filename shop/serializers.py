@@ -59,9 +59,19 @@ class SimpleProductSerializer(serializers.ModelSerializer):
         fields = ["name", "slug", "thumbnail", "detail_url"]
 
 
+class CategorySlugOrPKField(serializers.SlugRelatedField):
+    def to_internal_value(self, data):
+        if isinstance(data, int) or (isinstance(data, str) and data.isdigit()):
+            try:
+                return self.get_queryset().get(pk=data)
+            except Category.DoesNotExist:
+                raise serializers.ValidationError("Invalid category.")
+        return super().to_internal_value(data)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     # Use SlugRelatedField for input to accept category slug and CategorySerializer for output
-    category = serializers.SlugRelatedField(
+    category = CategorySlugOrPKField(
         slug_field="slug", queryset=Category.objects.all(), write_only=True
     )
     category_detail = CategorySerializer(source="category", read_only=True)

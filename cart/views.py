@@ -104,6 +104,7 @@ class CartViewSet(viewsets.ViewSet):
                 variant_id,
                 data.get("quantity", 1),
                 data.get("override", False),
+                allow_insufficient_stock=True,
             )
             return Response(
                 {"message": "Product added/updated in cart"},

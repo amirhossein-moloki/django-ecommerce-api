@@ -8,6 +8,18 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
 
+# Remove optional dev-only apps/middleware that are not installed in tests
+INSTALLED_APPS = [
+    app
+    for app in INSTALLED_APPS
+    if app not in ["debug_toolbar", "django_extensions"]
+]
+MIDDLEWARE = [
+    middleware
+    for middleware in MIDDLEWARE
+    if middleware != "debug_toolbar.middleware.DebugToolbarMiddleware"
+]
+
 # Use in-memory database for tests
 DATABASES = {
     "default": {
