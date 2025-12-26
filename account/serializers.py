@@ -8,105 +8,47 @@ User = get_user_model()
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer for handling the current user's profile, combining User and Profile fields."""
+    """Serializer for the UserAccount model, including profile details."""
 
-    # Serialize fields from the User model directly
-    first_name = serializers.CharField(source="user.first_name", required=False)
-    last_name = serializers.CharField(source="user.last_name", required=False)
-    email = serializers.EmailField(source="user.email", read_only=True)
-    username = serializers.CharField(source="user.username", read_only=True)
-    password = serializers.CharField(
-        write_only=True, required=True, source="user.password"
-    )
-    phone_number = serializers.CharField(source="user.phone_number", required=False)
-
-    # Fields from the Profile model
     profile_pic = serializers.ImageField(
-        required=False,
-        help_text="Upload a profile picture (max size 2MB).",
-        use_url=True,
+        source="profile.profile_pic", required=False, use_url=True
     )
+    balance = serializers.DecimalField(
+        source="profile.balance", max_digits=10, decimal_places=2, read_only=True
+    )
+    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
 
     class Meta:
-        model = Profile
-        fields = [
+        model = User
+        fields = (
+            "id",
             "username",
             "email",
-            "password",
             "first_name",
             "last_name",
             "phone_number",
             "profile_pic",
-        ]
-
-    def validate_profile_pic(self, value):
-        """Validate that the uploaded profile picture does not exceed 2MB."""
-        if value and value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError(
-                "Profile picture size should not exceed 2MB."
-            )
-        return value
-
-    def validate_phone_number(self, value):
-        """
-        Validate the phone number format.
-        """
-        if not value:
-            return value  # Allow blank phone numbers if the field is optional
-
-        import re
-
-        pattern = r"^\+?1?\d{9,15}$"
-        if not re.match(pattern, value):
-            raise serializers.ValidationError(
-                "Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
-            )
-        return value
-
-    def create(self, validated_data):
-        """Create a new user and their profile."""
-        user_data = validated_data.pop("user")
-        profile_pic = validated_data.pop("profile_pic", None)
-
-        with transaction.atomic():
-            # Create the User instance
-            user = User.objects.create_user(**user_data)
-            user.set_password(user_data["password"])
-            user.save()
-
-            # Create the Profile instance
-            profile = Profile.objects.create(user=user, **validated_data)
-
-            # Attach profile_pic if provided
-            if profile_pic:
-                profile.profile_pic = profile_pic
-                profile.save()
-
-        return profile
+            "balance",
+            "password",
+        )
+        read_only_fields = ("id", "email", "phone_number", "balance")
 
     def update(self, instance, validated_data):
-        """Update the user's profile and associated user fields."""
-        user_data = validated_data.pop("user", {})
-        profile_pic = validated_data.pop("profile_pic", None)
+        # Update profile data if it exists
+        if "profile" in validated_data:
+            profile_data = validated_data.pop("profile")
+            profile_instance = instance.profile
+            for attr, value in profile_data.items():
+                setattr(profile_instance, attr, value)
+            profile_instance.save()
 
-        # Update User fields
-        user = self.context["request"].user
-        for attr, value in user_data.items():
-            if attr == "password":
-                user.set_password(value)
-            else:
-                setattr(user, attr, value)
-        user.save()
+        # Update password if provided
+        if "password" in validated_data:
+            instance.set_password(validated_data["password"])
+            validated_data.pop("password")
 
-        # Update Profile fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        if profile_pic:
-            instance.profile_pic = profile_pic
-
-        instance.save()
-        return instance
+        # Update other user fields
+        return super().update(instance, validated_data)
 
 
 class RefreshTokenSerializer(serializers.Serializer):
@@ -132,17 +74,24 @@ class AddressSerializer(serializers.ModelSerializer):
 
 class CompleteProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False, allow_blank=True)
+    username = serializers.CharField(required=True)
 
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "email")
+        fields = ("username", "first_name", "last_name", "email")
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        if value and User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError("A user with that email already exists.")
         return value
 
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
     def update(self, instance, validated_data):
+        instance.username = validated_data.get("username", instance.username)
         instance.first_name = validated_data.get("first_name", instance.first_name)
         instance.last_name = validated_data.get("last_name", instance.last_name)
         instance.email = validated_data.get("email", instance.email)
