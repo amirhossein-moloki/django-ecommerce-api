@@ -1,9 +1,12 @@
 import json
 import os
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import django
 import pytest
 import requests
+from django.conf import settings as django_settings
 from django.core.management import call_command
 from django.test.utils import (
     setup_databases,
@@ -30,6 +33,56 @@ def django_test_environment():
 def flush_db():
     yield
     call_command("flush", verbosity=0, interactive=False)
+
+
+class SettingsWrapper:
+    def __init__(self, settings):
+        self._settings = settings
+        self._original = {}
+
+    def __getattr__(self, name):
+        return getattr(self._settings, name)
+
+    def __setattr__(self, name, value):
+        if name in {"_settings", "_original"}:
+            return super().__setattr__(name, value)
+        if name not in self._original:
+            self._original[name] = (getattr(self._settings, name, None), hasattr(self._settings, name))
+        setattr(self._settings, name, value)
+
+    def __delattr__(self, name):
+        if name not in self._original:
+            self._original[name] = (getattr(self._settings, name, None), hasattr(self._settings, name))
+        delattr(self._settings, name)
+
+    def restore(self):
+        for name, (value, existed) in self._original.items():
+            if existed:
+                setattr(self._settings, name, value)
+            else:
+                delattr(self._settings, name)
+
+
+@pytest.fixture
+def settings():
+    wrapper = SettingsWrapper(django_settings)
+    yield wrapper
+    wrapper.restore()
+
+
+@pytest.fixture
+def mocker():
+    patches = []
+
+    def _patch(target, *args, **kwargs):
+        patcher = patch(target, *args, **kwargs)
+        patched = patcher.start()
+        patches.append(patcher)
+        return patched
+
+    yield SimpleNamespace(patch=_patch)
+    for patcher in reversed(patches):
+        patcher.stop()
 
 
 class RequestsMock:

@@ -70,6 +70,10 @@ class OrderCreateSerializer(serializers.Serializer):
     address_id = serializers.IntegerField()
     discount_code = serializers.CharField(required=False, allow_blank=True)
 
+    def _get_cart(self):
+        request = self.context["request"]
+        return getattr(request, "cart", Cart(request))
+
     def validate_address_id(self, value):
         """
         Validate that the address exists and belongs to the current user.
@@ -83,7 +87,7 @@ class OrderCreateSerializer(serializers.Serializer):
 
     def validate(self, data):
         """Validate discount code."""
-        cart = Cart(self.context["request"])
+        cart = self._get_cart()
         user = self.context["request"].user
         code = data.get("discount_code")
         if code:
@@ -101,7 +105,7 @@ class OrderCreateSerializer(serializers.Serializer):
         """
         Create and save the order and its items from the cart, applying the best discount.
         """
-        cart = Cart(self.context["request"])
+        cart = self._get_cart()
         if len(cart) == 0:
             raise ValidationError("Your cart is empty.")
 

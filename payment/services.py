@@ -113,6 +113,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
         return "This payment has already been successfully verified."
 
     try:
+        error = None
         with transaction.atomic():
             order = Order.objects.select_for_update().get(payment_track_id=track_id)
 
@@ -153,7 +154,9 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
                     transaction_log.amount = amount_from_gateway
-                    transaction_log.message = f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
+                    transaction_log.message = (
+                        f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
+                    )
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -164,14 +167,16 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                             "updated_at",
                         ]
                     )
-                    raise ValueError(transaction_log.message)
+                    error = ValueError(transaction_log.message)
 
                 order_id_from_gateway = response.get("orderId")
-                if order_id_from_gateway != str(order.order_id):
+                if error is None and order_id_from_gateway != str(order.order_id):
                     order.payment_status = Order.PaymentStatus.FAILED
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
-                    transaction_log.message = f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
+                    transaction_log.message = (
+                        f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
+                    )
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -181,49 +186,52 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                             "updated_at",
                         ]
                     )
-                    raise ValueError(transaction_log.message)
+                    error = ValueError(transaction_log.message)
 
-                # All checks passed, update the order.
-                order.payment_status = Order.PaymentStatus.SUCCESS
-                order.payment_ref_id = response.get("refNumber", "")
-                order.status = Order.Status.PAID
-                order.save(
-                    update_fields=[
-                        "payment_status",
-                        "payment_ref_id",
-                        "status",
-                        "updated",
-                    ]
-                )
+                if error is None:
+                    # All checks passed, update the order.
+                    order.payment_status = Order.PaymentStatus.SUCCESS
+                    order.payment_ref_id = response.get("refNumber", "")
+                    order.status = Order.Status.PAID
+                    order.save(
+                        update_fields=[
+                            "payment_status",
+                            "payment_ref_id",
+                            "status",
+                            "updated",
+                        ]
+                    )
 
-                transaction_log.status = PaymentTransaction.Status.PROCESSED
-                transaction_log.amount = amount_from_gateway
-                transaction_log.ref_id = order.payment_ref_id
-                transaction_log.message = "Payment verified successfully."
-                transaction_log.save(
-                    update_fields=[
-                        "status",
-                        "amount",
-                        "ref_id",
-                        "message",
-                        "gateway_response",
-                        "result_code",
-                        "updated_at",
-                    ]
-                )
+                    transaction_log.status = PaymentTransaction.Status.PROCESSED
+                    transaction_log.amount = amount_from_gateway
+                    transaction_log.ref_id = order.payment_ref_id
+                    transaction_log.message = "Payment verified successfully."
+                    transaction_log.save(
+                        update_fields=[
+                            "status",
+                            "amount",
+                            "ref_id",
+                            "message",
+                            "gateway_response",
+                            "result_code",
+                            "updated_at",
+                        ]
+                    )
 
-                # Trigger asynchronous post-payment tasks.
-                create_postex_shipment_task.delay(order.order_id)
-                return (
-                    "Payment verified successfully. Shipment creation is in progress."
-                )
+                    # Trigger asynchronous post-payment tasks.
+                    create_postex_shipment_task.delay(order.order_id)
+                    return (
+                        "Payment verified successfully. Shipment creation is in progress."
+                    )
             else:
                 # Verification failed at the gateway.
                 order.payment_status = Order.PaymentStatus.FAILED
                 order.save(update_fields=["payment_status", "updated"])
                 error_message = response.get("message", "Unknown error.")
                 transaction_log.status = PaymentTransaction.Status.FAILED
-                transaction_log.message = f"Payment verification failed: {error_message} (Result code: {result})"
+                transaction_log.message = (
+                    f"Payment verification failed: {error_message} (Result code: {result})"
+                )
                 transaction_log.save(
                     update_fields=[
                         "status",
@@ -233,7 +241,9 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                         "updated_at",
                     ]
                 )
-                raise ValueError(transaction_log.message)
+                error = ValueError(transaction_log.message)
+        if error:
+            raise error
     except Order.DoesNotExist:
         # This will be caught by the view and result in a 404.
         raise
