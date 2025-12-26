@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.test import RequestFactory
 from rest_framework.exceptions import ValidationError
@@ -91,3 +93,26 @@ def test_order_create_serializer_empty_cart(mock_request):
     with pytest.raises(ValidationError) as excinfo:
         serializer.save()
     assert "Your cart is empty." in str(excinfo.value)
+
+
+@patch("orders.serializers.DiscountService")
+def test_order_create_serializer_invalid_discount_code(
+    mock_discount_service, mock_request
+):
+    """
+    Test that the serializer raises a ValidationError for an invalid discount code.
+    """
+    request, user, address, cart = mock_request
+    variant = ProductVariantFactory(stock=10)
+    cart.add(variant, quantity=1)
+
+    mock_discount_service.get_applicable_discounts.return_value.exists.return_value = (
+        False
+    )
+
+    data = {"address_id": address.id, "discount_code": "INVALID"}
+    serializer = OrderCreateSerializer(data=data, context={"request": request})
+
+    with pytest.raises(ValidationError) as excinfo:
+        serializer.is_valid(raise_exception=True)
+    assert "discount code is invalid" in str(excinfo.value).lower()

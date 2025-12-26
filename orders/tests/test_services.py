@@ -1,9 +1,11 @@
-from unittest.mock import MagicMock, patch
+from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.test import RequestFactory
+from rest_framework.exceptions import ValidationError
 
-from account.tests.factories import UserFactory
+from account.tests.factories import AddressFactory, UserFactory
 from cart.cart import Cart
 from orders import services
 from orders.models import Order
@@ -40,9 +42,6 @@ def test_get_user_orders_for_staff_user():
 
     orders = services.get_user_orders(user=staff_user)
     assert orders.count() == 2
-
-
-from account.tests.factories import AddressFactory
 
 
 @patch("orders.services.send_order_confirmation_email.delay")
@@ -85,4 +84,118 @@ def test_create_order_success(mock_send_email):
     assert len(cart) == 0
 
     # Check that email task was called
+    mock_send_email.assert_called_once_with(order.order_id)
+
+
+@patch("orders.serializers.DiscountService")
+@patch("orders.services.send_order_confirmation_email.delay")
+def test_create_order_with_valid_discount_code(
+    mock_send_email, mock_discount_service
+):
+    user = UserFactory()
+    address = AddressFactory(user=user)
+    variant = ProductVariantFactory(stock=20)
+
+    factory = RequestFactory()
+    request = factory.post("/fake-url/")
+    request.user = user
+    request.session = {}
+    cart = Cart(request)
+    cart.add(variant, quantity=1)
+    request.cart = cart
+
+    mock_discount_service.get_applicable_discounts.return_value.exists.return_value = (
+        True
+    )
+    mock_discount_service.apply_discount.return_value = (Decimal("0.00"), None)
+
+    validated_data = {"address_id": address.id, "discount_code": "SAVE10"}
+
+    order = services.create_order(request=request, validated_data=validated_data)
+
+    assert order.discount_amount == Decimal("0.00")
+    mock_discount_service.get_applicable_discounts.assert_called_once_with(
+        cart, user, discount_code="SAVE10"
+    )
+    mock_discount_service.apply_discount.assert_called_once_with(
+        cart, user, "SAVE10"
+    )
+    mock_send_email.assert_called_once_with(order.order_id)
+
+
+@patch("orders.serializers.DiscountService")
+def test_create_order_with_invalid_discount_code_raises(mock_discount_service):
+    user = UserFactory()
+    address = AddressFactory(user=user)
+
+    factory = RequestFactory()
+    request = factory.post("/fake-url/")
+    request.user = user
+    request.session = {}
+    cart = Cart(request)
+    request.cart = cart
+
+    mock_discount_service.get_applicable_discounts.return_value.exists.return_value = (
+        False
+    )
+
+    validated_data = {"address_id": address.id, "discount_code": "BADCODE"}
+
+    with pytest.raises(ValidationError) as excinfo:
+        services.create_order(request=request, validated_data=validated_data)
+
+    assert "discount code is invalid" in str(excinfo.value).lower()
+
+
+@patch("orders.serializers.DiscountService.apply_discount")
+@patch("orders.services.send_order_confirmation_email.delay")
+def test_create_order_does_not_send_email_in_test_mode(
+    mock_send_email, mock_apply_discount
+):
+    user = UserFactory()
+    address = AddressFactory(user=user)
+    variant = ProductVariantFactory(stock=5)
+
+    factory = RequestFactory()
+    request = factory.post("/fake-url/")
+    request.user = user
+    request.session = {}
+    cart = Cart(request)
+    cart.add(variant, quantity=1)
+    request.cart = cart
+
+    mock_apply_discount.return_value = (Decimal("0.00"), None)
+
+    with patch.object(services.sys, "argv", ["manage.py", "test"]):
+        services.create_order(
+            request=request, validated_data={"address_id": address.id}
+        )
+
+    mock_send_email.assert_not_called()
+
+
+@patch("orders.serializers.DiscountService.apply_discount")
+@patch("orders.services.send_order_confirmation_email.delay")
+def test_create_order_sends_email_when_not_in_test_mode(
+    mock_send_email, mock_apply_discount
+):
+    user = UserFactory()
+    address = AddressFactory(user=user)
+    variant = ProductVariantFactory(stock=5)
+
+    factory = RequestFactory()
+    request = factory.post("/fake-url/")
+    request.user = user
+    request.session = {}
+    cart = Cart(request)
+    cart.add(variant, quantity=1)
+    request.cart = cart
+
+    mock_apply_discount.return_value = (Decimal("0.00"), None)
+
+    with patch.object(services.sys, "argv", ["manage.py", "runserver"]):
+        order = services.create_order(
+            request=request, validated_data={"address_id": address.id}
+        )
+
     mock_send_email.assert_called_once_with(order.order_id)

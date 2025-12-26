@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from account.tests.factories import UserFactory
+from account.tests.factories import AddressFactory, UserFactory
 from cart.cart import Cart
 from orders.models import Order
 from orders.tests.factories import OrderFactory
@@ -57,9 +57,6 @@ def test_order_retrieve_permission_denied(api_client):
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
-from account.tests.factories import AddressFactory
 
 
 def test_order_creation_api(api_client):
@@ -116,3 +113,46 @@ def test_order_creation_insufficient_stock_api(api_client):
     assert Order.objects.count() == 0
     variant.refresh_from_db()
     assert variant.stock == 2
+
+
+def test_order_creation_invalid_address_api(api_client):
+    """
+    Test that creating an order with an invalid address fails.
+    """
+    user = UserFactory()
+    other_user = UserFactory()
+    other_address = AddressFactory(user=other_user)
+    variant = ProductVariantFactory(stock=5)
+
+    api_client.force_authenticate(user=user)
+    add_to_cart_url = reverse(
+        "api-v1:cart-add", kwargs={"variant_id": variant.variant_id}
+    )
+    api_client.post(add_to_cart_url, {"quantity": 1})
+
+    url = reverse("api-v1:orders-list")
+    data = {"address_id": other_address.id}
+
+    response = api_client.post(url, data)
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "selected address is invalid" in str(response.data["errors"]).lower()
+    assert Order.objects.count() == 0
+
+
+def test_order_creation_empty_cart_api(api_client):
+    """
+    Test that creating an order with an empty cart fails.
+    """
+    user = UserFactory()
+    address = AddressFactory(user=user)
+
+    api_client.force_authenticate(user=user)
+    url = reverse("api-v1:orders-list")
+    data = {"address_id": address.id}
+
+    response = api_client.post(url, data)
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "cart is empty" in str(response.data["errors"]).lower()
+    assert Order.objects.count() == 0
