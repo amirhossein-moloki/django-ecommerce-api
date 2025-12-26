@@ -11,28 +11,38 @@ def process_payment(request, order_id):
     try:
         with transaction.atomic():
             # Lock the order to prevent race conditions during payment processing.
-            order = Order.objects.select_for_update().get(order_id=order_id, user=request.user)
+            order = Order.objects.select_for_update().get(
+                order_id=order_id, user=request.user
+            )
 
             if order.payment_status == Order.PaymentStatus.SUCCESS:
                 raise ValueError("This order has already been paid.")
 
             # Atomically update item prices and check stock before any calculations.
             # Lock the related products to prevent overselling race conditions.
-            for item in order.items.select_related('variant__product').select_for_update(of=('self', 'variant')):
+            for item in order.items.select_related(
+                "variant__product"
+            ).select_for_update(of=("self", "variant")):
                 if item.variant.stock < item.quantity:
-                    raise ValueError(f"Insufficient stock for product: {item.variant.product.name}")
+                    raise ValueError(
+                        f"Insufficient stock for product: {item.variant.product.name}"
+                    )
                 # Snapshot the current price, in case it has changed since the order was created.
                 if item.price != item.variant.price:
                     item.price = item.variant.price
-                    item.save(update_fields=['price'])
+                    item.save(update_fields=["price"])
 
             # Re-validate coupon with the most up-to-date prices.
             if order.coupon:
                 if not order.coupon.is_valid():
-                    raise ValueError(f"The coupon '{order.coupon.code}' is no longer valid.")
+                    raise ValueError(
+                        f"The coupon '{order.coupon.code}' is no longer valid."
+                    )
 
                 if order.coupon.usage_count >= order.coupon.max_usage:
-                    raise ValueError(f"The coupon '{order.coupon.code}' has reached its usage limit.")
+                    raise ValueError(
+                        f"The coupon '{order.coupon.code}' has reached its usage limit."
+                    )
 
                 subtotal = order.get_total_cost_before_discount()
                 if subtotal < order.coupon.min_purchase_amount:
@@ -54,12 +64,12 @@ def process_payment(request, order_id):
             response = gateway.create_payment_request(
                 amount=amount_in_rials,
                 order_id=str(order.order_id),
-                callback_url=callback_url
+                callback_url=callback_url,
             )
 
-            order.payment_gateway = 'zibal'
-            order.payment_track_id = response.get('trackId')
-            order.save(update_fields=['payment_gateway', 'payment_track_id', 'updated'])
+            order.payment_gateway = "zibal"
+            order.payment_track_id = response.get("trackId")
+            order.save(update_fields=["payment_gateway", "payment_track_id", "updated"])
 
             PaymentTransaction.objects.create(
                 order=order,
@@ -67,7 +77,7 @@ def process_payment(request, order_id):
                 event_type=PaymentTransaction.EventType.INITIATE,
                 status=PaymentTransaction.Status.PROCESSED,
                 amount=amount_in_rials,
-                result_code=str(response.get('result')),
+                result_code=str(response.get("result")),
                 message="Payment request created successfully.",
                 raw_payload={"order_id": str(order.order_id)},
                 gateway_response=response,
@@ -98,7 +108,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
     if PaymentTransaction.objects.filter(
         track_id=track_id,
         event_type=PaymentTransaction.EventType.VERIFY,
-        status=PaymentTransaction.Status.PROCESSED
+        status=PaymentTransaction.Status.PROCESSED,
     ).exists():
         return "This payment has already been successfully verified."
 
@@ -125,7 +135,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
 
             gateway = ZibalGateway()
             response = gateway.verify_payment(track_id)
-            result = response.get('result')
+            result = response.get("result")
 
             transaction_log.gateway_response = response
             transaction_log.result_code = str(result)
@@ -133,17 +143,17 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
             # A successful verification can have result 100 (new) or 201 (already verified by Zibal).
             if result in [100, 201]:
                 # Integrity Check: Verify amount and orderId match the gateway's response.
-                amount_from_gateway = response.get('amount')
-                expected_amount = int(order.total_payable * 100)  # Assuming Toman to Rials conversion
+                amount_from_gateway = response.get("amount")
+                expected_amount = int(
+                    order.total_payable * 100
+                )  # Assuming Toman to Rials conversion
 
                 if amount_from_gateway != expected_amount:
                     order.payment_status = Order.PaymentStatus.FAILED
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
                     transaction_log.amount = amount_from_gateway
-                    transaction_log.message = (
-                        f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
-                    )
+                    transaction_log.message = f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -156,14 +166,12 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                     )
                     raise ValueError(transaction_log.message)
 
-                order_id_from_gateway = response.get('orderId')
+                order_id_from_gateway = response.get("orderId")
                 if order_id_from_gateway != str(order.order_id):
                     order.payment_status = Order.PaymentStatus.FAILED
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
-                    transaction_log.message = (
-                        f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
-                    )
+                    transaction_log.message = f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -177,9 +185,16 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
 
                 # All checks passed, update the order.
                 order.payment_status = Order.PaymentStatus.SUCCESS
-                order.payment_ref_id = response.get('refNumber', '')
+                order.payment_ref_id = response.get("refNumber", "")
                 order.status = Order.Status.PAID
-                order.save(update_fields=["payment_status", "payment_ref_id", "status", "updated"])
+                order.save(
+                    update_fields=[
+                        "payment_status",
+                        "payment_ref_id",
+                        "status",
+                        "updated",
+                    ]
+                )
 
                 transaction_log.status = PaymentTransaction.Status.PROCESSED
                 transaction_log.amount = amount_from_gateway
@@ -199,12 +214,14 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
 
                 # Trigger asynchronous post-payment tasks.
                 create_postex_shipment_task.delay(order.order_id)
-                return "Payment verified successfully. Shipment creation is in progress."
+                return (
+                    "Payment verified successfully. Shipment creation is in progress."
+                )
             else:
                 # Verification failed at the gateway.
                 order.payment_status = Order.PaymentStatus.FAILED
                 order.save(update_fields=["payment_status", "updated"])
-                error_message = response.get('message', 'Unknown error.')
+                error_message = response.get("message", "Unknown error.")
                 transaction_log.status = PaymentTransaction.Status.FAILED
                 transaction_log.message = f"Payment verification failed: {error_message} (Result code: {result})"
                 transaction_log.save(

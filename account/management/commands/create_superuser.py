@@ -7,14 +7,14 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Create a superuser with default credentials (admin@admin.com / admin) and activated status and profile'
+    help = "Create a superuser with default credentials (admin@admin.com / admin) and activated status and profile"
 
     def handle(self, *args, **options):
-        email = 'admin@admin.com'
-        username = 'admin'
-        password = 'admin'
-        first_name = 'Admin'
-        last_name = 'User'
+        email = "admin@admin.com"
+        username = "admin"
+        password = "admin"
+        first_name = "Admin"
+        last_name = "User"
 
         # Check if user already exists
         if User.objects.filter(email=email).exists():
@@ -37,13 +37,12 @@ class Command(BaseCommand):
                 password=password,
                 first_name=first_name,
                 last_name=last_name,
-                is_active=True  # Ensure user is activated
+                is_active=True,  # Ensure user is activated
             )
 
             # Create profile for the user
             profile, created = Profile.objects.get_or_create(
-                user=user,
-                defaults={'balance': 0.0}
+                user=user, defaults={"balance": 0.0}
             )
 
             self.stdout.write(
@@ -51,14 +50,8 @@ class Command(BaseCommand):
                     f'Successfully created superuser "{username}" with email "{email}"'
                 )
             )
-            self.stdout.write(
-                self.style.SUCCESS(f'User is active: {user.is_active}')
-            )
-            self.stdout.write(
-                self.style.SUCCESS(f'Profile created: {created}')
-            )
+            self.stdout.write(self.style.SUCCESS(f"User is active: {user.is_active}"))
+            self.stdout.write(self.style.SUCCESS(f"Profile created: {created}"))
 
         except Exception as e:
-            self.stdout.write(
-                self.style.ERROR(f'Error creating superuser: {str(e)}')
-            )
+            self.stdout.write(self.style.ERROR(f"Error creating superuser: {str(e)}"))

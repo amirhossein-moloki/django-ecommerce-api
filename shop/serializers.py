@@ -10,7 +10,7 @@ from .recommender import Recommender
 class OptionValueSerializer(serializers.ModelSerializer):
     class Meta:
         model = OptionValue
-        fields = ['id', 'value']
+        fields = ["id", "value"]
 
 
 class OptionTypeSerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class OptionTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OptionType
-        fields = ['id', 'name', 'values']
+        fields = ["id", "name", "values"]
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -27,16 +27,19 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = [
-            'variant_id',
-            'sku',
-            'price',
-            'stock',
-            'image',
-            'options',
+            "variant_id",
+            "sku",
+            "price",
+            "stock",
+            "image",
+            "options",
         ]
 
     def get_options(self, obj):
-        return {vov.option_value.option_type.name: vov.option_value.value for vov in obj.variant_options.all()}
+        return {
+            vov.option_value.option_type.name: vov.option_value.value
+            for vov in obj.variant_options.all()
+        }
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -171,7 +174,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 if option_type.name not in options:
                     options[option_type.name] = set()
                 options[option_type.name].add(option.option_value.value)
-        return [{ "name": key, "values": list(value) } for key, value in options.items()]
+        return [{"name": key, "values": list(value)} for key, value in options.items()]
 
 
 class ReviewSerializer(serializers.ModelSerializer):

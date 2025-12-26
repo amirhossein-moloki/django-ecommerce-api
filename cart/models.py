@@ -10,7 +10,14 @@ class Cart(models.Model):
     - For authenticated users, the cart is associated with their user account.
     - For anonymous users, the cart is associated with their session.
     """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='carts', null=True, blank=True)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="carts",
+        null=True,
+        blank=True,
+    )
     session_key = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -26,8 +33,11 @@ class CartItem(models.Model):
     """
     Represents an item in a shopping cart.
     """
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='cart_items')
+
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
+    variant = models.ForeignKey(
+        ProductVariant, on_delete=models.CASCADE, related_name="cart_items"
+    )
     quantity = models.PositiveIntegerField(default=1)
 
     def __str__(self):

@@ -27,7 +27,11 @@ from sms.providers import SmsIrProvider
 
 from .models import Profile, UserAccount
 from .permissions import IsProfileIncomplete
-from .serializers import CompleteProfileSerializer, RefreshTokenSerializer, UserProfileSerializer
+from .serializers import (
+    CompleteProfileSerializer,
+    RefreshTokenSerializer,
+    UserProfileSerializer,
+)
 
 logger = getLogger(__name__)
 
@@ -41,43 +45,43 @@ class UserViewSet(BaseUserViewSet):
         operation_id="user_me_retrieve",
         description="Retrieve the authenticated user's profile.",
         tags=["User Management"],
-        methods=['GET'],
+        methods=["GET"],
         responses={
             200: UserProfileSerializer,
             400: OpenApiResponse(description="Invalid request."),
-        }
+        },
     )
     @extend_schema(
         operation_id="user_me_update",
         description="Update the authenticated user's profile.",
         tags=["User Management"],
-        methods=['PUT'],
+        methods=["PUT"],
         responses={
             200: UserProfileSerializer,
             400: OpenApiResponse(description="Invalid request."),
-        }
+        },
     )
     @extend_schema(
         operation_id="user_me_partial_update",
         description="Partially update the authenticated user's profile.",
         tags=["User Management"],
-        methods=['PATCH'],
+        methods=["PATCH"],
         responses={
             200: UserProfileSerializer,
             400: OpenApiResponse(description="Invalid request."),
-        }
+        },
     )
     @extend_schema(
         operation_id="user_me_delete",
         description="Delete the authenticated user's profile.",
         tags=["User Management"],
-        methods=['DELETE'],
+        methods=["DELETE"],
         responses={
             204: OpenApiResponse(description="No Content"),
             400: OpenApiResponse(description="Invalid request."),
-        }
+        },
     )
-    @action(detail=False, methods=['get', 'put', 'patch', 'delete'])
+    @action(detail=False, methods=["get", "put", "patch", "delete"])
     def me(self, request, *args, **kwargs):
         """
         Manage operations on the authenticated user's profile.
@@ -87,30 +91,35 @@ class UserViewSet(BaseUserViewSet):
             profile, created = Profile.objects.get_or_create(user=request.user)
 
             if request.method == "GET":
-                serializer = UserProfileSerializer(profile, context={'request': request})
-                return Response({
-                    "message": "Profile retrieved",
-                    "data": serializer.data
-                }, status=status.HTTP_200_OK)
+                serializer = UserProfileSerializer(
+                    profile, context={"request": request}
+                )
+                return Response(
+                    {"message": "Profile retrieved", "data": serializer.data},
+                    status=status.HTTP_200_OK,
+                )
 
             elif request.method in ["PUT", "PATCH"]:
                 partial = request.method == "PATCH"
                 serializer = UserProfileSerializer(
-                    profile, data=request.data, partial=partial, context={'request': request}
+                    profile,
+                    data=request.data,
+                    partial=partial,
+                    context={"request": request},
                 )
                 serializer.is_valid(raise_exception=True)
                 serializer.save()  # This calls the update method on the serializer
-                return Response({
-                    "message": "Profile updated",
-                    "data": serializer.data
-                }, status=status.HTTP_200_OK)
+                return Response(
+                    {"message": "Profile updated", "data": serializer.data},
+                    status=status.HTTP_200_OK,
+                )
 
             elif request.method == "DELETE":
                 user = request.user
                 user.delete()
-                return Response({
-                    "message": "Profile deleted"
-                }, status=status.HTTP_204_NO_CONTENT)
+                return Response(
+                    {"message": "Profile deleted"}, status=status.HTTP_204_NO_CONTENT
+                )
 
         except Exception as e:
             logger.error(f"Error during profile management: {e}", exc_info=True)
@@ -120,13 +129,14 @@ class UserViewSet(BaseUserViewSet):
         operation_id="user_register",
         description="Register a new user account.",
         tags=["User Authentication"],
-        methods=['POST'],
+        methods=["POST"],
         responses={
             201: OpenApiResponse(
-                description="User successfully registered. Please check your email to activate your account."),
+                description="User successfully registered. Please check your email to activate your account."
+            ),
             400: OpenApiResponse(description="Invalid request."),
             500: OpenApiResponse(description="An internal error occurred."),
-        }
+        },
     )
     def create(self, request, *args, **kwargs):
         return Response(status=status.HTTP_404_NOT_FOUND)
@@ -150,24 +160,28 @@ class UserViewSet(BaseUserViewSet):
         responses={
             200: OpenApiResponse(description="Staff status retrieved successfully."),
             401: OpenApiResponse(description="Authentication required."),
-        }
+        },
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def staff_check(self, request):
         """
         Check if the authenticated user is a staff member.
         """
         try:
             is_staff = request.user.is_staff
-            return Response({
-                "is_staff": is_staff,
-                "message": f"User {'is' if is_staff else 'is not'} a staff member"
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "is_staff": is_staff,
+                    "message": f"User {'is' if is_staff else 'is not'} a staff member",
+                },
+                status=status.HTTP_200_OK,
+            )
         except Exception as e:
             logger.error("Error checking staff status: %s", e, exc_info=True)
-            return Response({
-                "error": "Unable to check staff status"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Unable to check staff status"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class TokenRefreshView(BaseTokenRefreshView):
@@ -182,15 +196,18 @@ class TokenRefreshView(BaseTokenRefreshView):
         responses={
             200: OpenApiResponse(description="Access token successfully refreshed."),
             400: OpenApiResponse(description="Invalid refresh token."),
-        }
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
             response = super().post(request, *args, **kwargs)
-            return Response({
-                "message": "Access token successfully refreshed",
-                "data": response.data
-            }, status=response.status_code)
+            return Response(
+                {
+                    "message": "Access token successfully refreshed",
+                    "data": response.data,
+                },
+                status=response.status_code,
+            )
         except Exception as e:
             logger.error(f"Error during token refresh: {e}", exc_info=True)
             raise
@@ -208,15 +225,15 @@ class TokenVerifyView(BaseTokenVerifyView):
         responses={
             200: OpenApiResponse(description="Token is valid."),
             401: OpenApiResponse(description="Token is invalid or expired."),
-        }
+        },
     )
     def post(self, request, *args, **kwargs):
         try:
             response = super().post(request, *args, **kwargs)
-            return Response({
-                "message": "Token is valid",
-                "data": response.data
-            }, status=response.status_code)
+            return Response(
+                {"message": "Token is valid", "data": response.data},
+                status=response.status_code,
+            )
         except Exception as e:
             logger.error(f"Error during token verification: {e}", exc_info=True)
             raise
@@ -226,6 +243,7 @@ class TokenDestroyView(TokenBlacklistView):
     """
     Log out the user by blacklisting their refresh token.
     """
+
     serializer_class = RefreshTokenSerializer
 
     @extend_schema(
@@ -245,9 +263,10 @@ class TokenDestroyView(TokenBlacklistView):
             refresh_token = serializer.validated_data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
-            return Response({
-                "message": "Successfully logged out"
-            }, status=status.HTTP_205_RESET_CONTENT)
+            return Response(
+                {"message": "Successfully logged out"},
+                status=status.HTTP_205_RESET_CONTENT,
+            )
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
             raise
@@ -257,11 +276,11 @@ class ActivateView(View):
     def get(self, request, uid, token):
         return render(
             request,
-            'account/activate.html',
+            "account/activate.html",
             {
-                'uid': uid,
-                'token': token,
-            }
+                "uid": uid,
+                "token": token,
+            },
         )
 
 
@@ -273,12 +292,17 @@ def generate_otp():
 
 
 class RequestOTP(APIView):
-    @method_decorator(ratelimit(key='post:phone', rate='1/2m', method='POST', block=True))
-    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True))
+    @method_decorator(
+        ratelimit(key="post:phone", rate="1/2m", method="POST", block=True)
+    )
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
     def post(self, request):
-        phone = request.data.get('phone')
+        phone = request.data.get("phone")
         if not phone:
-            return Response({'error': 'Phone number is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Phone number is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Invalidate previous OTPs
         OTPCode.objects.filter(phone=phone, is_active=True).update(is_active=False)
@@ -292,40 +316,58 @@ class RequestOTP(APIView):
         template_id = settings.SMS_IR_OTP_TEMPLATE_ID
         response = sms_provider.send_otp(phone, otp_code, template_id)
 
-        if response.get('status') == 1:
-            return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
+        if response.get("status") == 1:
+            return Response(
+                {"message": "OTP sent successfully"}, status=status.HTTP_200_OK
+            )
         else:
-            return Response({'error': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to send OTP"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class VerifyOTP(APIView):
     def post(self, request):
-        phone = request.data.get('phone')
-        code = request.data.get('code')
+        phone = request.data.get("phone")
+        code = request.data.get("code")
         MAX_FAILED_ATTEMPTS = 5
 
         if not phone or not code:
-            return Response({'error': 'Phone and code are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Phone and code are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
-            otp = OTPCode.objects.get(phone=phone, code=code, used=False, is_active=True)
+            otp = OTPCode.objects.get(
+                phone=phone, code=code, used=False, is_active=True
+            )
         except OTPCode.DoesNotExist:
             # Increment failed attempts for all active OTPs for this number
-            active_otps = OTPCode.objects.filter(phone=phone, used=False, is_active=True)
+            active_otps = OTPCode.objects.filter(
+                phone=phone, used=False, is_active=True
+            )
             for active_otp in active_otps:
                 active_otp.failed_attempts += 1
                 if active_otp.failed_attempts >= MAX_FAILED_ATTEMPTS:
                     active_otp.is_active = False
                 active_otp.save()
-            return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if otp.is_expired():
             otp.is_active = False
             otp.save()
-            return Response({'error': 'OTP has expired'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if not otp.is_active:
-            return Response({'error': 'OTP is not active'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "OTP is not active"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         otp.used = True
         otp.is_active = False
@@ -344,11 +386,13 @@ class VerifyOTP(APIView):
             )
 
         refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'is_profile_complete': user.is_profile_complete
-        })
+        return Response(
+            {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "is_profile_complete": user.is_profile_complete,
+            }
+        )
 
 
 class CompleteProfileView(APIView):
@@ -356,8 +400,13 @@ class CompleteProfileView(APIView):
     serializer_class = CompleteProfileSerializer
 
     def patch(self, request, *args, **kwargs):
-        serializer = self.serializer_class(request.user, data=request.data, partial=True)
+        serializer = self.serializer_class(
+            request.user, data=request.data, partial=True
+        )
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Profile completed successfully.'}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Profile completed successfully."},
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

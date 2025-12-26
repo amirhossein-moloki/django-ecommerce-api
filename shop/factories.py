@@ -1,4 +1,3 @@
-
 import factory
 from decimal import Decimal
 from account.factories import UserFactory
@@ -9,22 +8,24 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Category
 
-    name = factory.Sequence(lambda n: f'Category {n}')
-    slug = factory.LazyAttribute(lambda o: f'category-{o.name.lower().replace(" ", "-")}')
+    name = factory.Sequence(lambda n: f"Category {n}")
+    slug = factory.LazyAttribute(
+        lambda o: f'category-{o.name.lower().replace(" ", "-")}'
+    )
 
 
 class ProductFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Product
 
-    name = factory.Sequence(lambda n: f'Product {n}')
-    description = 'Sample product description'
+    name = factory.Sequence(lambda n: f"Product {n}")
+    description = "Sample product description"
     category = factory.SubFactory(CategoryFactory)
     user = factory.SubFactory(UserFactory)
-    weight = Decimal('1.00')
-    length = Decimal('10.00')
-    width = Decimal('10.00')
-    height = Decimal('10.00')
+    weight = Decimal("1.00")
+    length = Decimal("10.00")
+    width = Decimal("10.00")
+    height = Decimal("10.00")
     is_fragile = False
     is_liquid = False
 
@@ -45,9 +46,9 @@ class ProductVariantFactory(factory.django.DjangoModelFactory):
         model = ProductVariant
 
     product = factory.SubFactory(ProductFactory)
-    price = Decimal('100.00')
+    price = Decimal("100.00")
     stock = 10
-    sku = factory.Sequence(lambda n: f'SKU-{n}')
+    sku = factory.Sequence(lambda n: f"SKU-{n}")
 
 
 class ReviewFactory(factory.django.DjangoModelFactory):
@@ -57,4 +58,4 @@ class ReviewFactory(factory.django.DjangoModelFactory):
     product = factory.SubFactory(ProductFactory)
     user = factory.SubFactory(UserFactory)
     rating = 3
-    comment = 'Test review comment'
+    comment = "Test review comment"

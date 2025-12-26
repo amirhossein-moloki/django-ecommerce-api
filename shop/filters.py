@@ -12,8 +12,8 @@ class ProductFilter(FilterSet):
     name, description, category, and tags.
     """
 
-    price = RangeFilter(method='filter_by_price_range')
-    in_stock = BooleanFilter(method='filter_in_stock')
+    price = RangeFilter(method="filter_by_price_range")
+    in_stock = BooleanFilter(method="filter_in_stock")
 
     class Meta:
         model = Product
@@ -28,8 +28,7 @@ class ProductFilter(FilterSet):
     def filter_by_price_range(self, queryset, name, value):
         if value:
             return queryset.filter(
-                variants__price__gte=value.start,
-                variants__price__lte=value.stop
+                variants__price__gte=value.start, variants__price__lte=value.stop
             ).distinct()
         return queryset
 

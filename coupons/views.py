@@ -36,7 +36,9 @@ logger = getLogger(__name__)
         tags=["Coupons"],
         responses={
             200: OpenApiResponse(description="Coupon updated successfully."),
-            400: OpenApiResponse(description="Coupon code cannot be modified or bad request."),
+            400: OpenApiResponse(
+                description="Coupon code cannot be modified or bad request."
+            ),
         },
     ),
     partial_update=extend_schema(
@@ -45,7 +47,9 @@ logger = getLogger(__name__)
         tags=["Coupons"],
         responses={
             200: OpenApiResponse(description="Coupon updated successfully."),
-            400: OpenApiResponse(description="Coupon code cannot be modified or bad request."),
+            400: OpenApiResponse(
+                description="Coupon code cannot be modified or bad request."
+            ),
         },
     ),
     destroy=extend_schema(
@@ -62,7 +66,9 @@ logger = getLogger(__name__)
         tags=["Coupons"],
         responses={
             200: OpenApiResponse(description="Coupon applied successfully."),
-            400: OpenApiResponse(description="Coupon code is required or coupon is not valid at this time."),
+            400: OpenApiResponse(
+                description="Coupon code is required or coupon is not valid at this time."
+            ),
             404: OpenApiResponse(description="Invalid or inactive coupon code."),
         },
     ),
@@ -75,7 +81,7 @@ class CouponViewSet(viewsets.ModelViewSet):
         """
         Instantiates and returns the list of permissions that this view requires.
         """
-        if self.action == 'apply':
+        if self.action == "apply":
             permission_classes = [permissions.IsAuthenticated]
         else:
             permission_classes = [permissions.IsAdminUser]
@@ -105,36 +111,36 @@ class CouponViewSet(viewsets.ModelViewSet):
             services.deactivate_coupon(instance)
             return Response(
                 {"detail": "Coupon has been marked as inactive."},
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
         except Exception as e:
             logger.error(f"Error deactivating coupon: {e}", exc_info=True)
             raise
 
-    @method_decorator(ratelimit(key='user', rate='5/m', method='POST', block=True))
-    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST', block=True))
+    @method_decorator(ratelimit(key="user", rate="5/m", method="POST", block=True))
+    @method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=True))
     @action(
         detail=False,
-        methods=['post'],
-        url_path='apply-coupon',
-        url_name='apply-coupon',
-        permission_classes=[permissions.IsAuthenticated]
+        methods=["post"],
+        url_path="apply-coupon",
+        url_name="apply-coupon",
+        permission_classes=[permissions.IsAuthenticated],
     )
     def apply(self, request):
         """
         Apply a coupon by its code.
         """
         try:
-            code = request.data.get('code')
+            code = request.data.get("code")
             if not code:
                 return Response(
                     {"detail": "Coupon code is required."},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             coupon = services.apply_coupon(request, code)
             return Response(
                 {"detail": "Coupon applied successfully.", "discount": coupon.discount},
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

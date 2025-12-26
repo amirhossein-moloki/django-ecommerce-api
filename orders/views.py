@@ -24,14 +24,30 @@ from . import services
         description="Create an order from the user's cart.",
         tags=["Orders"],
         responses={
-            201: OpenApiResponse(response=OrderSerializer, description="Order created successfully."),
-            400: OpenApiResponse(description="Bad request (e.g., empty cart, invalid address or coupon)."),
+            201: OpenApiResponse(
+                response=OrderSerializer, description="Order created successfully."
+            ),
+            400: OpenApiResponse(
+                description="Bad request (e.g., empty cart, invalid address or coupon)."
+            ),
         },
     ),
     # Staff-only actions
-    update=extend_schema(operation_id="order_update", description="Update an order. Admin access required.", tags=["Orders"]),
-    partial_update=extend_schema(operation_id="order_partial_update", description="Partially update an order. Admin access required.", tags=["Orders"]),
-    destroy=extend_schema(operation_id="order_destroy", description="Delete an order. Admin access required.", tags=["Orders"]),
+    update=extend_schema(
+        operation_id="order_update",
+        description="Update an order. Admin access required.",
+        tags=["Orders"],
+    ),
+    partial_update=extend_schema(
+        operation_id="order_partial_update",
+        description="Partially update an order. Admin access required.",
+        tags=["Orders"],
+    ),
+    destroy=extend_schema(
+        operation_id="order_destroy",
+        description="Delete an order. Admin access required.",
+        tags=["Orders"],
+    ),
 )
 class OrderViewSet(viewsets.ModelViewSet):
     """
@@ -44,7 +60,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         Return the appropriate serializer class based on the action.
         """
-        if self.action == 'create':
+        if self.action == "create":
             return OrderCreateSerializer
         return OrderSerializer
 
@@ -54,7 +70,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         - 'create', 'list', 'retrieve': Must be authenticated and either owner or admin.
         - 'update', 'partial_update', 'destroy': Must be an admin user.
         """
-        if self.action in ['update', 'partial_update', 'destroy']:
+        if self.action in ["update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
             permission_classes = [IsAuthenticated, IsAdminOrOwner]
@@ -72,6 +88,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         The logic is handled by the OrderService.
         """
         order = services.create_order(request=request, validated_data=request.data)
-        response_serializer = OrderSerializer(order, context={'request': request})
+        response_serializer = OrderSerializer(order, context={"request": request})
         headers = self.get_success_headers(response_serializer.data)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            response_serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )

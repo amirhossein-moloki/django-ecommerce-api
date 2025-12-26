@@ -129,7 +129,9 @@ class Product(SluggedModel):
         on_delete=models.CASCADE,
         help_text="The user who created the product.",
     )
-    objects = SoftDeleteManager.from_queryset(SoftDeleteQuerySet)()  # The default manager.
+    objects = SoftDeleteManager.from_queryset(
+        SoftDeleteQuerySet
+    )()  # The default manager.
     all_objects = (
         models.Manager()
     )  # The manager for all objects, including deleted ones.
@@ -175,9 +177,7 @@ class Product(SluggedModel):
     reviews_count = models.IntegerField(
         default=0, help_text="The number of reviews for the product."
     )
-    is_fragile = models.BooleanField(
-        default=False, help_text="Is the product fragile?"
-    )
+    is_fragile = models.BooleanField(default=False, help_text="Is the product fragile?")
     is_liquid = models.BooleanField(
         default=False, help_text="Does the product contain liquid?"
     )
@@ -334,31 +334,47 @@ class OptionType(models.Model):
     def __str__(self):
         return self.name
 
+
 class OptionValue(models.Model):
-    option_type = models.ForeignKey(OptionType, related_name='values', on_delete=models.CASCADE)
+    option_type = models.ForeignKey(
+        OptionType, related_name="values", on_delete=models.CASCADE
+    )
     value = models.CharField(max_length=100)
 
     class Meta:
-        unique_together = ('option_type', 'value')
+        unique_together = ("option_type", "value")
 
     def __str__(self):
         return self.value
 
+
 class ProductVariant(models.Model):
     variant_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product = models.ForeignKey(Product, related_name='variants', on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        Product, related_name="variants", on_delete=models.CASCADE
+    )
     sku = models.CharField(max_length=100, unique=True, blank=True, null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)])
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(0.0)]
+    )
     stock = models.IntegerField(validators=[MinValueValidator(0)])
-    image = models.ImageField(null=True, blank=True, upload_to=product_upload_to_unique, validators=[validate_image])
-    option_values = models.ManyToManyField(OptionValue, through='VariantOptionValue')
+    image = models.ImageField(
+        null=True,
+        blank=True,
+        upload_to=product_upload_to_unique,
+        validators=[validate_image],
+    )
+    option_values = models.ManyToManyField(OptionValue, through="VariantOptionValue")
 
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
 
+
 class VariantOptionValue(models.Model):
-    variant = models.ForeignKey(ProductVariant, related_name='variant_options', on_delete=models.CASCADE)
+    variant = models.ForeignKey(
+        ProductVariant, related_name="variant_options", on_delete=models.CASCADE
+    )
     option_value = models.ForeignKey(OptionValue, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('variant', 'option_value')
+        unique_together = ("variant", "option_value")

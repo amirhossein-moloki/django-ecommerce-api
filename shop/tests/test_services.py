@@ -29,7 +29,9 @@ class TestProductServices:
         ProductFactory.create_batch(2, user=user2)
 
         assert services.get_user_products(user=user1).count() == 3
-        assert services.get_user_products(user=None, username=user2.username).count() == 2
+        assert (
+            services.get_user_products(user=None, username=user2.username).count() == 2
+        )
 
 
 class TestReviewServices:

@@ -13,7 +13,7 @@ from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecommerce_api.settings.development')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ecommerce_api.settings.development")
 
 django_asgi_application = get_asgi_application()
 
@@ -23,11 +23,13 @@ from shop.routing import websocket_urlpatterns as search_ws  # noqa: E402
 
 websocket_urlpatterns = chat_ws + search_ws
 
-application = ProtocolTypeRouter({
-    'http': django_asgi_application,
-    'websocket': AuthMiddlewareStack(
-        URLRouter(
-            websocket_urlpatterns,
-        )
-    )
-})
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_application,
+        "websocket": AuthMiddlewareStack(
+            URLRouter(
+                websocket_urlpatterns,
+            )
+        ),
+    }
+)

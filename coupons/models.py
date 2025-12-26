@@ -12,16 +12,18 @@ class Coupon(models.Model):
     discount = models.IntegerField(
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         help_text="Percentage value (0 to 100)",
-        verbose_name="Discount Percentage"
+        verbose_name="Discount Percentage",
     )
     max_usage = models.PositiveIntegerField(default=1, verbose_name="Maximum Usage")
-    usage_count = models.PositiveIntegerField(default=0, editable=False, verbose_name="Usage Count")
+    usage_count = models.PositiveIntegerField(
+        default=0, editable=False, verbose_name="Usage Count"
+    )
     min_purchase_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0.00,
         validators=[MinValueValidator(0.00)],
-        verbose_name="Minimum Purchase Amount"
+        verbose_name="Minimum Purchase Amount",
     )
     active = models.BooleanField(default=True, verbose_name="Is Active")
 
@@ -45,7 +47,7 @@ class Coupon(models.Model):
         """
         Atomically increments the usage count of the coupon.
         """
-        Coupon.objects.filter(pk=self.pk).update(usage_count=F('usage_count') + 1)
+        Coupon.objects.filter(pk=self.pk).update(usage_count=F("usage_count") + 1)
 
     def __str__(self):
         return self.code

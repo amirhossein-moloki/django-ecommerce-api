@@ -51,12 +51,8 @@ class Recommender:
         suggested_products_ids = [int(id) for id in suggestions]
 
         # get suggested products and sort by order of appearance
-        suggested_products = list(
-            Product.objects.filter(id__in=suggested_products_ids)
-        )
-        suggested_products.sort(
-            key=lambda x: suggested_products_ids.index(x.id)
-        )
+        suggested_products = list(Product.objects.filter(id__in=suggested_products_ids))
+        suggested_products.sort(key=lambda x: suggested_products_ids.index(x.id))
         return suggested_products
 
     #

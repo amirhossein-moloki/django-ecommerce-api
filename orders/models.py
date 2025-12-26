@@ -15,32 +15,49 @@ from discounts.models import Discount
 User = get_user_model()
 
 
-class Order(ExportModelOperationsMixin('order'), models.Model):
+class Order(ExportModelOperationsMixin("order"), models.Model):
     class Status(models.TextChoices):
-        PENDING = 'pending', 'Pending'
-        PAID = 'paid', 'Paid'
-        PROCESSING = 'processing', 'Processing'
-        SHIPPED = 'shipped', 'Shipped'
-        DELIVERED = 'delivered', 'Delivered'
-        CANCELED = 'canceled', 'Canceled'
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
+        PROCESSING = "processing", "Processing"
+        SHIPPED = "shipped", "Shipped"
+        DELIVERED = "delivered", "Delivered"
+        CANCELED = "canceled", "Canceled"
 
     class PaymentStatus(models.TextChoices):
-        PENDING = 'pending', 'Pending'
-        SUCCESS = 'success', 'Success'
-        FAILED = 'failed', 'Failed'
+        PENDING = "pending", "Pending"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
 
     order_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, related_name='orders', on_delete=models.SET_NULL, null=True)
-    address = models.ForeignKey(Address, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(
+        User, related_name="orders", on_delete=models.SET_NULL, null=True
+    )
+    address = models.ForeignKey(
+        Address, related_name="orders", on_delete=models.SET_NULL, null=True, blank=True
+    )
     order_date = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
-    discount = models.ForeignKey(Discount, related_name='orders', on_delete=models.SET_NULL, null=True, blank=True)
-    currency = models.CharField(max_length=3, default='IRT')
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    discount = models.ForeignKey(
+        Discount,
+        related_name="orders",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    currency = models.CharField(max_length=3, default="IRT")
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     payment_gateway = models.CharField(max_length=50, blank=True)
     payment_ref_id = models.CharField(max_length=100, blank=True)
-    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING, db_index=True)
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+        db_index=True,
+    )
     payment_track_id = models.CharField(max_length=100, blank=True)
     postex_shipment_id = models.CharField(max_length=100, blank=True)
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
@@ -67,8 +84,8 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         verbose_name = "Order"
         verbose_name_plural = "Orders"
         indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['-order_date']),
+            models.Index(fields=["user"]),
+            models.Index(fields=["-order_date"]),
         ]
         ordering = ["-order_date"]
 
@@ -82,13 +99,18 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         """
         if self.pk and self._original_status != self.status:
             if self.status not in self._transitions.get(self._original_status, []):
-                raise ValidationError(f"Invalid state transition from '{self._original_status}' to '{self.status}'.")
+                raise ValidationError(
+                    f"Invalid state transition from '{self._original_status}' to '{self.status}'."
+                )
 
     def save(self, *args, **kwargs):
         """
         Override save to validate state transitions and restore stock on cancellation.
         """
-        is_canceling = self.status == self.Status.CANCELED and self._original_status != self.Status.CANCELED
+        is_canceling = (
+            self.status == self.Status.CANCELED
+            and self._original_status != self.Status.CANCELED
+        )
 
         if is_canceling:
             self.restore_stock()
@@ -108,10 +130,10 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
             return
 
         for item in self.items.all():
-            product = item.product
+            variant = item.variant
             # Use atomic update to prevent race conditions
-            product.stock = models.F('stock') + item.quantity
-            product.save(update_fields=['stock'])
+            variant.stock = models.F("stock") + item.quantity
+            variant.save(update_fields=["stock"])
 
     def get_total_cost_before_discount(self):
         """
@@ -151,7 +173,9 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
         """
         self.subtotal = self.get_total_cost_before_discount()
         self.discount_amount = self.get_discount()
-        total = self.subtotal - self.discount_amount + self.shipping_cost + self.tax_amount
+        total = (
+            self.subtotal - self.discount_amount + self.shipping_cost + self.tax_amount
+        )
         self.total_payable = total
         return self.total_payable
 
@@ -160,8 +184,10 @@ class Order(ExportModelOperationsMixin('order'), models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    variant = models.ForeignKey(ProductVariant, related_name='order_items', on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
+    variant = models.ForeignKey(
+        ProductVariant, related_name="order_items", on_delete=models.CASCADE
+    )
     product_name = models.CharField(max_length=255)
     product_sku = models.CharField(max_length=100, blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -171,8 +197,8 @@ class OrderItem(models.Model):
         verbose_name = "Order Item"
         verbose_name_plural = "Order Items"
         indexes = [
-            models.Index(fields=['order']),
-            models.Index(fields=['variant']),
+            models.Index(fields=["order"]),
+            models.Index(fields=["variant"]),
         ]
         ordering = ["order"]
 
@@ -180,4 +206,6 @@ class OrderItem(models.Model):
         return self.price * self.quantity
 
     def __str__(self):
-        return f"Order Item: {self.variant.product.name} (Order ID: {self.order.order_id})"
+        return (
+            f"Order Item: {self.variant.product.name} (Order ID: {self.order.order_id})"
+        )
