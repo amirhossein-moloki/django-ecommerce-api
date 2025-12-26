@@ -7,7 +7,7 @@ from account.models import Address
 from cart.cart import Cart
 from coupons.models import Coupon
 from orders.models import Order, OrderItem
-from shop.models import Product
+from shop.models import Product, ProductVariant
 from discounts.services import DiscountService
 
 
@@ -33,7 +33,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user = serializers.StringRelatedField()
     address = serializers.StringRelatedField()
-    coupon = serializers.StringRelatedField()
+    discount = serializers.StringRelatedField()
     status = serializers.CharField(source="get_status_display")
     payment_status = serializers.CharField(source="get_payment_status_display")
 
@@ -46,7 +46,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_date",
             "updated",
             "status",
-            "coupon",
+            "discount",
             "currency",
             "discount_amount",
             "payment_gateway",

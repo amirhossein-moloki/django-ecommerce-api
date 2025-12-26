@@ -51,6 +51,14 @@ class CategorySerializer(serializers.ModelSerializer):
         extra_kwargs = {"slug": {"read_only": True}}  # Make the slug field read-only
 
 
+class SimpleProductSerializer(serializers.ModelSerializer):
+    detail_url = serializers.URLField(source="get_absolute_url", read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ["name", "slug", "thumbnail", "detail_url"]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     # Use SlugRelatedField for input to accept category slug and CategorySerializer for output
     category = serializers.SlugRelatedField(
@@ -131,13 +139,13 @@ class ProductSerializer(serializers.ModelSerializer):
         tags = validated_data.pop("tags", None)
         instance = super().create(validated_data)
         if tags:
-            instance.tags.set(tags["names"])
+            instance.tags.set(tags)
         return instance
 
     def update(self, instance, validated_data):
         tags = validated_data.pop("tags", None)
         if tags:
-            instance.tags.set(tags["names"])
+            instance.tags.set(tags)
         # else:
         #     instance.tags.clear()
         return super().update(instance, validated_data)
@@ -209,13 +217,13 @@ class ProductDetailSerializer(ProductSerializer):
         suggested_products = (
             Product.objects.filter(
                 Q(category=obj.category)
-                | Q(tags__in=obj.tags.all())
+                | Q(tags__name__in=[tag.name for tag in obj.tags.all()])
                 | Q(product_id__in=recommended_products)
             )
             .exclude(product_id=obj.product_id)
             .distinct()[:10]
         )
-        return ProductSerializer(
+        return SimpleProductSerializer(
             suggested_products, many=True, context=self.context
         ).data
 

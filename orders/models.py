@@ -144,18 +144,6 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
         """
         return sum(item.get_cost() for item in self.items.all())
 
-    def get_discount(self):
-        """
-        Calculate the discount amount for the order based on the associated coupon.
-
-        Returns:
-            Decimal: The discount amount. Returns 0 if no coupon is applied.
-        """
-        total_cost = self.get_total_cost_before_discount()
-        if self.coupon:
-            return total_cost * (self.coupon.discount / Decimal(100))
-        return Decimal(0)
-
     @property
     def total_price(self):
         """
@@ -165,14 +153,15 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
             Decimal: The total price, which is the total cost of all order items minus the discount.
         """
         total_cost = self.get_total_cost_before_discount()
-        return total_cost - self.get_discount()
+        return total_cost - self.discount_amount
 
     def calculate_total_payable(self):
         """
         Calculates the final amount to be paid by the user.
+        This now relies on the discount_amount being pre-calculated and stored.
         """
         self.subtotal = self.get_total_cost_before_discount()
-        self.discount_amount = self.get_discount()
+        # self.discount_amount is now set directly when the order is created.
         total = (
             self.subtotal - self.discount_amount + self.shipping_cost + self.tax_amount
         )

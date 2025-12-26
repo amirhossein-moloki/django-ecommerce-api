@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.utils.decorators import method_decorator
@@ -266,6 +267,11 @@ class TokenDestroyView(TokenBlacklistView):
             return Response(
                 {"message": "Successfully logged out"},
                 status=status.HTTP_205_RESET_CONTENT,
+            )
+        except TokenError:
+            return Response(
+                {"detail": "Token is invalid or expired"},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)

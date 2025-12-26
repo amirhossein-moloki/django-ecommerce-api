@@ -40,8 +40,8 @@ def test_order_list_authenticated_user(api_client):
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
-    assert response.data[0]["user"] == user1.username
+    assert len(response.data["data"]) == 1
+    assert response.data["data"][0]["user"] == user1.username
 
 
 def test_order_retrieve_permission_denied(api_client):
@@ -112,7 +112,7 @@ def test_order_creation_insufficient_stock_api(api_client):
     response = api_client.post(url, data)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "Not enough stock" in response.data[0]
+    assert "Not enough stock" in str(response.data["errors"])
     assert Order.objects.count() == 0
     variant.refresh_from_db()
     assert variant.stock == 2
