@@ -20,7 +20,9 @@ def get_cart_data(request):
     }
 
 
-def add_to_cart(request, variant_id, quantity=1, override_quantity=False):
+def add_to_cart(
+    request, variant_id, quantity=1, override_quantity=False, allow_insufficient_stock=False
+):
     cart = Cart(request)
     try:
         variant = ProductVariant.objects.get(variant_id=variant_id)
@@ -43,7 +45,7 @@ def add_to_cart(request, variant_id, quantity=1, override_quantity=False):
     else:
         total_quantity = current_quantity + quantity
 
-    if total_quantity > variant.stock:
+    if total_quantity > variant.stock and not allow_insufficient_stock:
         raise ValidationError(
             f"Cannot add {quantity} items. Only {variant.stock - current_quantity} "
             f"more items can be added."

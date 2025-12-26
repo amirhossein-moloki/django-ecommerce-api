@@ -1,4 +1,6 @@
 import environ
+import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -13,6 +15,11 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 env.read_env(str(BASE_DIR / ".env"))
+is_test_env = "test" in sys.argv or os.environ.get(
+    "DJANGO_SETTINGS_MODULE", ""
+).endswith(".test")
+if is_test_env:
+    env.read_env(str(BASE_DIR / ".env.test"))
 
 # -----------------------------------------------------------------------------
 # C O R E   S E T T I N G S
@@ -20,8 +27,12 @@ env.read_env(str(BASE_DIR / ".env"))
 # These are critical settings that must be defined in the environment.
 # The application will not start without them.
 
-SECRET_KEY = env("SECRET_KEY")
-DEBUG = env("DEBUG")
+if is_test_env:
+    SECRET_KEY = env("SECRET_KEY", default="test-secret-key")
+    DEBUG = env("DEBUG", default=False)
+else:
+    SECRET_KEY = env("SECRET_KEY")
+    DEBUG = env("DEBUG")
 
 # Security settings
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
@@ -30,8 +41,12 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 # Database and Cache
-DATABASES = {"default": env.db("DATABASE_URL")}
-REDIS_URL = env("REDIS_URL")
+if is_test_env:
+    DATABASES = {"default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3")}
+    REDIS_URL = env("REDIS_URL", default="locmemcache://")
+else:
+    DATABASES = {"default": env.db("DATABASE_URL")}
+    REDIS_URL = env("REDIS_URL")
 CACHES = {"default": env.cache("REDIS_URL")}
 
 # Email
@@ -316,13 +331,25 @@ SWAGGER_SETTINGS = {
 TAGGIT_CASE_INSENSITIVE = True
 
 # Zibal Payment Gateway
-ZIBAL_MERCHANT_ID = env("ZIBAL_MERCHANT_ID")
-ZIBAL_WEBHOOK_SECRET = env("ZIBAL_WEBHOOK_SECRET")
+if is_test_env:
+    ZIBAL_MERCHANT_ID = env("ZIBAL_MERCHANT_ID", default="zibal")
+    ZIBAL_WEBHOOK_SECRET = env(
+        "ZIBAL_WEBHOOK_SECRET", default="a-secret-for-zibal-webhooks"
+    )
+else:
+    ZIBAL_MERCHANT_ID = env("ZIBAL_MERCHANT_ID")
+    ZIBAL_WEBHOOK_SECRET = env("ZIBAL_WEBHOOK_SECRET")
 ZIBAL_ALLOWED_IPS = env.list("ZIBAL_ALLOWED_IPS", default=["127.0.0.1"])
 
 # Celery Configuration
-CELERY_BROKER_URL = env("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+if is_test_env:
+    CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="memory://")
+    CELERY_RESULT_BACKEND = env(
+        "CELERY_RESULT_BACKEND", default="db+sqlite:///celery-results.sqlite"
+    )
+else:
+    CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
