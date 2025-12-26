@@ -23,7 +23,7 @@ class UserFactory(factory.django.DjangoModelFactory):
         f"{fake.random_int(1,100)}"
     )
     email = factory.Faker("email")
-    phone_number = factory.LazyAttribute(lambda _: fake.numerify(text="+989#########"))
+    phone_number = factory.Sequence(lambda n: f"+989000000{n:03d}")
     password = factory.PostGenerationMethodCall("set_password", "testpassword")
     is_active = True
 

@@ -55,7 +55,8 @@ class TestThumbnailValidator:
         large_file = SimpleUploadedFile(
             "large_image.jpg", large_file_content.read(), content_type="image/jpeg"
         )
-        product = ProductFactory.build(thumbnail=large_file)
+        product = ProductFactory()
+        product.thumbnail = large_file
         with pytest.raises(ValidationError, match="File size cannot exceed 2MB."):
             product.full_clean()
 
@@ -63,7 +64,8 @@ class TestThumbnailValidator:
         invalid_file = SimpleUploadedFile(
             "document.txt", b"some text", content_type="text/plain"
         )
-        product = ProductFactory.build(thumbnail=invalid_file)
+        product = ProductFactory()
+        product.thumbnail = invalid_file
         with pytest.raises(ValidationError, match="Unsupported file type: text/plain."):
             product.full_clean()
 

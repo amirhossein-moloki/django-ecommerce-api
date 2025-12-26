@@ -32,7 +32,9 @@ def test_get_user_orders_for_staff_user():
     Test that a staff user can see all orders.
     """
     user1 = UserFactory()
-    staff_user = UserFactory(is_staff=True)
+    staff_user = UserFactory()
+    staff_user.is_staff = True
+    staff_user.save(update_fields=["is_staff"])
     OrderFactory(user=user1)
     OrderFactory(user=staff_user)
 
