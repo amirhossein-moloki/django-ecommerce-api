@@ -160,12 +160,20 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
         Calculates the final amount to be paid by the user.
         This now relies on the discount_amount being pre-calculated and stored.
         """
-        self.subtotal = self.get_total_cost_before_discount()
+        def _as_decimal(value):
+            if isinstance(value, Decimal):
+                return value
+            return Decimal(str(value or 0))
+
+        self.subtotal = _as_decimal(self.get_total_cost_before_discount())
         # self.discount_amount is now set directly when the order is created.
         total = (
-            self.subtotal - self.discount_amount + self.shipping_cost + self.tax_amount
+            self.subtotal
+            - _as_decimal(self.discount_amount)
+            + _as_decimal(self.shipping_cost)
+            + _as_decimal(self.tax_amount)
         )
-        self.total_payable = total
+        self.total_payable = _as_decimal(total)
         return self.total_payable
 
     def __str__(self):

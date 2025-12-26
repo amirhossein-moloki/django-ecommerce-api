@@ -77,6 +77,8 @@ class Cart:
         """
         Iterates over the items in the cart, yielding variant details.
         """
+        if not self.cart or not self.cart.pk:
+            return
         for item in self.cart.items.prefetch_related("variant__product"):
             yield {
                 "variant": item.variant,
@@ -89,19 +91,25 @@ class Cart:
         """
         Returns the total number of items in the cart.
         """
+        if not self.cart or not self.cart.pk:
+            return 0
         return sum(item.quantity for item in self.cart.items.all())
 
     def get_total_price(self):
         """
         Calculates the total price of all items in the cart.
         """
+        if not self.cart or not self.cart.pk:
+            return Decimal("0")
         return sum(item.variant.price * item.quantity for item in self.cart.items.all())
 
     def clear(self):
         """
         Removes all items from the cart.
         """
-        self.cart.delete()
+        if self.cart and self.cart.pk:
+            self.cart.delete()
+        self.cart = None
         if settings.CART_SESSION_ID in self.session:
             del self.session[settings.CART_SESSION_ID]
             self.session.modified = True
