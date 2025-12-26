@@ -22,7 +22,7 @@ class TestProductViewSet:
         url = reverse("api-v1:product-list")
         response = api_client.get(url)
         assert response.status_code == 200
-        assert response.data["count"] == 5
+        assert len(response.data["data"]) == 5
 
     def test_retrieve_product(self, api_client):
         product = ProductFactory()
@@ -38,11 +38,14 @@ class TestProductViewSet:
         url = reverse("api-v1:product-list")
         data = {
             "name": "Test Create",
-            "description": "desc",
+            "description": "A detailed description for the test product.",
             "category": category.pk,
-            "weight": 1,
+            "weight": 1.5,
+            "length": 10,
+            "width": 5,
+            "height": 2,
         }
-        response = api_client.post(url, data)
+        response = api_client.post(url, data, format="json")
         assert response.status_code == 201
         assert response.data["name"] == "Test Create"
 
@@ -53,7 +56,7 @@ class TestCategoryViewSet:
         url = reverse("api-v1:category-list")
         response = api_client.get(url)
         assert response.status_code == 200
-        assert response.data["count"] == 3
+        assert len(response.data["data"]) == 3
 
 
 class TestReviewViewSet:

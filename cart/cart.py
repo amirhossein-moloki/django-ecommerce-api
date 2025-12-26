@@ -21,17 +21,17 @@ class Cart:
         """
         self.session = request.session
         self.user = request.user
-        cart = None
+        self.cart = None
 
         if self.user.is_authenticated:
-            cart, created = CartModel.objects.get_or_create(user=self.user)
+            self.cart, created = CartModel.objects.get_or_create(user=self.user)
             session_key = self.session.get(settings.CART_SESSION_ID)
             if session_key:
                 try:
                     session_cart = CartModel.objects.get(session_key=session_key)
                     for item in session_cart.items.all():
                         cart_item, item_created = CartItem.objects.get_or_create(
-                            cart=cart,
+                            cart=self.cart,
                             variant=item.variant,
                             defaults={"quantity": item.quantity},
                         )
@@ -50,9 +50,7 @@ class Cart:
                 session_key = self.session.session_key
                 self.session[settings.CART_SESSION_ID] = session_key
                 self.session.modified = True
-            cart, created = CartModel.objects.get_or_create(session_key=session_key)
-
-        self.cart = cart
+            self.cart, created = CartModel.objects.get_or_create(session_key=session_key)
 
     def add(self, variant, quantity=1, override_quantity=False):
         """
