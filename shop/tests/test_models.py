@@ -1,9 +1,12 @@
+import io
+from decimal import Decimal
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
+from django.urls import reverse
 from PIL import Image
-import io
 
 from account.tests.factories import UserFactory
 from shop.models import Product, Category, Review
@@ -29,6 +32,26 @@ class TestProductModel:
         product1 = ProductFactory(name="Same Name")
         product2 = ProductFactory(name="Same Name")
         assert product1.slug != product2.slug
+
+    def test_get_absolute_url(self):
+        product = ProductFactory()
+        assert product.get_absolute_url() == reverse(
+            "api-v1:product-detail", kwargs={"slug": product.slug}
+        )
+
+    def test_update_rating_and_reviews_count(self):
+        product = ProductFactory()
+        product.update_rating_and_reviews_count()
+        product.refresh_from_db()
+        assert product.rating == Decimal("0.00")
+        assert product.reviews_count == 0
+
+        ReviewFactory(product=product, rating=4)
+        ReviewFactory(product=product, rating=2)
+        product.update_rating_and_reviews_count()
+        product.refresh_from_db()
+        assert product.rating == Decimal("3.00")
+        assert product.reviews_count == 2
 
 
 class TestReviewModel:
