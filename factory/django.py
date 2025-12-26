@@ -31,9 +31,16 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
         declarations = {}
         for base in reversed(cls.__mro__):
             for key, value in getattr(base, "__dict__", {}).items():
+                if key == "Meta":
+                    continue
                 if isinstance(value, Declaration) or getattr(
                     value, "_is_post_generation", False
                 ):
+                    declarations[key] = value
+                    continue
+                if isinstance(value, (classmethod, staticmethod, property)):
+                    continue
+                if not callable(value) and not isinstance(value, type):
                     declarations[key] = value
         return declarations
 
@@ -56,7 +63,7 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
 
         sequence = cls._next_sequence()
         declarations = cls._collect_declarations()
-        attrs = {}
+        attrs = dict(kwargs)
         pending_self_attrs = {}
         post_generation_calls = []
         post_generation_hooks = []
@@ -64,8 +71,12 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
         for name, declaration in declarations.items():
             if name.startswith("_"):
                 continue
-            if name in kwargs:
-                attrs[name] = kwargs[name]
+            if name in attrs:
+                continue
+            if not isinstance(declaration, Declaration) and not getattr(
+                declaration, "_is_post_generation", False
+            ):
+                attrs[name] = declaration
                 continue
             if isinstance(declaration, SelfAttribute):
                 pending_self_attrs[name] = declaration

@@ -7,7 +7,12 @@ from orders.models import Order
 from orders.tests.factories import OrderFactory, OrderItemFactory
 from shop import services
 from shop.models import Category
-from shop.tests.factories import ProductFactory, CategoryFactory, ReviewFactory
+from shop.tests.factories import (
+    ProductFactory,
+    CategoryFactory,
+    ReviewFactory,
+    ProductVariantFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -47,8 +52,11 @@ class TestReviewServices:
     def test_create_review_success(self):
         user = UserFactory()
         product = ProductFactory()
-        order = OrderFactory(user=user, status=Order.Status.PAID)
-        OrderItemFactory(order=order, variant__product=product)
+        order = OrderFactory(user=user)
+        order.status = Order.Status.PAID
+        order.save(update_fields=["status"])
+        variant = ProductVariantFactory(product=product)
+        OrderItemFactory(order=order, variant=variant)
 
         review = services.create_review(
             user, product.slug, {"rating": 5, "comment": "Awesome!"}

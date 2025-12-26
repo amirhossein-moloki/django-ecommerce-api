@@ -6,7 +6,12 @@ from account.tests.factories import UserFactory
 from orders.models import Order
 from orders.tests.factories import OrderFactory, OrderItemFactory
 from shop.models import Product
-from shop.tests.factories import ProductFactory, CategoryFactory, ReviewFactory
+from shop.tests.factories import (
+    ProductFactory,
+    CategoryFactory,
+    ReviewFactory,
+    ProductVariantFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -73,8 +78,11 @@ class TestReviewViewSet:
     def test_create_review_success(self, api_client):
         user = UserFactory()
         product = ProductFactory()
-        order = OrderFactory(user=user, status=Order.Status.PAID)
-        OrderItemFactory(order=order, variant__product=product)
+        order = OrderFactory(user=user)
+        order.status = Order.Status.PAID
+        order.save(update_fields=["status"])
+        variant = ProductVariantFactory(product=product)
+        OrderItemFactory(order=order, variant=variant)
         api_client.force_authenticate(user=user)
         url = reverse(
             "api-v1:product-reviews-list", kwargs={"product_slug": product.slug}
