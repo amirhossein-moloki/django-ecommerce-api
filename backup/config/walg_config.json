@@ -1,0 +1,7 @@
+{
+  "WALG_S3_PREFIX": "s3://YOUR_BACKUP_BUCKET/database/postgres",
+  "AWS_ENDPOINT": "https://s3.your-region.amazonaws.com",
+  "AWS_ACCESS_KEY_ID": "YOUR_AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_ACCESS_KEY",
+  "WALG_GPG_KEY_ID": "YOUR_GPG_KEY_ID_FOR_ENCRYPTION"
+}
