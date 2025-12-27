@@ -35,10 +35,10 @@ jobs:
           --health-retries=5
     steps:
       - name: "Check out code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: "Set up Python"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@82c7f3f32b02f4b9463dd43a1e8fd8e4e45a413c
         with:
           python-version: '3.11'
 
@@ -77,24 +77,24 @@ jobs:
       contents: read
     steps:
       - name: "Check out code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: "Log in to GitHub Container Registry"
-        uses: docker/login-action@v3
+        uses: docker/login-action@343f7c4344506bcbf9b9c0c58d2e3feea4b6db5f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Build Docker image for scanning"
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@2cdde9f8c8b2b24f17f687c3ba8e9c7e7e3e2e2d
         with:
           context: .
           push: false
           tags: ghcr.io/${{ github.repository }}/scan-target:${{ github.sha }}
 
       - name: "Scan Docker image with trivy"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@dbf779592e9f44596cfd1e173e268a1a29cf4f14
         with:
           image-ref: 'ghcr.io/${{ github.repository }}/scan-target:${{ github.sha }}'
           format: 'table'
@@ -114,10 +114,10 @@ jobs:
       packages: write
     steps:
       - name: "Check out code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: "Log in to GitHub Container Registry"
-        uses: docker/login-action@v3
+        uses: docker/login-action@343f7c4344506bcbf9b9c0c58d2e3feea4b6db5f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -125,14 +125,14 @@ jobs:
 
       - name: "Build and push Docker image"
         id: build-and-push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@2cdde9f8c8b2b24f17f687c3ba8e9c7e7e3e2e2d
         with:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: "Scan pushed Docker image with trivy"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@dbf779592e9f44596cfd1e173e268a1a29cf4f14
         with:
           image-ref: 'ghcr.io/${{ github.repository }}:${{ github.sha }}'
           format: 'table'
@@ -142,10 +142,10 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: "Set up kubectl"
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@c37be1d30f6f5f5f71f56b3b9ec7f5d9b91b8066
 
       - name: "Set up Helm"
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@2c5b0f9a1dc9433a155b1d6df3a0f2e7f1a5b5f4
 
       - name: "Configure kubectl"
         run: |
