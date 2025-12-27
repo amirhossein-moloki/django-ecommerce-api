@@ -108,6 +108,8 @@ urlpatterns = [
     ),
     path("feed/", TrendingProductsFeed(), name="product-feed"),
     path("social-auth/", include("social_django.urls", namespace="social")),
+    # URLs for third-party integrations like Torob and Emalls
+    path("", include("integrations.urls", namespace="integrations")),
 ]
 
 if settings.DEBUG:

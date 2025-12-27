@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products>
+    {% for product in products %}
+    <product>
+        <id>{{ product.id }}</id>
+        <title><![CDATA[{{ product.title }}]]></title>
+        <price>{{ product.price }}</price>
+        <availability>{{ product.availability }}</availability>
+        <product_url><![CDATA[{{ product.product_url }}]]></product_url>
+        <image_url><![CDATA[{{ product.image_url }}]]></image_url>
+        <category><![CDATA[{{ product.category }}]]></category>
+    </product>
+    {% endfor %}
+</products>

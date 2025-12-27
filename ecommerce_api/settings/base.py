@@ -31,7 +31,7 @@ if is_test_env:
     SECRET_KEY = env("SECRET_KEY", default="test-secret-key")
     DEBUG = env("DEBUG", default=False)
 else:
-    SECRET_KEY = env("SECRET_KEY")
+    SECRET_KEY = env("SECRET_KEY", default="temporary-insecure-secret-key-for-dev")
     DEBUG = env("DEBUG")
 
 # Security settings
@@ -111,6 +111,7 @@ THIRD_PARTY_APPS = [
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
+    "integrations", # Integrations with third-party services like Torob and Emalls
     "common", # Common utilities
     "shop",  # Shop application for managing products
     "cart",  # Cart application for managing shopping carts
