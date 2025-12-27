@@ -99,3 +99,6 @@ opentelemetry-instrumentation-django==0.43b0
 opentelemetry-exporter-otlp==1.22.0
 python-magic==0.4.27
 django-ratelimit
+django-ckeditor-5
+django-jalali-date
+pillow-avif-plugin

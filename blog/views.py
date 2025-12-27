@@ -21,7 +21,7 @@ from .serializers import (
 from .filters import PostFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsOwnerOrReadOnly, IsAdminUserOrReadOnly, IsAuthorOrAdminOrReadOnly
-from users.permissions import IsOwnerOrAdmin
+from account.permissions import IsOwnerOrAdmin
 from .tasks import notify_author_on_new_comment
 from .exceptions import custom_exception_handler
 from .mixins import DynamicSerializerViewMixin
