@@ -89,11 +89,14 @@ urlpatterns = [
                     path("", include("cart.urls")),
                     path("", include("coupons.urls")),
                     path("chat/", include("chat.urls")),
-                    path("blog/", include("blog.urls")),
                 ],
                 "api-v1",
             )
         ),
+    ),
+    path(
+        "api/v1/blog/",
+        include(("blog.urls", "blog"), namespace="blog"),
     ),
     path("payment/", include("payment.urls")),
     path("admin/", admin.site.urls),

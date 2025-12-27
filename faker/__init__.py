@@ -1,10 +1,14 @@
 import random
+import re
 import string
 import uuid
 from decimal import Decimal
 
 
 class Faker:
+    def user_name(self):
+        return f"user{random.randint(1000, 9999)}"
+
     def first_name(self):
         return random.choice(
             ["Alex", "Sam", "Jamie", "Taylor", "Jordan", "Morgan", "Casey"]
@@ -39,6 +43,9 @@ class Faker:
     def paragraph(self, nb_sentences=2):
         return " ".join(self.sentence() for _ in range(nb_sentences))
 
+    def paragraphs(self, nb=3):
+        return [self.paragraph() for _ in range(nb)]
+
     def word(self):
         return random.choice(
             ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot"]
@@ -56,8 +63,26 @@ class Faker:
     def ean(self):
         return "".join(str(random.randint(0, 9)) for _ in range(13))
 
-    def slug(self):
+    def slug(self, value=None):
+        if value:
+            cleaned = re.sub(r"[^\w\s-]", "", str(value))
+            return (
+                cleaned.strip()
+                .replace(" ", "-")
+                .replace("_", "-")
+                .lower()
+                .strip("-")
+            )
         return f"slug-{uuid.uuid4().hex[:8]}"
+
+    def uri(self):
+        return f"https://example.com/{self.slug()}"
+
+    def file_name(self, category="file", extension="txt"):
+        base = f"{category}-{uuid.uuid4().hex[:8]}"
+        if extension:
+            return f"{base}.{extension.lstrip('.')}"
+        return base
 
     def text(self, max_nb_chars=200):
         base = "Lorem ipsum dolor sit amet"
@@ -73,4 +98,3 @@ class Faker:
         return "".join(
             str(random.randint(0, 9)) if char == "#" else char for char in text
         )
-

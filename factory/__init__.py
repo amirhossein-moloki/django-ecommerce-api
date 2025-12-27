@@ -1,5 +1,6 @@
 from .declarations import (
     Faker,
+    Iterator,
     LazyAttribute,
     LazyFunction,
     PostGenerationMethodCall,
@@ -13,6 +14,7 @@ from .django import DjangoModelFactory
 
 __all__ = [
     "Faker",
+    "Iterator",
     "LazyAttribute",
     "LazyFunction",
     "PostGenerationMethodCall",

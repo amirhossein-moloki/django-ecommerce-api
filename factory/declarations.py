@@ -43,6 +43,17 @@ class LazyFunction(Declaration):
         return self.func()
 
 
+class Iterator(Declaration):
+    def __init__(self, iterable):
+        self.iterable = list(iterable)
+
+    def evaluate(self, attrs, sequence, create):
+        if not self.iterable:
+            raise ValueError("Iterator requires at least one value")
+        index = (sequence - 1) % len(self.iterable)
+        return self.iterable[index]
+
+
 class SelfAttribute(Declaration):
     def __init__(self, attribute):
         self.attribute = attribute
@@ -91,4 +102,3 @@ class PostGenerationMethodCall(Declaration):
 def post_generation(func):
     func._is_post_generation = True
     return func
-

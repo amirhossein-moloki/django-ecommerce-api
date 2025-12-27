@@ -22,6 +22,10 @@ class DjangoModelFactoryMeta(type):
 
 class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
     @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        return model_class.objects.create(*args, **kwargs)
+
+    @classmethod
     def _next_sequence(cls):
         cls._sequence += 1
         return cls._sequence
@@ -71,6 +75,10 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
         for name, declaration in declarations.items():
             if name.startswith("_"):
                 continue
+            if getattr(declaration, "_is_post_generation", False):
+                extracted = attrs.pop(name, None) if name in attrs else None
+                post_generation_hooks.append((declaration, extracted))
+                continue
             if name in attrs:
                 continue
             if not isinstance(declaration, Declaration) and not getattr(
@@ -84,9 +92,6 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
             if isinstance(declaration, PostGenerationMethodCall):
                 post_generation_calls.append((name, declaration))
                 continue
-            if getattr(declaration, "_is_post_generation", False):
-                post_generation_hooks.append(declaration)
-                continue
             if isinstance(declaration, LazyAttribute):
                 attrs[name] = declaration.evaluate(attrs, sequence, create)
                 continue
@@ -98,7 +103,7 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
             attrs[name] = declaration.evaluate(attrs, sequence, create)
 
         if create:
-            instance = cls._meta.model.objects.create(**attrs)
+            instance = cls._create(cls._meta.model, **attrs)
         else:
             instance = cls._meta.model(**attrs)
 
@@ -107,8 +112,8 @@ class DjangoModelFactory(metaclass=DjangoModelFactoryMeta):
             if create:
                 instance.save()
 
-        for hook in post_generation_hooks:
-            hook(instance, create, None)
+        for hook, extracted in post_generation_hooks:
+            hook(instance, create, extracted)
             if create:
                 instance.save()
 

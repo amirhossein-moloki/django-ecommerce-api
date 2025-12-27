@@ -279,12 +279,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.select_related('parent').all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminUserOrReadOnly]
+    pagination_class = None
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+    pagination_class = None
 
 
 class SeriesViewSet(viewsets.ModelViewSet):
@@ -297,12 +299,14 @@ class RevisionViewSet(viewsets.ModelViewSet):
     queryset = Revision.objects.all()
     serializer_class = RevisionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrAdmin]
+    pagination_class = None
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -345,12 +349,14 @@ class PageViewSet(viewsets.ModelViewSet):
     queryset = Page.objects.all()
     serializer_class = PageSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+    pagination_class = None
 
 
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+    pagination_class = None
 
 
 class MenuItemViewSet(viewsets.ModelViewSet):
