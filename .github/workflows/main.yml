@@ -123,6 +123,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     steps:
       - name: "Check out code"
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -141,6 +142,31 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: "Generate SBOM with Syft"
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}@${{ steps.build-and-push.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: "Install cosign"
+        uses: sigstore/cosign-installer@v3
+
+      - name: "Sign image with cosign (keyless)"
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign sign --yes --bundle cosign.bundle.json \
+            ghcr.io/${{ github.repository }}@${{ steps.build-and-push.outputs.digest }}
+
+      - name: "Upload SBOM and cosign bundle"
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-and-signature
+          path: |
+            sbom.spdx.json
+            cosign.bundle.json
 
       - name: "Scan pushed Docker image with trivy"
         uses: aquasecurity/trivy-action@dbf779592e9f44596cfd1e173e268a1a29cf4f14
