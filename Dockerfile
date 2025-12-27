@@ -42,7 +42,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set the DJANGO_SETTINGS_MODULE to use production settings by default.
-ENV DJANGO_SETTINGS_MODULE=ecommerce_api.settings.prod
+ENV DJANGO_SETTINGS_MODULE=ecommerce_api.settings.production
 
 WORKDIR /app
 
