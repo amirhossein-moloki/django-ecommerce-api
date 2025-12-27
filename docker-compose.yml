@@ -93,12 +93,38 @@ services:
     container_name: nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+      - nginx_cache:/var/cache/nginx
+    environment:
+      DOMAIN: ${DOMAIN}
     depends_on:
       - web
+    networks:
+      - default
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    entrypoint: /bin/sh -c
+    command: >
+      "trap exit TERM;
+      certbot certonly --webroot -w /var/www/certbot
+      --email ${CERTBOT_EMAIL}
+      --agree-tos --no-eff-email
+      -d ${DOMAIN} -d www.${DOMAIN};
+      while :; do
+        certbot renew --webroot -w /var/www/certbot;
+        sleep 12h;
+      done"
     networks:
       - default
 
@@ -106,6 +132,9 @@ volumes:
   database:
   static_volume:
   media_volume:
+  certbot_www:
+  letsencrypt:
+  nginx_cache:
 
 networks:
   default:
