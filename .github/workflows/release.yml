@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
     - name: Check out code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -55,10 +59,17 @@ jobs:
     - name: Set up Helm
       uses: azure/setup-helm@2c5b0f9a1dc9433a155b1d6df3a0f2e7f1a5b5f4
 
-    - name: Configure kubectl
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Configure kubectl for EKS
       run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+        aws eks update-kubeconfig \
+          --name "${{ secrets.EKS_CLUSTER_NAME }}" \
+          --region "${{ secrets.AWS_REGION }}"
 
     - name: Deploy to Production
       run: |

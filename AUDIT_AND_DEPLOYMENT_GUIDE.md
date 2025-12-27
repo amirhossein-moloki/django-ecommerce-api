@@ -81,7 +81,7 @@ This pipeline is triggered only when a new release is published on GitHub. This 
 
 ### Prerequisites
 
--   A Kubernetes cluster
+-   An Amazon EKS cluster
 -   `kubectl` configured to connect to your cluster
 -   `helm` v3+
 
@@ -89,7 +89,11 @@ This pipeline is triggered only when a new release is published on GitHub. This 
 
 The CI/CD pipeline requires the following secrets to be set in your GitHub repository's settings (`Settings > Secrets and variables > Actions`):
 
--   `KUBECONFIG`: The contents of your `kubeconfig` file, which grants access to your Kubernetes cluster. This is a sensitive credential and should be handled with care.
+-   `AWS_ROLE_TO_ASSUME`: IAM role ARN that GitHub Actions assumes via OIDC.
+-   `AWS_REGION`: AWS region that hosts the EKS cluster (e.g., `us-east-1`).
+-   `EKS_CLUSTER_NAME`: Name of the target EKS cluster.
+
+To enable OIDC, create an IAM OIDC identity provider for `token.actions.githubusercontent.com` and an IAM role with a trust policy that scopes access to this repository/environment. Attach EKS permissions (e.g., `eks:DescribeCluster`) and any required Kubernetes RBAC mappings for deployment.
 
 ### Step 2: Create Kubernetes Secrets
 
@@ -170,6 +174,6 @@ readinessProbe:
 ## 8. TODO for Project Owner
 
 -   [ ] Update the `helm/values.yaml` and `.github/workflows/cd.yml` files with your actual domain names.
--   [ ] Set the `KUBECONFIG` secret in your GitHub repository.
+-   [ ] Configure GitHub Actions OIDC for AWS and store `AWS_ROLE_TO_ASSUME`, `AWS_REGION`, and `EKS_CLUSTER_NAME` secrets.
 -   [ ] Create the `django-secrets` secret in your Kubernetes cluster with your production credentials.
 -   [ ] Configure your DNS to point your domain to the Ingress controller's external IP address.
