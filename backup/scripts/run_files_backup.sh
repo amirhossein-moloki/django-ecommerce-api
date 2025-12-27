@@ -28,7 +28,7 @@ BACKUP_SOURCE_DIR="${BACKUP_SOURCE_DIR:-/var/www/media}"
 
 if [[ -z "$RESTIC_REPOSITORY" ]]; then
   echo "Error: RESTIC_REPOSITORY environment variable is not set." >&2
-  echo "Example: export RESTIC_REPOSITORY=s3:s3.your-region.amazonaws.com/your-bucket/media" >&2
+  echo "Example: export RESTIC_REPOSITORY=gcs:your-gcs-bucket-name/media" >&2
   exit 1
 fi
 
@@ -38,8 +38,9 @@ if [[ -z "$RESTIC_PASSWORD" ]]; then
   exit 1
 fi
 
-if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
-  echo "Error: AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY are not set." >&2
+if [[ -z "$GOOGLE_PROJECT_ID" || -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+  echo "Error: GOOGLE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS are not set." >&2
+  echo "Make sure to point GOOGLE_APPLICATION_CREDENTIALS to your service account JSON file." >&2
   exit 1
 fi
 

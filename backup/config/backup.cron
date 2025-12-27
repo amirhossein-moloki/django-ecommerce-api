@@ -17,10 +17,10 @@
 
 # Example /etc/backup.env file:
 #
-# # --- WAL-G & S3 Credentials ---
-# # Loaded from backup/config/walg_config.json by the script, but AWS keys are needed for Restic
-# AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
-# AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_ACCESS_KEY"
+# # --- Google Cloud Storage (GCS) Credentials ---
+# # Used by both WAL-G (via its config) and Restic.
+# GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/gcs_service_account.json"
+# GOOGLE_PROJECT_ID="your-gcp-project-id"
 #
 # # --- PostgreSQL Connection Details (for WAL-G) ---
 # PGHOST="/var/run/postgresql"
@@ -30,7 +30,7 @@
 # PGPASSWORD="your_postgres_password"
 #
 # # --- Restic Configuration ---
-# RESTIC_REPOSITORY="s3:s3.your-region.amazonaws.com/your-bucket/media"
+# RESTIC_REPOSITORY="gcs:your-gcs-bucket-name/media"
 # RESTIC_PASSWORD="your_strong_restic_encryption_password"
 #
 # # --- Path to backup source directory ---

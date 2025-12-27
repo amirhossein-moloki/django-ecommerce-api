@@ -31,7 +31,8 @@
     *   `jq`
 
 3.  **دسترسی به Secretها:**
-    *   کلیدهای دسترسی به S3 Bucket (`AWS_ACCESS_KEY_ID` و `AWS_SECRET_ACCESS_KEY`).
+    *   فایل JSON کلید Service Account گوگل (`GOOGLE_APPLICATION_CREDENTIALS`).
+    *   شناسه پروژه گوگل (`GOOGLE_PROJECT_ID`).
     *   رمز عبور مخزن Restic (`RESTIC_PASSWORD`).
     *   کلید GPG برای رمزگشایی بکاپ‌های `wal-g` (در صورت استفاده).
     *   این اطلاعات باید در یک Vault یا مدیر رمز امن نگه‌داری شوند.
@@ -53,14 +54,14 @@
     ```
 
 2.  **تنظیم متغیرهای محیطی:**
+    *   فایل Service Account خود را به سرور جدید منتقل کنید (مثلاً در مسیر `~/gcs_service_account.json`).
     *   تمام Secretهای مورد نیاز را در یک فایل موقت (مثلاً `~/restore.env`) قرار دهید و دسترسی آن را محدود کنید.
     ```bash
     # ~/restore.env
-    export AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
-    export AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_ACCESS_KEY"
-    export RESTIC_REPOSITORY="s3:s3.your-region.amazonaws.com/your-bucket/media"
+    export GOOGLE_APPLICATION_CREDENTIALS="~/gcs_service_account.json"
+    export GOOGLE_PROJECT_ID="your-gcp-project-id"
+    export RESTIC_REPOSITORY="gcs:your-gcs-bucket-name/media"
     export RESTIC_PASSWORD="your_strong_restic_encryption_password"
-    # WAL-G config will be read from its config file, but needs AWS creds
     ```
     *   این متغیرها را در session فعلی خود `source` کنید:
     ```bash
@@ -86,7 +87,7 @@
     ```
 
 3.  **بارگذاری کانفیگ WAL-G:**
-    *   فایل `walg_config.json` را از مخزن Git یا محل امن خود به سرور جدید منتقل کرده و در مسیر `~/.walg.json` قرار دهید.
+    *   فایل `walg_config.json` را از مخزن Git یا محل امن خود به سرور جدید منتقل کرده و مسیر `GOOGLE_APPLICATION_CREDENTIALS` را در آن متناسب با سرور جدید ویرایش کنید. سپس فایل را در مسیر `~/.walg.json` قرار دهید.
 
 4.  **دریافت آخرین Base Backup:**
     *   دستور زیر آخرین بکاپ کامل را پیدا کرده و در دایرکتوری دیتای PostgreSQL استخراج می‌کند.
