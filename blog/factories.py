@@ -24,7 +24,6 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.LazyAttribute(lambda _: fake.first_name())
     last_name = factory.LazyAttribute(lambda _: fake.last_name())
     phone_number = factory.Sequence(lambda n: f'+98912{n:07d}')
-    referral_code = factory.Sequence(lambda n: f'ref_{n}')
     is_staff = False
 
 
@@ -36,6 +35,20 @@ class AuthorProfileFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     display_name = factory.LazyAttribute(lambda o: o.user.get_full_name())
     bio = factory.LazyAttribute(lambda _: fake.paragraph())
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        user = kwargs.pop("user")
+        defaults = dict(kwargs)
+        author_profile, created = model_class.objects.get_or_create(
+            user=user,
+            defaults=defaults,
+        )
+        if not created:
+            for key, value in defaults.items():
+                setattr(author_profile, key, value)
+            author_profile.save()
+        return author_profile
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):

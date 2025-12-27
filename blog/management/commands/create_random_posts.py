@@ -20,7 +20,9 @@ class Command(BaseCommand):
 
         # Check if any users exist, create one if not
         if not User.objects.exists():
+            phone_number = f"+98912{fake.random_int(min=0, max=9_999_999):07d}"
             default_user = User.objects.create_user(
+                phone_number=phone_number,
                 username='defaultuser',
                 password='password',
                 email=fake.email()

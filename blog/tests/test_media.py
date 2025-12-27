@@ -20,7 +20,11 @@ TEST_MEDIA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_
 class MediaAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.user = User.objects.create_user(
+            phone_number='+989121234567',
+            username='testuser',
+            password='testpassword',
+        )
         self.client.force_authenticate(user=self.user)
 
         if os.path.exists(TEST_MEDIA_DIR):
