@@ -11,6 +11,28 @@ jobs:
     - name: Check out code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+    - name: Set up Python
+      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
+      with:
+        python-version: "3.11"
+
+    - name: Install CI dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-ci.txt
+
+    - name: Lint
+      run: |
+        ruff check .
+        black --check .
+        isort --check-only .
+
+    - name: Test
+      run: pytest
+
+    - name: Security scan (pip-audit)
+      run: pip-audit -r requirements.txt
+
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@343f7c4344506bcbf9b9c0c58d2e3feea4b6db5f
       with:
