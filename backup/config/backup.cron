@@ -1,0 +1,49 @@
+# ==============================================================================
+# Example Crontab for Production Backups
+#
+# To install, run: crontab backup.cron
+#
+# IMPORTANT:
+# 1. Environment Variables: Cron jobs run with a minimal environment. You MUST
+#    provide all necessary environment variables for the scripts to work.
+#    The recommended approach is to store them in a file (e.g., /etc/backup.env)
+#    and source it. This file should have strict permissions (e.g., 600).
+#
+# 2. Paths: Use absolute paths for all scripts and files.
+#
+# 3. Output Logging: Redirect stdout and stderr to a log file to monitor
+#    execution and debug failures.
+# ==============================================================================
+
+# Example /etc/backup.env file:
+#
+# # --- Google Cloud Storage (GCS) Credentials ---
+# # Used by both WAL-G (via its config) and Restic.
+# GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/gcs_service_account.json"
+# GOOGLE_PROJECT_ID="your-gcp-project-id"
+#
+# # --- PostgreSQL Connection Details (for WAL-G) ---
+# PGHOST="/var/run/postgresql"
+# PGPORT="5432"
+# PGUSER="postgres"
+# PGDATABASE="postgres"
+# PGPASSWORD="your_postgres_password"
+#
+# # --- Restic Configuration ---
+# RESTIC_REPOSITORY="gcs:your-gcs-bucket-name/media"
+# RESTIC_PASSWORD="your_strong_restic_encryption_password"
+#
+# # --- Path to backup source directory ---
+# BACKUP_SOURCE_DIR="/var/www/media"
+#
+
+# --- Cron Job Definitions ---
+
+# Run a full PostgreSQL base backup every day at 2:00 AM.
+# The continuous WAL archiving is handled by PostgreSQL's archive_command,
+# so this cronjob is only for the base backup.
+0 2 * * * . /etc/backup.env; /usr/local/bin/run_db_backup.sh >> /var/log/backup_db.log 2>&1
+
+# Run the Restic file backup every day at 3:00 AM.
+# This script handles incremental backups and retention policy automatically.
+0 3 * * * . /etc/backup.env; /usr/local/bin/run_files_backup.sh >> /var/log/backup_files.log 2>&1

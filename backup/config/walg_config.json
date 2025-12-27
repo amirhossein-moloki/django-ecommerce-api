@@ -1,0 +1,5 @@
+{
+  "WALG_GS_PREFIX": "gs://YOUR_GCS_BACKUP_BUCKET/database/postgres",
+  "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/your/gcs_service_account.json",
+  "WALG_GPG_KEY_ID": "YOUR_GPG_KEY_ID_FOR_ENCRYPTION"
+}
