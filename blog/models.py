@@ -15,6 +15,7 @@ from django.utils.translation import gettext_lazy as _
 from urllib.parse import urlparse, urlunparse
 
 from common.utils.images import convert_image_to_avif
+from common.utils.files import get_sanitized_filename
 
 
 User = get_user_model()
@@ -56,6 +57,12 @@ class Media(models.Model):
         if self.pk:
             return reverse('download_media', kwargs={'media_id': self.pk})
         return ""
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'file') and self.file and 'image' in self.mime and self.mime != 'image/avif':
+            self.file = convert_image_to_avif(self.file)
+            self.mime = 'image/avif'
+        super().save(*args, **kwargs)
 
 
 class AuthorProfile(models.Model):
@@ -137,7 +144,7 @@ class Post(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     is_hot = models.BooleanField(default=False)
-    content = CKEditor5Field(config_name="default")
+    content = CKEditor5Field('Text', config_name='default')
     reading_time_sec = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')

@@ -1,6 +1,5 @@
 from celery import shared_task
 import logging
-from notifications.tasks import send_email_notification
 from django.db.models import F
 
 logger = logging.getLogger(__name__)
@@ -29,16 +28,16 @@ def notify_author_on_new_comment(comment_id):
         comment = Comment.objects.select_related('post', 'post__author', 'post__author__user').get(id=comment_id)
         post_author = comment.post.author.user
 
-        if post_author.email:
-            send_email_notification.delay(
-                recipient_email=post_author.email,
-                subject=f"New comment on your post '{comment.post.title}'",
-                template_name="notifications/email/new_comment_notification.html",
-                context={
-                    "post_title": comment.post.title,
-                    "commenter_name": comment.author_name or "An anonymous user",
-                    "comment_content": comment.content,
-                },
-            )
+        # if post_author.email:
+        #     send_email_notification.delay(
+        #         recipient_email=post_author.email,
+        #         subject=f"New comment on your post '{comment.post.title}'",
+        #         template_name="notifications/email/new_comment_notification.html",
+        #         context={
+        #             "post_title": comment.post.title,
+        #             "commenter_name": comment.author_name or "An anonymous user",
+        #             "comment_content": comment.content,
+        #         },
+        #     )
     except Comment.DoesNotExist:
         logger.error(f"Comment with id {comment_id} not found for notification task.")

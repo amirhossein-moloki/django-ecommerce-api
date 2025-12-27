@@ -96,7 +96,6 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "taggit",  # Tagging library for Django
     "drf_spectacular",  # OpenAPI schema generation for Django REST Framework
-    "debug_toolbar",  # Debugging tool for development
     "django_filters",  # Filtering support for Django REST Framework
     "rest_framework",  # Django REST Framework for building APIs
     "rest_framework.authtoken",  # Token-based authentication for REST Framework
@@ -104,14 +103,15 @@ THIRD_PARTY_APPS = [
     "social_django",  # Social authentication (e.g., Google, Facebook)
     "djoser",  # User authentication and management
     "simple_history",  # Track changes to model instances
-    "django_extensions",  # Additional management commands and utilities
     "rest_framework_simplejwt.token_blacklist",  # JWT token blacklist for security
     "corsheaders",  # Cross-Origin Resource Sharing (CORS) headers
     "django_prometheus",  # Prometheus metrics for Django
+    "django_ckeditor_5", # CKEditor 5 for Django
 ]
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
+    "common", # Common utilities
     "shop",  # Shop application for managing products
     "cart",  # Cart application for managing shopping carts
     "orders",  # Orders application for managing customer orders
@@ -122,6 +122,7 @@ CUSTOM_APPS = [
     "shipping",
     "sms",
     "discounts.apps.DiscountsConfig",
+    "blog", # Blog application
 ]
 
 # Combine all applications into the INSTALLED_APPS setting
@@ -272,9 +273,46 @@ SPECTACULAR_SETTINGS = {
 # Django Debug Toolbar settings
 INTERNAL_IPS = env.list("INTERNAL_IPS", default=["127.0.0.1", "localhost"])
 
+# CKEditor 5 settings
+CKEDITOR_5_CONFIGS = {
+    'default': {
+        'toolbar': ['heading', '|', 'bold', 'italic', 'link',
+                    'bulletedList', 'numberedList', 'blockQuote', 'imageUpload', ],
+    }
+}
+
 CART_SESSION_ID = "cart"
 SITE_ID = 1
 ASGI_APPLICATION = "ecommerce_api.asgi.application"
+
+# Channel layers for real-time features
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [env("REDIS_URL")],
+        },
+    },
+}
+
+# Logging configuration for development
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "%(asctime)s %(levelname)s %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG" if DEBUG else "INFO",
+    },
+}
 
 SMS_IR_OTP_TEMPLATE_ID = env.int("SMS_IR_OTP_TEMPLATE_ID", 123456)
 

@@ -89,6 +89,7 @@ urlpatterns = [
                     path("", include("cart.urls")),
                     path("", include("coupons.urls")),
                     path("chat/", include("chat.urls")),
+                    path("blog/", include("blog.urls")),
                 ],
                 "api-v1",
             )
