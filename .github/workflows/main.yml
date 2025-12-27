@@ -65,7 +65,16 @@ jobs:
           SECRET_KEY: "test-secret-key"
           DATABASE_URL: "postgres://postgres:postgres@localhost:5432/ecommerce_test"
           REDIS_URL: "redis://localhost:6379/0"
-        run: pytest
+        run: pytest --cov=. --cov-report=xml:coverage.xml --cov-report=html:coverage_html --cov-fail-under=80
+
+      - name: "Upload coverage report"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            coverage_html
 
   build-and-scan:
     name: "Build and Scan Docker Image"
