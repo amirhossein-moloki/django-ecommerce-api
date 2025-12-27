@@ -118,6 +118,8 @@ jobs:
     # Only run on push to main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: validate
+    environment:
+      name: staging
     permissions:
       contents: read
       packages: write
