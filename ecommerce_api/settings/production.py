@@ -2,6 +2,9 @@ from .base import INSTALLED_APPS, MIDDLEWARE, env
 
 # Production-specific settings
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 # Session settings for production
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
