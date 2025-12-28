@@ -1,4 +1,4 @@
-from .base import INSTALLED_APPS, MIDDLEWARE, REDIS_URL
+from .base import *
 
 # Production-specific settings
 
