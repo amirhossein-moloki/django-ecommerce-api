@@ -38,7 +38,9 @@ class DummyItem:
 
 
 class DummyAddress:
-    def __init__(self, *, receiver_name, receiver_phone, full_address, city_code, postal_code):
+    def __init__(
+        self, *, receiver_name, receiver_phone, full_address, city_code, postal_code
+    ):
         self.receiver_name = receiver_name
         self.receiver_phone = receiver_phone
         self.full_address = full_address

@@ -7,18 +7,17 @@ class IntegrationSettings(models.Model):
     A singleton model to store settings for third-party integrations like
     Torob and Emalls.
     """
+
     torob_enabled = models.BooleanField(
-        default=False,
-        help_text="Enable or disable the Torob XML feed."
+        default=False, help_text="Enable or disable the Torob XML feed."
     )
     emalls_enabled = models.BooleanField(
-        default=False,
-        help_text="Enable or disable the Emalls XML feed."
+        default=False, help_text="Enable or disable the Emalls XML feed."
     )
     feed_token = models.UUIDField(
         default=uuid.uuid4,
         editable=False,
-        help_text="Security token for accessing the feeds."
+        help_text="Security token for accessing the feeds.",
     )
 
     class Meta:

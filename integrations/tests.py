@@ -16,17 +16,19 @@ class IntegrationServiceTests(TestCase):
         self.variant1 = ProductVariantFactory(product=self.product1, stock=10)
 
         self.product2 = ProductFactory()
-        self.variant2 = ProductVariantFactory(product=self.product2, stock=0) # Out of stock
+        self.variant2 = ProductVariantFactory(
+            product=self.product2, stock=0
+        )  # Out of stock
 
-        self.product3 = ProductFactory(deleted_at=timezone.now()) # Soft-deleted
+        self.product3 = ProductFactory(deleted_at=timezone.now())  # Soft-deleted
         self.variant3 = ProductVariantFactory(product=self.product3, stock=5)
 
     def test_generate_product_feed_data(self):
-        request = self.factory.get('/')
+        request = self.factory.get("/")
         feed_data = generate_product_feed_data(request)
 
         self.assertEqual(len(feed_data), 1)
-        self.assertEqual(feed_data[0]['id'], self.variant1.sku)
+        self.assertEqual(feed_data[0]["id"], self.variant1.sku)
 
 
 class IntegrationFeedTests(TestCase):
@@ -39,25 +41,25 @@ class IntegrationFeedTests(TestCase):
     def test_feed_disabled(self):
         self.settings.torob_enabled = False
         self.settings.save()
-        url = reverse('integrations:torob_feed') + f'?token={self.settings.feed_token}'
+        url = reverse("integrations:torob_feed") + f"?token={self.settings.feed_token}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_feed_invalid_token(self):
         self.settings.torob_enabled = True
         self.settings.save()
-        url = reverse('integrations:torob_feed') + '?token=invalid-token'
+        url = reverse("integrations:torob_feed") + "?token=invalid-token"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_feed_success(self):
         self.settings.torob_enabled = True
         self.settings.save()
-        url = reverse('integrations:torob_feed') + f'?token={self.settings.feed_token}'
+        url = reverse("integrations:torob_feed") + f"?token={self.settings.feed_token}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response['Content-Type'], 'application/xml')
-        self.assertContains(response, f'<id>{self.product.variants.first().sku}</id>')
+        self.assertEqual(response["Content-Type"], "application/xml")
+        self.assertContains(response, f"<id>{self.product.variants.first().sku}</id>")
 
 
 class IntegrationToggleAPITests(TestCase):
@@ -66,7 +68,7 @@ class IntegrationToggleAPITests(TestCase):
         self.admin_user = UserFactory(is_staff=True, is_superuser=True)
         self.normal_user = UserFactory()
         self.settings = IntegrationSettings.load()
-        self.url = reverse('integrations:toggle_integration')
+        self.url = reverse("integrations:toggle_integration")
 
     def test_toggle_permission_denied_for_anonymous(self):
         response = self.client.post(self.url, {"name": "torob", "enabled": True})
@@ -89,5 +91,7 @@ class IntegrationToggleAPITests(TestCase):
 
     def test_toggle_invalid_data(self):
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post(self.url, {"name": "invalid_platform", "enabled": True})
+        response = self.client.post(
+            self.url, {"name": "invalid_platform", "enabled": True}
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

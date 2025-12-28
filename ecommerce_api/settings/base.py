@@ -62,9 +62,7 @@ else:
     DEBUG = get_env_bool("DEBUG", False)
     is_dev_env = os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith(".development")
     if DEBUG or is_dev_env:
-        SECRET_KEY = get_env(
-            "SECRET_KEY", "insecure-development-key-change-me"
-        )
+        SECRET_KEY = get_env("SECRET_KEY", "insecure-development-key-change-me")
     else:
         SECRET_KEY = get_env("SECRET_KEY")
 
@@ -457,7 +455,9 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     "cancel-pending-orders": {
         "task": "orders.tasks.cancel_pending_orders",
-        "schedule": float(get_env("CANCEL_PENDING_ORDERS_INTERVAL", 600.0)),  # Default to 10 minutes
+        "schedule": float(
+            get_env("CANCEL_PENDING_ORDERS_INTERVAL", 600.0)
+        ),  # Default to 10 minutes
     },
 }
 

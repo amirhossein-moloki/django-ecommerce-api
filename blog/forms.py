@@ -17,13 +17,13 @@ class ImagePreviewWidget(AdminFileWidget):
                 f'style="object-fit: cover;"/></a>'
             )
         output.append(super().render(name, value, attrs, renderer))
-        return format_html(''.join(output))
+        return format_html("".join(output))
 
 
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
-        fields = ('content',)
+        fields = ("content",)
 
 
 class PostAdminForm(forms.ModelForm):
@@ -31,7 +31,7 @@ class PostAdminForm(forms.ModelForm):
 
     class Meta:
         model = Post
-        fields = '__all__'
+        fields = "__all__"
 
 
 class PageAdminForm(forms.ModelForm):
@@ -39,7 +39,7 @@ class PageAdminForm(forms.ModelForm):
 
     class Meta:
         model = Page
-        fields = '__all__'
+        fields = "__all__"
 
 
 class MediaAdminForm(forms.ModelForm):
@@ -48,7 +48,13 @@ class MediaAdminForm(forms.ModelForm):
     class Meta:
         model = Media
         fields = (
-            'file', 'alt_text', 'title',
-            'storage_key', 'url', 'type', 'mime', 'size_bytes',
-            'uploaded_by'
+            "file",
+            "alt_text",
+            "title",
+            "storage_key",
+            "url",
+            "type",
+            "mime",
+            "size_bytes",
+            "uploaded_by",
         )

@@ -25,7 +25,9 @@ def main():
         # Attempt to proceed, maybe env vars are set externally
 
     # Set the settings module and setup Django
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ecommerce_api.settings.development")
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE", "ecommerce_api.settings.development"
+    )
 
     try:
         import django
@@ -72,20 +74,33 @@ def main():
                 else:
                     print(f"User {user_data['username']} already exists. Skipping.")
             except IntegrityError as e:
-                print(f"Error creating user {user_data['username']}: {e}", file=sys.stderr)
+                print(
+                    f"Error creating user {user_data['username']}: {e}", file=sys.stderr
+                )
             except Exception as e:
-                print(f"An unexpected error occurred for user {user_data['username']}: {e}", file=sys.stderr)
+                print(
+                    f"An unexpected error occurred for user {user_data['username']}: {e}",
+                    file=sys.stderr,
+                )
         print("User creation process finished.")
 
     except ImportError as e:
         print(f"Failed to import Django or its components: {e}", file=sys.stderr)
-        print("Please ensure Django and all project dependencies are installed.", file=sys.stderr)
+        print(
+            "Please ensure Django and all project dependencies are installed.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     except Exception as e:
-        print(f"An error occurred during Django setup or user creation: {e}", file=sys.stderr)
+        print(
+            f"An error occurred during Django setup or user creation: {e}",
+            file=sys.stderr,
+        )
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

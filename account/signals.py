@@ -7,14 +7,16 @@ from .models import Profile
 
 User = get_user_model()
 
+
 def get_client_ip(request):
     """Get the client's IP address from the request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
+        ip = x_forwarded_for.split(",")[0]
     else:
-        ip = request.META.get('REMOTE_ADDR')
+        ip = request.META.get("REMOTE_ADDR")
     return ip
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -24,13 +26,15 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created and getattr(settings, "ACCOUNT_AUTO_CREATE_PROFILE", False):
         Profile.objects.get_or_create(user=instance)
 
+
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     """
     Save the profile whenever the user object is saved.
     """
-    if hasattr(instance, 'profile'):
+    if hasattr(instance, "profile"):
         instance.profile.save()
+
 
 @receiver(user_logged_in)
 def update_last_login_ip(sender, request, user, **kwargs):
@@ -39,4 +43,4 @@ def update_last_login_ip(sender, request, user, **kwargs):
     the user logging in.
     """
     user.last_login_ip = get_client_ip(request)
-    user.save(update_fields=['last_login_ip'])
+    user.save(update_fields=["last_login_ip"])

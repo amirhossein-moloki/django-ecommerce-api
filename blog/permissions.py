@@ -16,7 +16,7 @@ class IsAuthorOrAdminOrReadOnly(permissions.BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        if request.method == 'POST':
+        if request.method == "POST":
             is_author = AuthorProfile.objects.filter(user=request.user).exists()
             return is_author or request.user.is_staff
 
@@ -36,7 +36,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
 
         # A list of possible attribute names for the owner.
-        owner_attributes = ['user', 'author', 'uploaded_by']
+        owner_attributes = ["user", "author", "uploaded_by"]
 
         for attr in owner_attributes:
             if hasattr(obj, attr):
@@ -45,15 +45,17 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
                 if owner == request.user:
                     return True
                 # If the owner attribute is a related model (like AuthorProfile)
-                if hasattr(owner, 'user') and owner.user == request.user:
+                if hasattr(owner, "user") and owner.user == request.user:
                     return True
 
         return False
+
 
 class IsAdminUserOrReadOnly(permissions.BasePermission):
     """
     Allows read-only access to non-admin users, and full access to admin users.
     """
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True

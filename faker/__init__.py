@@ -47,9 +47,7 @@ class Faker:
         return [self.paragraph() for _ in range(nb)]
 
     def word(self):
-        return random.choice(
-            ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot"]
-        )
+        return random.choice(["alpha", "bravo", "charlie", "delta", "echo", "foxtrot"])
 
     def random_int(self, min=0, max=9999):
         return random.randint(min, max)
@@ -67,11 +65,7 @@ class Faker:
         if value:
             cleaned = re.sub(r"[^\w\s-]", "", str(value))
             return (
-                cleaned.strip()
-                .replace(" ", "-")
-                .replace("_", "-")
-                .lower()
-                .strip("-")
+                cleaned.strip().replace(" ", "-").replace("_", "-").lower().strip("-")
             )
         return f"slug-{uuid.uuid4().hex[:8]}"
 

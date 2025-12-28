@@ -85,13 +85,13 @@ class TestCartService:
         cart.clear()
 
         assert not CartModel.objects.filter(user=self.user).exists()
-        assert not request.session.get('cart_session_id')
+        assert not request.session.get("cart_session_id")
 
     def test_get_total_price(self):
         request = self._get_request_with_session()
         cart = Cart(request)
-        cart.add(self.variant1, quantity=2) # price * 2
-        cart.add(self.variant2, quantity=3) # price * 3
+        cart.add(self.variant1, quantity=2)  # price * 2
+        cart.add(self.variant2, quantity=3)  # price * 3
 
         expected_total = (self.variant1.price * 2) + (self.variant2.price * 3)
         assert cart.get_total_price() == expected_total
@@ -120,7 +120,7 @@ class TestCartService:
         session_key = request1.session.session_key
 
         request2 = self.request_factory.get("/")
-        request2.session = request1.session # Simulate same browser session
+        request2.session = request1.session  # Simulate same browser session
         request2.user = AnonymousUser()
 
         cart2 = Cart(request2)
@@ -165,19 +165,19 @@ class TestCartService:
         assert item2.quantity == 1
 
         # - The session key should be cleared from the session
-        assert login_request.session.get('cart_session_id') is None
+        assert login_request.session.get("cart_session_id") is None
 
     def test_merge_guest_cart_with_existing_user_cart(self):
         # 1. User already has items in their cart
         user_request = self._get_request_with_session()
         user_cart = Cart(user_request)
-        user_cart.add(self.variant1, quantity=1) # User has 1 of variant1
+        user_cart.add(self.variant1, quantity=1)  # User has 1 of variant1
 
         # 2. The same user browses as a guest and adds items
         guest_request = self._get_request_with_session(user=AnonymousUser())
         guest_cart = Cart(guest_request)
-        guest_cart.add(self.variant1, quantity=2) # Guest adds 2 of variant1
-        guest_cart.add(self.variant2, quantity=3) # Guest adds 3 of variant2
+        guest_cart.add(self.variant1, quantity=2)  # Guest adds 2 of variant1
+        guest_cart.add(self.variant2, quantity=3)  # Guest adds 3 of variant2
 
         # 3. User logs in with the guest session
         login_request = self.request_factory.get("/")
@@ -187,15 +187,15 @@ class TestCartService:
         final_cart = Cart(login_request)
 
         # 4. Assertions: Quantities should be combined
-        assert len(final_cart) == 1 + 2 + 3 # 6 items total
+        assert len(final_cart) == 1 + 2 + 3  # 6 items total
         user_cart_db = CartModel.objects.get(user=self.user)
         assert user_cart_db.items.count() == 2
 
         item1 = user_cart_db.items.get(variant=self.variant1)
-        assert item1.quantity == 3 # 1 (user) + 2 (guest)
+        assert item1.quantity == 3  # 1 (user) + 2 (guest)
 
         item2 = user_cart_db.items.get(variant=self.variant2)
-        assert item2.quantity == 3 # 0 (user) + 3 (guest)
+        assert item2.quantity == 3  # 0 (user) + 3 (guest)
 
     # --- Validation from services.py ---
     # Although validation is in services, we test the interaction via Cart class
@@ -220,7 +220,9 @@ class TestCartService:
         cart = Cart(request)
         cart.add(self.variant1, quantity=8)
 
-        with pytest.raises(ValidationError, match="Cannot add 3 items. Only 2 more items can be added."):
+        with pytest.raises(
+            ValidationError, match="Cannot add 3 items. Only 2 more items can be added."
+        ):
             add_to_cart(request, self.variant1.variant_id, quantity=3)
 
         # Test adding without override
@@ -228,5 +230,7 @@ class TestCartService:
         assert len(cart) == 10
 
         # Now try to add more
-        with pytest.raises(ValidationError, match="Cannot add 1 items. Only 0 more items can be added."):
+        with pytest.raises(
+            ValidationError, match="Cannot add 1 items. Only 0 more items can be added."
+        ):
             add_to_cart(request, self.variant1.variant_id, quantity=1)
