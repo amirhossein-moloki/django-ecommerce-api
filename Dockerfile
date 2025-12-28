@@ -1,79 +1,76 @@
 #
-# --- Builder Stage ---
+# --- مرحله ۱: Builder ---
+# از یک ایمیج پایه سبک پایتون برای ساخت وابستگی‌ها استفاده می‌کنیم.
 #
 FROM python:3.11-slim-bookworm AS builder
 
-# Set environment variables to prevent generating .pyc files and to ensure
-# output is sent directly to the terminal without buffering.
+# متغیرهای محیطی برای جلوگیری از ایجاد فایل‌های .pyc و اطمینان از خروجی مستقیم در ترمینال.
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Accept a build argument to determine if we are in a development environment.
+# آرگومان بیلد برای تشخیص محیط توسعه.
 ARG DEV=false
 
-# Install system-level dependencies required for building Python packages,
-# particularly those with C extensions like psycopg2.
+# نصب وابستگی‌های سیستمی مورد نیاز برای ساخت پکیج‌های پایتون (مثل psycopg2).
+# libmagic1 برای کتابخانه python-magic نیاز است.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libpq-dev libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container.
+# تنظیم دایرکتوری کاری داخل کانتینر.
 WORKDIR /app
 
-# Install Python dependencies. Using --no-cache-dir reduces the image size.
-# We copy only the requirements file first to leverage Docker's layer caching.
+# کپی کردن فایل‌های وابستگی‌ها و نصب آن‌ها.
+# این کار به ما اجازه می‌دهد تا از کش لایه‌های داکر به بهترین شکل استفاده کنیم.
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
-# If the DEV flag is set, install the development dependencies.
+# اگر در محیط توسعه هستیم (DEV=true)، وابستگی‌های توسعه را نیز نصب می‌کنیم.
 RUN if [ "$DEV" = "true" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
 
 #
-# --- Final Stage ---
+# --- مرحله ۲: Final ---
+# از یک ایمیج پایه تمیز برای محیط نهایی استفاده می‌کنیم تا حجم ایمیج نهایی کمتر باشد.
 #
 FROM python:3.11-slim-bookworm AS final
 
+# نصب وابستگی‌های سیستمی که در زمان اجرا نیاز هستند.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
-# Set environment variables for the final image.
+# تنظیم متغیرهای محیطی برای ایمیج نهایی.
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-# Set the DJANGO_SETTINGS_MODULE to use production settings by default.
 ENV DJANGO_SETTINGS_MODULE=ecommerce_api.settings.production
 
 WORKDIR /app
 
-# Create a non-root user and group to run the application for security reasons.
-# The user is a system user (--system) and does not have a home directory (--no-create-home).
+# ایجاد یک کاربر و گروه غیر-root برای اجرای برنامه به دلایل امنیتی.
 RUN addgroup --system django && \
     adduser --system --ingroup django django
 
-# Copy the installed Python packages from the builder stage.
+# کپی کردن پکیج‌های نصب شده پایتون از مرحله builder.
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-# Copy the application code into the final image.
+# کپی کردن کدهای برنامه به ایمیج نهایی.
 COPY . .
 
-# The entrypoint and wait-for-it scripts are responsible for running database migrations and starting the server.
-# Make sure they are executable.
+# اطمینان از اجرایی بودن اسکریپت‌های entrypoint و wait-for-it.
 RUN chmod +x /app/entrypoint.sh && \
     chmod +x /app/wait-for-it.sh
 
-# Change the ownership of the application directory to the non-root user.
-# This includes media and static directories where Django will write files.
+# تغییر مالکیت فایل‌های برنامه به کاربر غیر-root.
 RUN chown -R django:django /app
 
-# Switch to the non-root user.
+# سوییچ به کاربر غیر-root.
 USER django
 
-# Expose the port the application will run on.
+# باز کردن پورت ۸۰۰۰ برای دسترسی به برنامه.
 EXPOSE 8000
 
-# Set the entrypoint for the container. The CMD will be passed to this script.
+# تنظیم entrypoint کانتینر.
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-# Default command to run when the container starts. This will be passed to the entrypoint.
+# دستور پیش‌فرض برای اجرای برنامه (gunicorn در محیط پروداکشن).
 CMD ["gunicorn", "ecommerce_api.wsgi:application", "--bind", "0.0.0.0:8000"]

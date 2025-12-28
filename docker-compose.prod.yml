@@ -1,0 +1,87 @@
+# docker-compose.prod.yml (برای محیط پروداکشن)
+# این فایل را به همراه فایل اصلی اجرا کنید:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        - DEV=false
+    image: ecommerce-api-prod:latest
+    container_name: backend
+    command: gunicorn ecommerce_api.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - 8000
+    ports: []
+
+  celery_worker:
+    build:
+      context: .
+      args:
+        - DEV=false
+    image: ecommerce-api-prod:latest
+    container_name: celery_worker
+    volumes: []
+
+  celery_beat:
+    build:
+      context: .
+      args:
+        - DEV=false
+    image: ecommerce-api-prod:latest
+    container_name: celery_beat
+    volumes: []
+
+  flower:
+    build:
+      context: .
+      args:
+        - DEV=false
+    image: ecommerce-api-prod:latest
+    container_name: flower
+    volumes: []
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+      - nginx_cache:/var/cache/nginx
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - web
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    entrypoint: /bin/sh -c
+    command: >
+      "trap exit TERM;
+      certbot certonly --webroot -w /var/www/certbot
+      --email ${CERTBOT_EMAIL}
+      --agree-tos --no-eff-email
+      -d ${DOMAIN} -d www.${DOMAIN};
+      while :; do
+        certbot renew --webroot -w /var/www/certbot;
+        sleep 12h;
+      done"
+
+volumes:
+  certbot_www:
+  letsencrypt:
+  nginx_cache:
