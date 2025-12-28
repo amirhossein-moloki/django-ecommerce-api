@@ -102,3 +102,4 @@ django-ratelimit==4.1.0
 django-ckeditor-5==0.2.18
 django-jalali-date==2.0.0
 pillow-avif-plugin==1.5.2
+Faker==19.3.1
