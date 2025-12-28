@@ -1,27 +1,86 @@
+# docker-compose.yml (برای محیط توسعه)
+# این فایل اصلی برای راه‌اندازی محیط توسعه با hot-reloading است.
+# برای اجرا از دستور `docker compose up --build` استفاده کنید.
+
 version: '3.8'
 
 services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx
+  web:
+    build:
+      context: .
+      args:
+        - DEV=true
+    image: ecommerce-api-dev:latest
+    container_name: backend_dev
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt:ro
-      - ./data/certbot/www:/var/www/certbot:ro
+      - "8000:8000"
+    env_file:
+      - .env
     depends_on:
-      - certbot
-    command: /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+      - db
+      - redis
 
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
     volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
 
-networks:
-  default:
-    name: nginx_certbot_network
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+
+  celery_worker:
+    build:
+      context: .
+    image: ecommerce-api-dev:latest
+    container_name: celery_worker_dev
+    command: celery -A ecommerce_api worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+  celery_beat:
+    build:
+      context: .
+    image: ecommerce-api-dev:latest
+    container_name: celery_beat_dev
+    command: celery -A ecommerce_api beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+  flower:
+    build:
+      context: .
+    image: ecommerce-api-dev:latest
+    container_name: flower_dev
+    command: celery -A ecommerce_api flower --broker=${CELERY_BROKER_URL}
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery_worker
+
+volumes:
+  postgres_data:
+

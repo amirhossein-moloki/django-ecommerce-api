@@ -1,0 +1,81 @@
+# docker-compose.prod.yml (برای محیط پروداکشن)
+# این فایل تنظیمات `docker-compose.yml` را برای محیط پروداکشن override می‌کند.
+# برای اجرا از دستور `docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build` استفاده کنید.
+
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        - DEV=false
+    image: ecommerce-api-prod:latest
+    container_name: backend_prod
+    command: gunicorn ecommerce_api.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - 8000
+    ports: []
+    depends_on:
+      - db
+      - redis
+
+  celery_worker:
+    command: celery -A ecommerce_api worker -l info
+    volumes: []
+    image: ecommerce-api-prod:latest
+    container_name: celery_worker_prod
+
+  celery_beat:
+    command: celery -A ecommerce_api beat -l info
+    volumes: []
+    image: ecommerce-api-prod:latest
+    container_name: celery_beat_prod
+
+  flower:
+    ports: []
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - certbot_www:/var/www/certbot:ro
+      - letsencrypt:/etc/letsencrypt:ro
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - web
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot_prod
+    volumes:
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    command: >
+      sh -c "
+        trap exit TERM;
+        certbot certonly --webroot -w /var/www/certbot \\
+          --email ${CERTBOT_EMAIL} \\
+          --agree-tos --no-eff-email \\
+          -d ${DOMAIN} -d www.${DOMAIN};
+        while :; do
+          certbot renew --webroot -w /var/www/certbot;
+          sleep 12h;
+        done
+      "
+
+volumes:
+  static_volume:
+  media_volume:
+  certbot_www:
+  letsencrypt:
