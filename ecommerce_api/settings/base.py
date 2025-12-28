@@ -1,62 +1,104 @@
-import environ
 import os
 import sys
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
+import django_cache_url
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse_lazy
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Use django-environ to manage environment variables
-env = environ.Env(
-    # set casting, default value
-    DEBUG=(bool, False)
-)
-env.read_env(str(BASE_DIR / ".env"))
+# Use python-dotenv to manage environment variables
+load_dotenv(str(BASE_DIR / ".env"))
 is_test_env = "test" in sys.argv or os.environ.get(
     "DJANGO_SETTINGS_MODULE", ""
 ).endswith(".test")
 if is_test_env:
-    env.read_env(str(BASE_DIR / ".env.test"))
+    load_dotenv(str(BASE_DIR / ".env.test"))
+
+
+def get_env(name, default=None):
+    """
+    Helper function to get an environment variable. If the environment
+    variable is not found and no default is specified, it raises an
+    ImproperlyConfigured exception.
+    """
+    value = os.getenv(name, default)
+    if value is None:
+        raise ImproperlyConfigured(f"Set the {name} environment variable")
+    return value
+
+
+def get_env_bool(name, default=False):
+    """
+    Helper function to get a boolean value from environment variables.
+    """
+    value = os.getenv(name, str(default)).lower()
+    return value in ("true", "1", "yes")
+
+
+def get_env_list(name, default=""):
+    """
+    Helper function to get a list of strings from a comma-separated
+    environment variable.
+    """
+    return [item.strip() for item in os.getenv(name, default).split(",") if item]
+
 
 # -----------------------------------------------------------------------------
-# C O R E   S E T T I N G S
+# C O R E   S E T T INGS
 # -----------------------------------------------------------------------------
 # These are critical settings that must be defined in the environment.
 # The application will not start without them.
 
 if is_test_env:
-    SECRET_KEY = env("SECRET_KEY", default="test-secret-key")
-    DEBUG = env("DEBUG", default=False)
+    SECRET_KEY = get_env("SECRET_KEY", "test-secret-key")
+    DEBUG = get_env_bool("DEBUG", False)
 else:
-    SECRET_KEY = env("SECRET_KEY", default="temporary-insecure-secret-key-for-dev")
-    DEBUG = env("DEBUG")
+    SECRET_KEY = get_env("SECRET_KEY", "temporary-insecure-secret-key-for-dev")
+    DEBUG = get_env_bool("DEBUG")
 
 # Security settings
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
-CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS", default=True)
+ALLOWED_HOSTS = get_env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = get_env_list("CSRF_TRUSTED_ORIGINS")
+CORS_ALLOWED_ORIGINS = get_env_list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_CREDENTIALS = get_env_bool("CORS_ALLOW_CREDENTIALS", True)
 
 # Database and Cache
 if is_test_env:
-    DATABASES = {"default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3")}
-    REDIS_URL = env("REDIS_URL", default="locmemcache://")
+    DATABASES = {
+        "default": dj_database_url.config(
+            default="sqlite:///db.sqlite3", conn_max_age=600
+        )
+    }
+    REDIS_URL = get_env("REDIS_URL", "locmemcache://")
 else:
-    DATABASES = {"default": env.db("DATABASE_URL")}
-    REDIS_URL = env("REDIS_URL")
-CACHES = {"default": env.cache("REDIS_URL")}
+    DATABASES = {"default": dj_database_url.config(conn_max_age=600)}
+    REDIS_URL = get_env("REDIS_URL")
+
+CACHES = {"default": django_cache_url.parse(REDIS_URL)}
+
 
 # Email
-EMAIL_CONFIG = env.email_url("EMAIL_URL", default="consolemail://")
-vars().update(EMAIL_CONFIG)
+# NOTE: This implementation for email is basic. For production, you might
+# need a more robust solution, potentially a separate library for parsing email URLs.
+EMAIL_BACKEND = get_env(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = get_env("EMAIL_HOST", "")
+EMAIL_PORT = int(get_env("EMAIL_PORT", 587))
+EMAIL_USE_TLS = get_env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = get_env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = get_env("EMAIL_HOST_PASSWORD", "")
 
 # Site settings
-DOMAIN = env("DOMAIN", default="localhost:8000")
-SITE_NAME = env("SITE_NAME", default="Hypex")
-ADMINS = [tuple(s.split(":")) for s in env.list("ADMINS", default=[])]
+DOMAIN = get_env("DOMAIN", "localhost:8000")
+SITE_NAME = get_env("SITE_NAME", "Hypex")
+ADMINS = [tuple(s.split(":")) for s in get_env_list("ADMINS")]
 
 
 # CORS settings
@@ -106,13 +148,13 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",  # JWT token blacklist for security
     "corsheaders",  # Cross-Origin Resource Sharing (CORS) headers
     "django_prometheus",  # Prometheus metrics for Django
-    "django_ckeditor_5", # CKEditor 5 for Django
+    "django_ckeditor_5",  # CKEditor 5 for Django
 ]
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
-    "integrations", # Integrations with third-party services like Torob and Emalls
-    "common", # Common utilities
+    "integrations",  # Integrations with third-party services like Torob and Emalls
+    "common",  # Common utilities
     "shop",  # Shop application for managing products
     "cart",  # Cart application for managing shopping carts
     "orders",  # Orders application for managing customer orders
@@ -123,7 +165,7 @@ CUSTOM_APPS = [
     "shipping",
     "sms",
     "discounts.apps.DiscountsConfig",
-    "blog", # Blog application
+    "blog",  # Blog application
 ]
 
 # Combine all applications into the INSTALLED_APPS setting
@@ -225,8 +267,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": env("DRF_ANON_THROTTLE_RATE", default="400/day"),
-        "user": env("DRF_USER_THROTTLE_RATE", default="1000/day"),
+        "anon": get_env("DRF_ANON_THROTTLE_RATE", "400/day"),
+        "user": get_env("DRF_USER_THROTTLE_RATE", "1000/day"),
     },
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
@@ -238,10 +280,10 @@ REST_FRAMEWORK = {
 # JWT Authentication Tokens
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
-        days=env.int("JWT_ACCESS_TOKEN_LIFETIME_DAYS", 1)
+        days=int(get_env("JWT_ACCESS_TOKEN_LIFETIME_DAYS", 1))
     ),
     "REFRESH_TOKEN_LIFETIME": timedelta(
-        days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", 7)
+        days=int(get_env("JWT_REFRESH_TOKEN_LIFETIME_DAYS", 7))
     ),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "ROTATE_REFRESH_TOKENS": True,
@@ -250,14 +292,12 @@ SIMPLE_JWT = {
 
 # API Documentation Settings
 SPECTACULAR_SETTINGS = {
-    "TITLE": env(
-        "API_DOCS_TITLE", default="Hypex eCommerce API Documentation"
-    ),
-    "DESCRIPTION": env(
+    "TITLE": get_env("API_DOCS_TITLE", "Hypex eCommerce API Documentation"),
+    "DESCRIPTION": get_env(
         "API_DOCS_DESCRIPTION",
-        default="A scalable RESTful eCommerce API using Django, JWT auth, Redis caching, Celery for task scheduling, advanced search, tagging, and personalized results.",
+        "A scalable RESTful eCommerce API using Django, JWT auth, Redis caching, Celery for task scheduling, advanced search, tagging, and personalized results.",
     ),
-    "VERSION": env("API_DOCS_VERSION", default="1.2.6"),
+    "VERSION": get_env("API_DOCS_VERSION", "1.2.6"),
     "SERVE_INCLUDE_SCHEMA": True,
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "SORT_OPERATIONS": True,
@@ -272,13 +312,22 @@ SPECTACULAR_SETTINGS = {
 }
 
 # Django Debug Toolbar settings
-INTERNAL_IPS = env.list("INTERNAL_IPS", default=["127.0.0.1", "localhost"])
+INTERNAL_IPS = get_env_list("INTERNAL_IPS", "127.0.0.1,localhost")
 
 # CKEditor 5 settings
 CKEDITOR_5_CONFIGS = {
-    'default': {
-        'toolbar': ['heading', '|', 'bold', 'italic', 'link',
-                    'bulletedList', 'numberedList', 'blockQuote', 'imageUpload', ],
+    "default": {
+        "toolbar": [
+            "heading",
+            "|",
+            "bold",
+            "italic",
+            "link",
+            "bulletedList",
+            "numberedList",
+            "blockQuote",
+            "imageUpload",
+        ],
     }
 }
 
@@ -291,7 +340,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REDIS_URL")],
+            "hosts": [REDIS_URL],
         },
     },
 }
@@ -315,16 +364,16 @@ LOGGING = {
     },
 }
 
-SMS_IR_OTP_TEMPLATE_ID = env.int("SMS_IR_OTP_TEMPLATE_ID", 123456)
+SMS_IR_OTP_TEMPLATE_ID = int(get_env("SMS_IR_OTP_TEMPLATE_ID", 123456))
 
-POSTEX_SENDER_NAME = env("POSTEX_SENDER_NAME", default="Your Company Name")
-POSTEX_SENDER_PHONE = env("POSTEX_SENDER_PHONE", default="Your Company Phone")
-POSTEX_SENDER_ADDRESS = env("POSTEX_SENDER_ADDRESS", default="Your Company Address")
-POSTEX_SENDER_POSTAL_CODE = env(
-    "POSTEX_SENDER_POSTAL_CODE", default="Your Company Postal Code"
+POSTEX_SENDER_NAME = get_env("POSTEX_SENDER_NAME", "Your Company Name")
+POSTEX_SENDER_PHONE = get_env("POSTEX_SENDER_PHONE", "Your Company Phone")
+POSTEX_SENDER_ADDRESS = get_env("POSTEX_SENDER_ADDRESS", "Your Company Address")
+POSTEX_SENDER_POSTAL_CODE = get_env(
+    "POSTEX_SENDER_POSTAL_CODE", "Your Company Postal Code"
 )
-POSTEX_FROM_CITY_CODE = env.int("POSTEX_FROM_CITY_CODE", default=1)
-POSTEX_SERVICE_TYPE = env("POSTEX_SERVICE_TYPE", default="standard")
+POSTEX_FROM_CITY_CODE = int(get_env("POSTEX_FROM_CITY_CODE", 1))
+POSTEX_SERVICE_TYPE = get_env("POSTEX_SERVICE_TYPE", "standard")
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -332,8 +381,8 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Social Auth settings for Google OAuth2
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env("GOOGLE_OAUTH2_KEY", default=None)
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env("GOOGLE_OAUTH2_SECRET", default=None)
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = get_env("GOOGLE_OAUTH2_KEY", "")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = get_env("GOOGLE_OAUTH2_SECRET", "")
 
 DJOSER = {
     "HIDE_USERS": True,
@@ -376,24 +425,24 @@ TAGGIT_CASE_INSENSITIVE = True
 
 # Zibal Payment Gateway
 if is_test_env:
-    ZIBAL_MERCHANT_ID = env("ZIBAL_MERCHANT_ID", default="zibal")
-    ZIBAL_WEBHOOK_SECRET = env(
-        "ZIBAL_WEBHOOK_SECRET", default="a-secret-for-zibal-webhooks"
+    ZIBAL_MERCHANT_ID = get_env("ZIBAL_MERCHANT_ID", "zibal")
+    ZIBAL_WEBHOOK_SECRET = get_env(
+        "ZIBAL_WEBHOOK_SECRET", "a-secret-for-zibal-webhooks"
     )
 else:
-    ZIBAL_MERCHANT_ID = env("ZIBAL_MERCHANT_ID")
-    ZIBAL_WEBHOOK_SECRET = env("ZIBAL_WEBHOOK_SECRET")
-ZIBAL_ALLOWED_IPS = env.list("ZIBAL_ALLOWED_IPS", default=["127.0.0.1"])
+    ZIBAL_MERCHANT_ID = get_env("ZIBAL_MERCHANT_ID")
+    ZIBAL_WEBHOOK_SECRET = get_env("ZIBAL_WEBHOOK_SECRET")
+ZIBAL_ALLOWED_IPS = get_env_list("ZIBAL_ALLOWED_IPS", "127.0.0.1")
 
 # Celery Configuration
 if is_test_env:
-    CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="memory://")
-    CELERY_RESULT_BACKEND = env(
-        "CELERY_RESULT_BACKEND", default="db+sqlite:///celery-results.sqlite"
+    CELERY_BROKER_URL = get_env("CELERY_BROKER_URL", "memory://")
+    CELERY_RESULT_BACKEND = get_env(
+        "CELERY_RESULT_BACKEND", "db+sqlite:///celery-results.sqlite"
     )
 else:
-    CELERY_BROKER_URL = env("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+    CELERY_BROKER_URL = get_env("CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND = get_env("CELERY_RESULT_BACKEND")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -401,35 +450,33 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     "cancel-pending-orders": {
         "task": "orders.tasks.cancel_pending_orders",
-        "schedule": env.float(
-            "CANCEL_PENDING_ORDERS_INTERVAL", 600.0
-        ),  # Default to 10 minutes
+        "schedule": float(get_env("CANCEL_PENDING_ORDERS_INTERVAL", 600.0)),  # Default to 10 minutes
     },
 }
 
 # Session cookie settings
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+SESSION_COOKIE_SECURE = get_env_bool("SESSION_COOKIE_SECURE", True)
 SESSION_COOKIE_AGE = 1209600
 SESSION_SAVE_EVERY_REQUEST = True
 
 # CSRF settings
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+CSRF_COOKIE_SECURE = get_env_bool("CSRF_COOKIE_SECURE", True)
 
 # OpenTelemetry settings
-OTEL_SERVICE_NAME = env("OTEL_SERVICE_NAME", default="ecommerce-api")
-OTEL_EXPORTER_OTLP_ENDPOINT = env(
-    "OTEL_EXPORTER_OTLP_ENDPOINT", default="http://jaeger:4318"
+OTEL_SERVICE_NAME = get_env("OTEL_SERVICE_NAME", "ecommerce-api")
+OTEL_EXPORTER_OTLP_ENDPOINT = get_env(
+    "OTEL_EXPORTER_OTLP_ENDPOINT", "http://jaeger:4318"
 )
 
 if OTEL_EXPORTER_OTLP_ENDPOINT:
     from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.django import DjangoInstrumentor
     from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     resource = Resource(attributes={"service.name": OTEL_SERVICE_NAME})
 
