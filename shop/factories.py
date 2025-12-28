@@ -10,7 +10,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Category {n}")
     slug = factory.LazyAttribute(
-        lambda o: f'category-{o.name.lower().replace(" ", "-")}'
+        lambda o: f"category-{o.name.lower().replace(' ', '-')}"
     )
 
 

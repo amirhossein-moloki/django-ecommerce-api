@@ -14,16 +14,17 @@ from blog.models import Media
 
 User = get_user_model()
 
-TEST_MEDIA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_media')
+TEST_MEDIA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_media")
+
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_DIR)
 class MediaAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            phone_number='+989121234567',
-            username='testuser',
-            password='testpassword',
+            phone_number="+989121234567",
+            username="testuser",
+            password="testpassword",
         )
         self.client.force_authenticate(user=self.user)
 
@@ -37,8 +38,8 @@ class MediaAPITest(TestCase):
 
     def _create_dummy_image(self, name="test.jpg", content_type="image/jpeg"):
         image_io = BytesIO()
-        image = Image.new('RGB', (100, 100), color='red')
-        image.save(image_io, 'jpeg')
+        image = Image.new("RGB", (100, 100), color="red")
+        image.save(image_io, "jpeg")
         image_io.seek(0)
         return SimpleUploadedFile(name, image_io.getvalue(), content_type=content_type)
 
@@ -50,20 +51,26 @@ class MediaAPITest(TestCase):
         image_file = self._create_dummy_image(name="test_upload.jpg")
 
         # Upload the image via API
-        response = self.client.post(reverse('blog:media-list'), {'file': image_file}, format='multipart')
+        response = self.client.post(
+            reverse("blog:media-list"), {"file": image_file}, format="multipart"
+        )
 
         # Assert successful creation and response structure
-        self.assertEqual(response.status_code, 201, f"API returned errors: {response.content.decode()}")
-        self.assertIn('id', response.data)
-        self.assertIn('url', response.data)
-        self.assertTrue(response.data['url'].endswith('.avif'))
+        self.assertEqual(
+            response.status_code,
+            201,
+            f"API returned errors: {response.content.decode()}",
+        )
+        self.assertIn("id", response.data)
+        self.assertIn("url", response.data)
+        self.assertTrue(response.data["url"].endswith(".avif"))
 
         # Assert database state
         self.assertEqual(Media.objects.count(), 1)
         media = Media.objects.first()
-        self.assertTrue(media.storage_key.endswith('.avif'))
-        self.assertEqual(media.mime, 'image/avif')
-        self.assertEqual(media.type, 'image')
+        self.assertTrue(media.storage_key.endswith(".avif"))
+        self.assertEqual(media.mime, "image/avif")
+        self.assertEqual(media.type, "image")
         self.assertIsNotNone(media.width)
         self.assertIsNotNone(media.height)
 

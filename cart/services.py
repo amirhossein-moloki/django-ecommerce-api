@@ -21,7 +21,11 @@ def get_cart_data(request):
 
 
 def add_to_cart(
-    request, variant_id, quantity=1, override_quantity=False, allow_insufficient_stock=False
+    request,
+    variant_id,
+    quantity=1,
+    override_quantity=False,
+    allow_insufficient_stock=False,
 ):
     cart = Cart(request)
     try:

@@ -1,4 +1,3 @@
-
 import pytest
 from decimal import Decimal
 from datetime import timedelta
@@ -11,6 +10,7 @@ from account.tests.factories import UserFactory
 from shop.tests.factories import ProductFactory, CategoryFactory, ProductVariantFactory
 from discounts.models import Discount, DiscountRule, UserDiscountUsage
 from discounts.services import DiscountService
+
 
 # Factories for Discount and DiscountRule
 class DiscountFactory(DjangoModelFactory):
@@ -94,7 +94,7 @@ def mock_cart(product1, product2):
             "quantity": 1,
             "price": p2_variant.price,
             "total_price": p2_variant.price * 1,
-        }
+        },
     ]
     cart.__iter__.return_value = iter(cart_items_list)
     return cart
@@ -111,7 +111,9 @@ class TestDiscountService:
     def test_get_applicable_discounts_valid_coded(self, mock_cart, user):
         """Tests that a valid coded discount is returned when code is provided."""
         discount = DiscountFactory(code="TESTCODE")
-        discounts = DiscountService.get_applicable_discounts(mock_cart, user, discount_code="TESTCODE")
+        discounts = DiscountService.get_applicable_discounts(
+            mock_cart, user, discount_code="TESTCODE"
+        )
         assert discounts.count() == 1
         assert discounts.first() == discount
 
@@ -150,19 +152,27 @@ class TestDiscountService:
         """Tests that a discount is not returned for a user who reached the usage limit."""
         discount = DiscountFactory(usage_per_user=2)
         UserDiscountUsage.objects.create(user=user, discount=discount, usage_count=2)
-        discounts = DiscountService.get_applicable_discounts(mock_cart, user, discount_code=discount.code)
+        discounts = DiscountService.get_applicable_discounts(
+            mock_cart, user, discount_code=discount.code
+        )
         assert discounts.count() == 0
 
-    def test_get_applicable_discounts_user_usage_limit_not_reached(self, mock_cart, user):
+    def test_get_applicable_discounts_user_usage_limit_not_reached(
+        self, mock_cart, user
+    ):
         """Tests that a discount is returned for a user who has not reached the usage limit."""
         discount = DiscountFactory(usage_per_user=2)
         UserDiscountUsage.objects.create(user=user, discount=discount, usage_count=1)
-        discounts = DiscountService.get_applicable_discounts(mock_cart, user, discount_code=discount.code)
+        discounts = DiscountService.get_applicable_discounts(
+            mock_cart, user, discount_code=discount.code
+        )
         assert discounts.count() == 1
 
     def test_apply_discount_percentage_no_rules(self, mock_cart, user):
         """Tests a percentage discount is calculated correctly on the whole cart."""
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None)
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None
+        )
         # Total cart price is 300.00, so 10% is 30.00
         amount, discount_obj = DiscountService.apply_discount(mock_cart, user)
         assert amount == Decimal("30.00")
@@ -170,7 +180,9 @@ class TestDiscountService:
 
     def test_apply_discount_fixed_amount_no_rules(self, mock_cart, user):
         """Tests a fixed amount discount is calculated correctly."""
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None)
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None
+        )
         amount, discount_obj = DiscountService.apply_discount(mock_cart, user)
         assert amount == Decimal("50.00")
         assert discount_obj is not None
@@ -178,29 +190,47 @@ class TestDiscountService:
     def test_apply_discount_fixed_amount_higher_than_total(self, mock_cart, user):
         """Tests fixed discount is capped at the total price."""
         mock_cart.get_total_price.return_value = Decimal("40.00")
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None)
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None
+        )
         amount, discount_obj = DiscountService.apply_discount(mock_cart, user)
-        assert amount == Decimal("40.00") # Should be capped at 40.00
+        assert amount == Decimal("40.00")  # Should be capped at 40.00
 
     def test_apply_discount_chooses_best_automatic(self, mock_cart, user):
         """Tests that the best automatic discount is chosen when multiple are valid."""
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None) # 30.00
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("35.00"), code=None) # 35.00
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None
+        )  # 30.00
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("35.00"), code=None
+        )  # 35.00
         amount, discount_obj = DiscountService.apply_discount(mock_cart, user)
         assert amount == Decimal("35.00")
         assert discount_obj.type == Discount.DISCOUNT_TYPE_FIXED
 
     def test_apply_discount_with_code_overrides_automatic(self, mock_cart, user):
         """Tests that a provided discount code takes precedence over automatic discounts."""
-        DiscountFactory(type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None)
-        coded_discount = DiscountFactory(code="TESTCODE", type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00")) # 30.00
-        amount, discount_obj = DiscountService.apply_discount(mock_cart, user, discount_code="TESTCODE")
+        DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_FIXED, amount=Decimal("50.00"), code=None
+        )
+        coded_discount = DiscountFactory(
+            code="TESTCODE",
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE,
+            amount=Decimal("10.00"),
+        )  # 30.00
+        amount, discount_obj = DiscountService.apply_discount(
+            mock_cart, user, discount_code="TESTCODE"
+        )
         assert amount == Decimal("30.00")
         assert discount_obj == coded_discount
 
-    def test_apply_discount_with_category_rule(self, mock_cart, user, product1, category1):
+    def test_apply_discount_with_category_rule(
+        self, mock_cart, user, product1, category1
+    ):
         """Tests that discount is applied only to products in the specified category."""
-        discount = DiscountFactory(type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None)
+        discount = DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None
+        )
         rule = DiscountRuleFactory(discount=discount)
         rule.categories.add(category1)
         # product1 has price 100.00 and is in category1. product2 is 200.00.
@@ -210,7 +240,9 @@ class TestDiscountService:
 
     def test_apply_discount_with_product_rule(self, mock_cart, user, product2):
         """Tests that discount is applied only to the specified product."""
-        discount = DiscountFactory(type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("20.00"), code=None)
+        discount = DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("20.00"), code=None
+        )
         rule = DiscountRuleFactory(discount=discount)
         rule.products.add(product2)
         # product2 has price 200.00. 20% of 200.00 is 40.00.
@@ -220,7 +252,9 @@ class TestDiscountService:
     def test_apply_discount_no_applicable_rules(self, mock_cart, user, category2):
         """Tests that discount is zero if no cart items match the rules."""
         other_category = CategoryFactory()
-        discount = DiscountFactory(type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None)
+        discount = DiscountFactory(
+            type=Discount.DISCOUNT_TYPE_PERCENTAGE, amount=Decimal("10.00"), code=None
+        )
         rule = DiscountRuleFactory(discount=discount)
         rule.categories.add(other_category)
         amount, discount_obj = DiscountService.apply_discount(mock_cart, user)

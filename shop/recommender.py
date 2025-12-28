@@ -49,7 +49,9 @@ class Recommender:
 
         # redis returns bytes, so we decode them to utf-8 and cast to int
         suggested_products_ids = [
-            suggestion.decode("utf-8") if isinstance(suggestion, bytes) else str(suggestion)
+            suggestion.decode("utf-8")
+            if isinstance(suggestion, bytes)
+            else str(suggestion)
             for suggestion in suggestions
         ]
 

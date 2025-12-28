@@ -30,9 +30,7 @@ class PopulateDailyMetricsTest(TestCase):
     def test_populate_daily_metrics(self):
         populate_daily_metrics()
         yesterday = timezone.now().date() - timezone.timedelta(days=1)
-        metrics = ProductDailyMetrics.objects.get(
-            product=self.product, date=yesterday
-        )
+        metrics = ProductDailyMetrics.objects.get(product=self.product, date=yesterday)
         self.assertEqual(metrics.units_sold, 2)
         self.assertEqual(metrics.revenue, 200)
         self.assertEqual(metrics.profit, 100)

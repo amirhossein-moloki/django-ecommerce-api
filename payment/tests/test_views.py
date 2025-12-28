@@ -38,7 +38,9 @@ def test_process_payment_requires_owner(api_client, mocker):
     api_client.force_authenticate(user=other_user)
     mocker.patch(
         "payment.views.services.process_payment",
-        side_effect=ValueError("Order not found or you do not have permission to access it."),
+        side_effect=ValueError(
+            "Order not found or you do not have permission to access it."
+        ),
     )
 
     response = api_client.post(url)
@@ -62,7 +64,9 @@ def test_process_payment_invalid_order_id(api_client, mocker):
 
     mocker.patch(
         "payment.views.services.process_payment",
-        side_effect=ValueError("Order not found or you do not have permission to access it."),
+        side_effect=ValueError(
+            "Order not found or you do not have permission to access it."
+        ),
     )
 
     response = api_client.post(url)
@@ -147,7 +151,9 @@ def test_verify_payment_success_triggers_service_once(api_client, mocker):
     url = reverse("payment:verify")
     payload = {"trackId": order.payment_track_id, "success": "1"}
     signature = _signature_for(payload)
-    verify_mock = mocker.patch("payment.views.services.verify_payment", return_value="ok")
+    verify_mock = mocker.patch(
+        "payment.views.services.verify_payment", return_value="ok"
+    )
 
     response = api_client.get(url, payload, HTTP_X_ZIBAL_SIGNATURE=signature)
 

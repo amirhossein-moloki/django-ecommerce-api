@@ -23,17 +23,20 @@ User = get_user_model()
 
 class PostManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset()\
-            .select_related('author', 'category')\
-            .prefetch_related('tags')\
+        return (
+            super()
+            .get_queryset()
+            .select_related("author", "category")
+            .prefetch_related("tags")
             .annotate(
                 comments_count=Coalesce(
-                    Count('comments', filter=models.Q(comments__status='approved')), 0
+                    Count("comments", filter=models.Q(comments__status="approved")), 0
                 )
             )
+        )
 
     def published(self):
-        return self.get_queryset().filter(status='published')
+        return self.get_queryset().filter(status="published")
 
 
 class Media(models.Model):
@@ -55,13 +58,18 @@ class Media(models.Model):
 
     def get_download_url(self):
         if self.pk:
-            return reverse('download_media', kwargs={'media_id': self.pk})
+            return reverse("download_media", kwargs={"media_id": self.pk})
         return ""
 
     def save(self, *args, **kwargs):
-        if hasattr(self, 'file') and self.file and 'image' in self.mime and self.mime != 'image/avif':
+        if (
+            hasattr(self, "file")
+            and self.file
+            and "image" in self.mime
+            and self.mime != "image/avif"
+        ):
             self.file = convert_image_to_avif(self.file)
-            self.mime = 'image/avif'
+            self.mime = "image/avif"
         super().save(*args, **kwargs)
 
 
@@ -79,7 +87,11 @@ class Category(models.Model):
     slug = models.SlugField(unique=True, allow_unicode=True)
     name = models.CharField(max_length=255)
     parent = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="children"
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="children",
     )
     description = models.TextField(blank=True)
     order = models.IntegerField(default=0)
@@ -107,13 +119,15 @@ class Tag(models.Model):
 
 class Series(models.Model):
     ORDER_STRATEGY_CHOICES = (
-        ('manual', 'Manual'),
-        ('by_date', 'By Date'),
+        ("manual", "Manual"),
+        ("by_date", "By Date"),
     )
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    order_strategy = models.CharField(max_length=10, choices=ORDER_STRATEGY_CHOICES, default='manual')
+    order_strategy = models.CharField(
+        max_length=10, choices=ORDER_STRATEGY_CHOICES, default="manual"
+    )
 
     class Meta:
         verbose_name_plural = "Series"
@@ -122,21 +136,21 @@ class Series(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return reverse('post_detail', kwargs={'slug': self.slug})
+        return reverse("post_detail", kwargs={"slug": self.slug})
 
 
 class Post(models.Model):
     STATUS_CHOICES = (
-        ('draft', 'Draft'),
-        ('review', 'Review'),
-        ('scheduled', 'Scheduled'),
-        ('published', 'Published'),
-        ('archived', 'Archived'),
+        ("draft", "Draft"),
+        ("review", "Review"),
+        ("scheduled", "Scheduled"),
+        ("published", "Published"),
+        ("archived", "Archived"),
     )
     VISIBILITY_CHOICES = (
-        ('public', 'Public'),
-        ('private', 'Private'),
-        ('unlisted', 'Unlisted'),
+        ("public", "Public"),
+        ("private", "Private"),
+        ("unlisted", "Unlisted"),
     )
 
     slug = models.SlugField(unique=True, blank=True)
@@ -144,28 +158,46 @@ class Post(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     is_hot = models.BooleanField(default=False)
-    content = CKEditor5Field('Text', config_name='default')
+    content = CKEditor5Field("Text", config_name="default")
     reading_time_sec = models.PositiveIntegerField(default=0)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
-    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    visibility = models.CharField(
+        max_length=10, choices=VISIBILITY_CHOICES, default="public"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     author = models.ForeignKey(AuthorProfile, on_delete=models.CASCADE)
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey(
+        Category, on_delete=models.SET_NULL, null=True, blank=True
+    )
     series = models.ForeignKey(Series, on_delete=models.SET_NULL, null=True, blank=True)
-    cover_media = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name='post_covers')
+    cover_media = models.ForeignKey(
+        Media,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="post_covers",
+    )
     seo_title = models.CharField(max_length=255, blank=True)
     seo_description = models.TextField(blank=True)
-    og_image = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name='post_og_images')
+    og_image = models.ForeignKey(
+        Media,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="post_og_images",
+    )
     views_count = models.PositiveIntegerField(default=0)
     likes_count = models.PositiveIntegerField(default=0)
-    tags = models.ManyToManyField(Tag, through='PostTag')
-    reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
+    tags = models.ManyToManyField(Tag, through="PostTag")
+    reactions = GenericRelation(
+        "Reaction", object_id_field="object_id", content_type_field="content_type"
+    )
 
     objects = PostManager()
 
     class Meta:
-        ordering = ['-published_at', '-id']
+        ordering = ["-published_at", "-id"]
 
     def __str__(self):
         return self.title
@@ -182,11 +214,11 @@ class Post(models.Model):
         # Ensure slug is unique
         counter = 1
         while queryset.filter(slug=self.slug).exists():
-            self.slug = f'{original_slug}-{counter}'
+            self.slug = f"{original_slug}-{counter}"
             counter += 1
 
         if self.content:
-            words = re.findall(r'\w+', self.content)
+            words = re.findall(r"\w+", self.content)
             word_count = len(words)
             reading_time_minutes = word_count / 200  # Average reading speed
             self.reading_time_sec = int(reading_time_minutes * 60)
@@ -197,13 +229,21 @@ class Post(models.Model):
 
         # Sync Cover and OG images
         # Remove old attachments that are no longer linked
-        self.media_attachments.filter(attachment_type='cover').exclude(media=self.cover_media).delete()
+        self.media_attachments.filter(attachment_type="cover").exclude(
+            media=self.cover_media
+        ).delete()
         if self.cover_media:
-            self.media_attachments.update_or_create(media=self.cover_media, defaults={'attachment_type': 'cover'})
+            self.media_attachments.update_or_create(
+                media=self.cover_media, defaults={"attachment_type": "cover"}
+            )
 
-        self.media_attachments.filter(attachment_type='og-image').exclude(media=self.og_image).delete()
+        self.media_attachments.filter(attachment_type="og-image").exclude(
+            media=self.og_image
+        ).delete()
         if self.og_image:
-            self.media_attachments.update_or_create(media=self.og_image, defaults={'attachment_type': 'og-image'})
+            self.media_attachments.update_or_create(
+                media=self.og_image, defaults={"attachment_type": "og-image"}
+            )
 
         # Sync in-content images
         media_paths_in_content = set()
@@ -212,26 +252,34 @@ class Post(models.Model):
             path = urlparse(url).path
             if path.startswith(settings.MEDIA_URL):
                 # Strip /media/ part to get the storage_key
-                media_paths_in_content.add(path[len(settings.MEDIA_URL):])
+                media_paths_in_content.add(path[len(settings.MEDIA_URL) :])
 
         # Find media objects matching the paths found
         linked_media_ids = set(
-            Media.objects.filter(storage_key__in=media_paths_in_content).values_list('id', flat=True)
+            Media.objects.filter(storage_key__in=media_paths_in_content).values_list(
+                "id", flat=True
+            )
         )
 
         # Find media objects currently attached as 'in-content'
         current_media_ids = set(
-            self.media_attachments.filter(attachment_type='in-content').values_list('media_id', flat=True)
+            self.media_attachments.filter(attachment_type="in-content").values_list(
+                "media_id", flat=True
+            )
         )
 
         # Add new attachments
         ids_to_add = linked_media_ids - current_media_ids
         for media_id in ids_to_add:
-            self.media_attachments.create(media_id=media_id, attachment_type='in-content')
+            self.media_attachments.create(
+                media_id=media_id, attachment_type="in-content"
+            )
 
         # Remove old attachments
         ids_to_remove = current_media_ids - linked_media_ids
-        self.media_attachments.filter(media_id__in=ids_to_remove, attachment_type='in-content').delete()
+        self.media_attachments.filter(
+            media_id__in=ids_to_remove, attachment_type="in-content"
+        ).delete()
 
 
 class PostTag(models.Model):
@@ -240,7 +288,7 @@ class PostTag(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('post', 'tag')
+        unique_together = ("post", "tag")
 
 
 class Revision(models.Model):
@@ -258,20 +306,24 @@ class Revision(models.Model):
 
 class Comment(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('spam', 'Spam'),
-        ('removed', 'Removed'),
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("spam", "Spam"),
+        ("removed", "Removed"),
     )
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
+    )
     content = CKEditor5Field(config_name="default")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
-    reactions = GenericRelation('Reaction', object_id_field='object_id', content_type_field='content_type')
+    reactions = GenericRelation(
+        "Reaction", object_id_field="object_id", content_type_field="content_type"
+    )
 
     def __str__(self):
         return f"Comment by {self.user} on {self.post.title}"
@@ -285,10 +337,10 @@ class Reaction(models.Model):
     # Generic Foreign Key setup
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ('user', 'content_type', 'object_id', 'reaction')
+        unique_together = ("user", "content_type", "object_id", "reaction")
 
     def __str__(self):
         return f"{self.user}'s {self.reaction} on {self.content_object}"
@@ -298,7 +350,9 @@ class Page(models.Model):
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=255)
     content = CKEditor5Field(config_name="default")
-    status = models.CharField(max_length=10, choices=Post.STATUS_CHOICES, default='draft')
+    status = models.CharField(
+        max_length=10, choices=Post.STATUS_CHOICES, default="draft"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
     seo_title = models.CharField(max_length=255, blank=True)
     seo_description = models.TextField(blank=True)
@@ -309,9 +363,9 @@ class Page(models.Model):
 
 class Menu(models.Model):
     LOCATION_CHOICES = (
-        ('header', 'Header'),
-        ('footer', 'Footer'),
-        ('sidebar', 'Sidebar'),
+        ("header", "Header"),
+        ("footer", "Footer"),
+        ("sidebar", "Sidebar"),
     )
     name = models.CharField(max_length=255)
     location = models.CharField(max_length=10, choices=LOCATION_CHOICES, unique=True)
@@ -322,7 +376,9 @@ class Menu(models.Model):
 
 class MenuItem(models.Model):
     menu = models.ForeignKey(Menu, on_delete=models.CASCADE)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
     label = models.CharField(max_length=255)
     url = models.CharField(max_length=255)
     order = models.PositiveIntegerField(default=0)
@@ -333,14 +389,20 @@ class MenuItem(models.Model):
 
 
 class PostMedia(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='media_attachments')
-    media = models.ForeignKey(Media, on_delete=models.CASCADE, related_name='post_attachments')
-    attachment_type = models.CharField(max_length=50, default='in-content')  # e.g., 'in-content', 'cover', 'og-image'
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="media_attachments"
+    )
+    media = models.ForeignKey(
+        Media, on_delete=models.CASCADE, related_name="post_attachments"
+    )
+    attachment_type = models.CharField(
+        max_length=50, default="in-content"
+    )  # e.g., 'in-content', 'cover', 'og-image'
 
     class Meta:
-        unique_together = ('post', 'media', 'attachment_type')
-        verbose_name = _('Post Media')
-        verbose_name_plural = _('Post Media')
+        unique_together = ("post", "media", "attachment_type")
+        verbose_name = _("Post Media")
+        verbose_name_plural = _("Post Media")
 
     def __str__(self):
         return f'{self.media.title} attached to "{self.post.title}" as {self.attachment_type}'

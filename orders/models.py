@@ -160,6 +160,7 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
         Calculates the final amount to be paid by the user.
         This now relies on the discount_amount being pre-calculated and stored.
         """
+
         def _as_decimal(value):
             if isinstance(value, Decimal):
                 return value

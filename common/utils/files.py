@@ -2,6 +2,7 @@ import os
 import uuid
 from django.utils.text import slugify
 
+
 def get_sanitized_filename(filename):
     """
     Sanitizes a filename by removing special characters and ensuring a unique name.

@@ -5,7 +5,7 @@ from .models import ProductDailyMetrics
 class ProductDailyMetricsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductDailyMetrics
-        fields = ('date', 'units_sold', 'revenue', 'profit')
+        fields = ("date", "units_sold", "revenue", "profit")
 
 
 class ProductPerformanceSerializer(serializers.Serializer):

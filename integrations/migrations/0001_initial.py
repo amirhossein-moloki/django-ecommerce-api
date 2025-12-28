@@ -5,24 +5,48 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='IntegrationSettings',
+            name="IntegrationSettings",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('torob_enabled', models.BooleanField(default=False, help_text='Enable or disable the Torob XML feed.')),
-                ('emalls_enabled', models.BooleanField(default=False, help_text='Enable or disable the Emalls XML feed.')),
-                ('feed_token', models.UUIDField(default=uuid.uuid4, editable=False, help_text='Security token for accessing the feeds.')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "torob_enabled",
+                    models.BooleanField(
+                        default=False, help_text="Enable or disable the Torob XML feed."
+                    ),
+                ),
+                (
+                    "emalls_enabled",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Enable or disable the Emalls XML feed.",
+                    ),
+                ),
+                (
+                    "feed_token",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        help_text="Security token for accessing the feeds.",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Integration Settings',
-                'verbose_name_plural': 'Integration Settings',
+                "verbose_name": "Integration Settings",
+                "verbose_name_plural": "Integration Settings",
             },
         ),
     ]
