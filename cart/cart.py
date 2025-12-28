@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from rest_framework.exceptions import ValidationError
 
 from .models import Cart as CartModel, CartItem
 
@@ -54,19 +55,40 @@ class Cart:
                 session_key=session_key
             )
 
-    def add(self, variant, quantity=1, override_quantity=False):
+    def add(
+        self,
+        variant,
+        quantity=1,
+        override_quantity=False,
+        allow_insufficient_stock=False,
+    ):
         """
-        Adds a product variant to the cart or updates its quantity.
+        Adds a product variant to the cart or updates its quantity,
+        with stock validation.
         """
+        if variant.stock == 0:
+            raise ValidationError("This product is out of stock.")
+
         cart_item, created = CartItem.objects.get_or_create(
-            cart=self.cart, variant=variant, defaults={"quantity": quantity}
+            cart=self.cart, variant=variant, defaults={"quantity": 0}
         )
 
-        if not created:
-            if override_quantity:
-                cart_item.quantity = quantity
-            else:
-                cart_item.quantity += quantity
+        if override_quantity:
+            total_quantity = quantity
+        else:
+            total_quantity = cart_item.quantity + quantity
+
+        if total_quantity > variant.stock and not allow_insufficient_stock:
+            available_stock = variant.stock - cart_item.quantity
+            raise ValidationError(
+                f"Cannot add {quantity} items. "
+                f"Only {available_stock} more items can be added."
+            )
+
+        cart_item.quantity = total_quantity
+        if cart_item.quantity <= 0:
+            cart_item.delete()
+        else:
             cart_item.save()
 
     def remove(self, variant):

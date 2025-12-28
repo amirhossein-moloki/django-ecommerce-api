@@ -231,6 +231,8 @@ class ProductDetailSerializer(ProductSerializer):
                 | Q(product_id__in=recommended_products)
             )
             .exclude(product_id=obj.product_id)
+            .select_related("category")
+            .prefetch_related("tags")
             .distinct()[:10]
         )
         return SimpleProductSerializer(

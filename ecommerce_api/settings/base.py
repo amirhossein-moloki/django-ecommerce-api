@@ -395,7 +395,7 @@ DJOSER = {
         "activation": "account.emails.CustomActivationEmail",
     },
     "SERIALIZERS": {
-        "user_create": "users.api.serializers.UserProfileSerializer",
+        "user_create": "account.serializers.UserProfileSerializer",
         "user_delete": "djoser.serializers.UserDeleteSerializer",
     },
     "LOGIN_FIELD": "email",
