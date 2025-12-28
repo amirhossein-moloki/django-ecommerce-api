@@ -59,8 +59,8 @@ if is_test_env:
     SECRET_KEY = get_env("SECRET_KEY", "test-secret-key")
     DEBUG = get_env_bool("DEBUG", False)
 else:
-    SECRET_KEY = get_env("SECRET_KEY", "temporary-insecure-secret-key-for-dev")
-    DEBUG = get_env_bool("DEBUG")
+    SECRET_KEY = get_env("SECRET_KEY")
+    DEBUG = get_env_bool("DEBUG", False)
 
 # Security settings
 ALLOWED_HOSTS = get_env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
