@@ -1,88 +1,28 @@
-# docker-compose.yml (برای توسعه محلی)
-# برای اجرا از دستور `docker compose up --build` استفاده کنید.
-# برای محیط پروداکشن از دستور `docker compose -f docker-compose.yml -f docker-compose.prod.yml up` استفاده کنید.
+version: '3.8'
 
 services:
-  web:
-    build:
-      context: .
-      args:
-        - DEV=true
-    image: ecommerce-api-dev:latest
-    container_name: backend
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app  # اتصال فولدر پروژه برای hot-reloading
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+  nginx:
+    image: nginx:latest
+    container_name: nginx
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      - database
-      - cache
-
-  database:
-    image: postgres:17-alpine
-    container_name: database
+      - "80:80"
+      - "443:443"
     volumes:
-      - database:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    env_file:
-      - .env
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  cache:
-    image: redis:8.0-alpine
-    container_name: cache
-    ports:
-      - "6379:6379"
-
-  celery_worker:
-    image: ecommerce-api-dev:latest
-    container_name: celery_worker
-    command: celery -A ecommerce_api worker -l info
-    volumes:
-      - .:/app
-    env_file:
-      - .env
+      - ./data/nginx:/etc/nginx/conf.d:ro
+      - ./data/certbot/conf:/etc/letsencrypt:ro
+      - ./data/certbot/www:/var/www/certbot:ro
     depends_on:
-      - cache
-      - database
+      - certbot
+    command: /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
 
-  celery_beat:
-    image: ecommerce-api-dev:latest
-    container_name: celery_beat
-    command: celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
     volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - cache
-      - database
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
 
-  flower:
-    image: ecommerce-api-dev:latest
-    container_name: flower
-    command: celery -A ecommerce_api flower --address=0.0.0.0 --port=5555
-    ports:
-      - "5555:5555"
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - cache
-      - celery_worker
-
-volumes:
-  database:
-  static_volume:
-  media_volume:
+networks:
+  default:
+    name: nginx_certbot_network
