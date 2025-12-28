@@ -140,7 +140,9 @@ async def test_send_message_broadcasts_and_persists(
     ]
 
     broadcast = next(item for item in responses if "message" in item)
-    confirmation = next(item for item in responses if item.get("type") == "message_sent")
+    confirmation = next(
+        item for item in responses if item.get("type") == "message_sent"
+    )
 
     assert broadcast["message"] == "Hello from buyer"
     assert broadcast["sender"] == buyer.username
@@ -172,7 +174,9 @@ async def test_send_empty_message_returns_error(websocket_application, product, 
 
 
 @pytest.mark.anyio
-async def test_send_too_long_message_returns_error(websocket_application, product, user):
+async def test_send_too_long_message_returns_error(
+    websocket_application, product, user
+):
     communicator = WebsocketCommunicator(
         websocket_application, f"/ws/chat/room/{product.product_id}/"
     )
@@ -201,8 +205,7 @@ async def test_seller_without_recipient_returns_error(
     await communicator.send_json_to({"message": "Seller message"})
     response = await communicator.receive_json_from()
     assert (
-        response["error"]
-        == "Recipient username is required when seller sends message"
+        response["error"] == "Recipient username is required when seller sends message"
     )
 
     await communicator.disconnect()

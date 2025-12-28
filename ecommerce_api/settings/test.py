@@ -1,4 +1,3 @@
-
 from .base import *
 
 # Override settings for testing
@@ -10,9 +9,7 @@ PASSWORD_HASHERS = [
 
 # Remove optional dev-only apps/middleware that are not installed in tests
 INSTALLED_APPS = [
-    app
-    for app in INSTALLED_APPS
-    if app not in ["debug_toolbar", "django_extensions"]
+    app for app in INSTALLED_APPS if app not in ["debug_toolbar", "django_extensions"]
 ]
 MIDDLEWARE = [
     middleware

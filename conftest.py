@@ -35,12 +35,18 @@ class SettingsWrapper:
         if name in {"_settings", "_original"}:
             return super().__setattr__(name, value)
         if name not in self._original:
-            self._original[name] = (getattr(self._settings, name, None), hasattr(self._settings, name))
+            self._original[name] = (
+                getattr(self._settings, name, None),
+                hasattr(self._settings, name),
+            )
         setattr(self._settings, name, value)
 
     def __delattr__(self, name):
         if name not in self._original:
-            self._original[name] = (getattr(self._settings, name, None), hasattr(self._settings, name))
+            self._original[name] = (
+                getattr(self._settings, name, None),
+                hasattr(self._settings, name),
+            )
         delattr(self._settings, name)
 
     def restore(self):

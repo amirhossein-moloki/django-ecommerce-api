@@ -1,6 +1,7 @@
 from rest_framework import renderers, status
 from ecommerce_api.core.api_standard_response import ApiResponse
 
+
 class ApiResponseRenderer(renderers.JSONRenderer):
     """
     Custom renderer that formats all API responses using a standardized structure.

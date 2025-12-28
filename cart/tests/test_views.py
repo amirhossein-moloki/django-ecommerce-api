@@ -37,21 +37,31 @@ class TestCartAPI:
         assert response.status_code == 200
         assert len(response.data["items"]) == 1
         assert response.data["items"][0]["quantity"] == 2
-        assert response.data["items"][0]["variant"]["variant_id"] == str(self.variant1.variant_id)
-        assert float(response.data["total_price"]["with_discount"]) == float(self.variant1.price * 2)
+        assert response.data["items"][0]["variant"]["variant_id"] == str(
+            self.variant1.variant_id
+        )
+        assert float(response.data["total_price"]["with_discount"]) == float(
+            self.variant1.price * 2
+        )
 
     def test_add_to_cart_authenticated_user(self):
         self.client.force_authenticate(user=self.user)
-        url = reverse("api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id})
+        url = reverse(
+            "api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id}
+        )
         payload = {"quantity": 3}
         response = self.client.post(url, payload)
 
         assert response.status_code == 200
         assert response.data["message"] == "Product added/updated in cart"
-        assert Cart.objects.get(user=self.user).items.get(variant=self.variant1).quantity == 3
+        assert (
+            Cart.objects.get(user=self.user).items.get(variant=self.variant1).quantity
+            == 3
+        )
 
     def test_add_to_cart_invalid_variant_id(self):
         import uuid
+
         self.client.force_authenticate(user=self.user)
         url = reverse("api-v1:cart-add", kwargs={"variant_id": uuid.uuid4()})
         response = self.client.post(url, {"quantity": 1})
@@ -64,12 +74,18 @@ class TestCartAPI:
         CartItem.objects.create(cart=cart, variant=self.variant1, quantity=1)
 
         self.client.force_authenticate(user=self.user)
-        url = reverse("api-v1:cart-remove", kwargs={"variant_id": self.variant1.variant_id})
+        url = reverse(
+            "api-v1:cart-remove", kwargs={"variant_id": self.variant1.variant_id}
+        )
         response = self.client.delete(url)
 
         assert response.status_code == 200
         assert response.data["message"] == "Product removed from cart"
-        assert not Cart.objects.get(user=self.user).items.filter(variant=self.variant1).exists()
+        assert (
+            not Cart.objects.get(user=self.user)
+            .items.filter(variant=self.variant1)
+            .exists()
+        )
 
     def test_clear_cart_authenticated_user(self):
         cart = Cart.objects.create(user=self.user)
@@ -101,7 +117,9 @@ class TestCartAPI:
         assert self.client.session.session_key == session_key
 
     def test_add_to_cart_guest_user(self):
-        url = reverse("api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id})
+        url = reverse(
+            "api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id}
+        )
         response = self.client.post(url, {"quantity": 2})
 
         assert response.status_code == 200
@@ -111,7 +129,9 @@ class TestCartAPI:
 
     def test_api_cart_merges_on_login(self):
         # 1. Guest adds an item
-        add_url = reverse("api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id})
+        add_url = reverse(
+            "api-v1:cart-add", kwargs={"variant_id": self.variant1.variant_id}
+        )
         self.client.post(add_url, {"quantity": 1})
         guest_session_key = self.client.session.session_key
 

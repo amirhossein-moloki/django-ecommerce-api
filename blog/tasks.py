@@ -11,8 +11,9 @@ def increment_post_view_count(post_id):
     Asynchronously increments the view count for a given post.
     """
     from .models import Post
+
     try:
-        Post.objects.filter(pk=post_id).update(views_count=F('views_count') + 1)
+        Post.objects.filter(pk=post_id).update(views_count=F("views_count") + 1)
         logger.info(f"Incremented view count for Post ID: {post_id}")
     except Exception as e:
         logger.error(f"Error incrementing view count for Post ID {post_id}: {e}")
@@ -24,8 +25,11 @@ def notify_author_on_new_comment(comment_id):
     Celery task to send a notification to the post author about a new comment.
     """
     from .models import Comment
+
     try:
-        comment = Comment.objects.select_related('post', 'post__author', 'post__author__user').get(id=comment_id)
+        comment = Comment.objects.select_related(
+            "post", "post__author", "post__author__user"
+        ).get(id=comment_id)
         post_author = comment.post.author.user
 
         # if post_author.email:

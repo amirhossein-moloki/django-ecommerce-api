@@ -89,9 +89,7 @@ def test_create_order_success(mock_send_email):
 
 @patch("orders.serializers.DiscountService")
 @patch("orders.services.send_order_confirmation_email.delay")
-def test_create_order_with_valid_discount_code(
-    mock_send_email, mock_discount_service
-):
+def test_create_order_with_valid_discount_code(mock_send_email, mock_discount_service):
     user = UserFactory()
     address = AddressFactory(user=user)
     variant = ProductVariantFactory(stock=20)
@@ -117,9 +115,7 @@ def test_create_order_with_valid_discount_code(
     mock_discount_service.get_applicable_discounts.assert_called_once_with(
         cart, user, discount_code="SAVE10"
     )
-    mock_discount_service.apply_discount.assert_called_once_with(
-        cart, user, "SAVE10"
-    )
+    mock_discount_service.apply_discount.assert_called_once_with(cart, user, "SAVE10")
     mock_send_email.assert_called_once_with(order.order_id)
 
 

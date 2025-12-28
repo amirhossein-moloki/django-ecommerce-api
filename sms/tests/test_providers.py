@@ -53,9 +53,7 @@ def test_send_otp_success():
     response.json.return_value = {"status": 1, "data": {"message_id": "abc"}}
 
     with patch("sms.providers.requests.post", return_value=response) as mock_post:
-        assert provider.send_otp("09123456789", "123456", 111) == {
-            "message_id": "abc"
-        }
+        assert provider.send_otp("09123456789", "123456", 111) == {"message_id": "abc"}
         mock_post.assert_called_once()
 
 

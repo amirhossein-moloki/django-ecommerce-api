@@ -17,7 +17,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     balance = serializers.DecimalField(
         source="profile.balance", max_digits=10, decimal_places=2, read_only=True
     )
-    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
+    password = serializers.CharField(
+        write_only=True, required=False, style={"input_type": "password"}
+    )
 
     class Meta:
         model = User
@@ -110,13 +112,18 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
         fields = ("username", "first_name", "last_name", "email")
 
     def validate_email(self, value):
-        if value and User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
+        if (
+            value
+            and User.objects.filter(email=value).exclude(pk=self.instance.pk).exists()
+        ):
             raise serializers.ValidationError("A user with that email already exists.")
         return value
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exclude(pk=self.instance.pk).exists():
-            raise serializers.ValidationError("A user with that username already exists.")
+            raise serializers.ValidationError(
+                "A user with that username already exists."
+            )
         return value
 
     def update(self, instance, validated_data):

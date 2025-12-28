@@ -50,7 +50,9 @@ class Cart:
                 session_key = self.session.session_key
                 self.session[settings.CART_SESSION_ID] = session_key
                 self.session.modified = True
-            self.cart, created = CartModel.objects.get_or_create(session_key=session_key)
+            self.cart, created = CartModel.objects.get_or_create(
+                session_key=session_key
+            )
 
     def add(self, variant, quantity=1, override_quantity=False):
         """

@@ -154,9 +154,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
                     transaction_log.amount = amount_from_gateway
-                    transaction_log.message = (
-                        f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
-                    )
+                    transaction_log.message = f"Amount mismatch. Expected {expected_amount}, but gateway reported {amount_from_gateway}."
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -174,9 +172,7 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
                     order.payment_status = Order.PaymentStatus.FAILED
                     order.save(update_fields=["payment_status", "updated"])
                     transaction_log.status = PaymentTransaction.Status.FAILED
-                    transaction_log.message = (
-                        f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
-                    )
+                    transaction_log.message = f"OrderId mismatch. Expected {order.order_id}, but gateway reported {order_id_from_gateway}."
                     transaction_log.save(
                         update_fields=[
                             "status",
@@ -220,18 +216,14 @@ def verify_payment(track_id, signature=None, ip_address=None, raw_payload=None):
 
                     # Trigger asynchronous post-payment tasks.
                     create_postex_shipment_task.delay(order.order_id)
-                    return (
-                        "Payment verified successfully. Shipment creation is in progress."
-                    )
+                    return "Payment verified successfully. Shipment creation is in progress."
             else:
                 # Verification failed at the gateway.
                 order.payment_status = Order.PaymentStatus.FAILED
                 order.save(update_fields=["payment_status", "updated"])
                 error_message = response.get("message", "Unknown error.")
                 transaction_log.status = PaymentTransaction.Status.FAILED
-                transaction_log.message = (
-                    f"Payment verification failed: {error_message} (Result code: {result})"
-                )
+                transaction_log.message = f"Payment verification failed: {error_message} (Result code: {result})"
                 transaction_log.save(
                     update_fields=[
                         "status",
