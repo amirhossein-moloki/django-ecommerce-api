@@ -34,28 +34,12 @@ def add_to_cart(
         # Re-raise the exception to be caught by the view layer.
         raise
 
-    if variant.stock == 0:
-        raise ValidationError("This product is out of stock.")
-
-    # This logic should be in the Cart class itself, but for now, we adapt the service
-    current_quantity = 0
-    if cart.cart:
-        item = cart.cart.items.filter(variant=variant).first()
-        if item:
-            current_quantity = item.quantity
-
-    if override_quantity:
-        total_quantity = quantity
-    else:
-        total_quantity = current_quantity + quantity
-
-    if total_quantity > variant.stock and not allow_insufficient_stock:
-        raise ValidationError(
-            f"Cannot add {quantity} items. Only {variant.stock - current_quantity} "
-            f"more items can be added."
-        )
-
-    cart.add(variant=variant, quantity=quantity, override_quantity=override_quantity)
+    cart.add(
+        variant=variant,
+        quantity=quantity,
+        override_quantity=override_quantity,
+        allow_insufficient_stock=allow_insufficient_stock,
+    )
 
 
 def remove_from_cart(request, variant_id):

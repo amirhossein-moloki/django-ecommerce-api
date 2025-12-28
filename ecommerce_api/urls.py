@@ -90,8 +90,14 @@ urlpatterns = [
                     path("sms/", include("sms.urls", namespace="sms")),
                     path("shipping/", include("shipping.urls", namespace="shipping")),
                     path("payment/", include("payment.urls")),
-                    path("social-auth/", include("social_django.urls", namespace="social")),
-                    path("integrations/", include("integrations.urls", namespace="integrations")),
+                    path(
+                        "social-auth/",
+                        include("social_django.urls", namespace="social"),
+                    ),
+                    path(
+                        "integrations/",
+                        include("integrations.urls", namespace="integrations"),
+                    ),
                 ],
                 "api-v1",
             )
