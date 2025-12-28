@@ -59,12 +59,19 @@ if is_test_env:
     SECRET_KEY = get_env("SECRET_KEY", "test-secret-key")
     DEBUG = get_env_bool("DEBUG", False)
 else:
-    SECRET_KEY = get_env("SECRET_KEY", "temporary-insecure-secret-key-for-dev")
-    DEBUG = get_env_bool("DEBUG")
+    DEBUG = get_env_bool("DEBUG", False)
+    is_dev_env = os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith(".development")
+    if DEBUG or is_dev_env:
+        SECRET_KEY = get_env(
+            "SECRET_KEY", "insecure-development-key-change-me"
+        )
+    else:
+        SECRET_KEY = get_env("SECRET_KEY")
 
 # Security settings
 ALLOWED_HOSTS = get_env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = get_env_list("CSRF_TRUSTED_ORIGINS")
+CORS_ALLOW_ALL_ORIGINS = get_env_bool("CORS_ALLOW_ALL_ORIGINS", False)
 CORS_ALLOWED_ORIGINS = get_env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = get_env_bool("CORS_ALLOW_CREDENTIALS", True)
 
@@ -372,6 +379,7 @@ POSTEX_SENDER_ADDRESS = get_env("POSTEX_SENDER_ADDRESS", "Your Company Address")
 POSTEX_SENDER_POSTAL_CODE = get_env(
     "POSTEX_SENDER_POSTAL_CODE", "Your Company Postal Code"
 )
+POSTEX_API_KEY = get_env("POSTEX_API_KEY", "")
 POSTEX_FROM_CITY_CODE = int(get_env("POSTEX_FROM_CITY_CODE", 1))
 POSTEX_SERVICE_TYPE = get_env("POSTEX_SERVICE_TYPE", "standard")
 

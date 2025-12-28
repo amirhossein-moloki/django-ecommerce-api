@@ -1,4 +1,4 @@
-from .base import INSTALLED_APPS, MIDDLEWARE, env
+from .base import INSTALLED_APPS, MIDDLEWARE, REDIS_URL
 
 # Production-specific settings
 
@@ -14,7 +14,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REDIS_URL")],
+            "hosts": [REDIS_URL],
         },
     },
 }
