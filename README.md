@@ -6,179 +6,111 @@ It includes JWT authentication, Redis caching, Celery background tasks, OpenAPI/
 **Keywords:** Django eCommerce API, DRF eCommerce, REST API, JWT, Redis, Celery, Docker, Swagger, OpenAPI, Orders, Payments, Coupons, Shipping
 
 ---
+## 🚀 راه‌اندازی سریع و آسان با داکر
 
-## ✨ Highlights (What you get out of the box)
+این پروژه برای اجرا در محیط‌های توسعه و پروداکشن با استفاده از Docker و Docker Compose نسخه ۲ بهینه شده است.
 
-- Modular, scalable architecture (clean separation of domains)
-- Auth & Accounts: JWT auth (djoser, simplejwt), profiles, addresses, OTP/SMS
-- Catalog: products, categories, reviews, tagging, advanced search
-- Cart & Checkout: persistent cart, order lifecycle, coupons/discounts
-- Payments & Shipping: payment module + shipping options/costs
-- Async & Performance: Celery + Redis for background jobs and Redis caching
-- Docs: OpenAPI 3 schema with Swagger UI / ReDoc via drf-spectacular
-- Real-time: chat support using Django Channels (ASGI)
-- DevOps ready: Docker + Docker Compose, Nginx config, Helm chart included
-- Observability: Prometheus metrics + OpenTelemetry tracing hooks
+### پیش‌نیازها
+- [Docker Engine](https://docs.docker.com/engine/install/)
+- [Docker Compose](https://docs.docker.com/compose/install/) (که معمولاً به همراه Docker Desktop نصب می‌شود)
 
 ---
+### ۱. آماده‌سازی اولیه
 
-## 🧩 Tech Stack
-
-- Backend: Django, Django REST Framework (DRF)
-- Auth: JWT (djoser, simplejwt), Google social login
-- Cache / Queue: Redis, Celery
-- Docs: drf-spectacular (OpenAPI 3, Swagger UI, ReDoc)
-- Realtime: Django Channels
-- Deployment: Docker, Docker Compose, Nginx, Helm (Kubernetes)
-
----
-
-## 🚀 Quickstart (Docker)
-
-### Prerequisites
-- Docker
-- Docker Compose
-
-### Run locally
+ابتدا پروژه را از گیت‌هاب کلون کنید:
 ```bash
 git clone https://github.com/amirhossein-moloki/django-ecommerce-api.git
 cd django-ecommerce-api
+```
+
+سپس، فایل متغیرهای محیطی را از روی نمونه بسازید:
+```bash
 cp .env.example .env
-docker-compose up -d --build
 ```
+> **نکته مهم:** فایل `.env` را باز کرده و مقادیر مورد نیاز خود را (مانند کلیدهای API یا تنظیمات دیتابیس) در آن قرار دهید.
 
 ---
+### ۲. راه‌اندازی محیط توسعه (Development)
 
-## 🔗 API Endpoints
+محیط توسعه برای کدنویسی و تست طراحی شده و قابلیت **hot-reloading** دارد؛ یعنی هر تغییری که در کدها ایجاد کنید، سرور به صورت خودکار ری‌استارت می‌شود.
 
-- API Root: `http://localhost:80/api/v1/`
-- Swagger UI: `http://localhost:80/api/v1/schema/swagger-ui/`
-- ReDoc: `http://localhost:80/api/v1/schema/redoc/`
-- Admin Panel: `http://localhost:80/admin/`
-- Celery Monitoring (Flower): `http://localhost:5555/`
-
----
-
-## ✅ Tests & Coverage
-
-You can run the suite either inside Docker or directly on your host. The test
-settings (`ecommerce_api.settings.test`) use a file-based SQLite database and
-`conftest.py` automatically applies migrations and flushes data between tests.
-
-### Docker
-- Run tests:
-  ```bash
-  docker-compose exec web pytest --maxfail=1
-  ```
-- Collect trace-based coverage (writes `trace_coverage_report.txt` and prints a
-  summary):
-  ```bash
-  docker-compose exec web pytest \
-    --cov account --cov shop --cov ecommerce_api --cov-report term-missing
-  ```
-
-### Local environment
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-2. Install dependencies (use `requirements-dev.txt` for pytest):
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
-3. Run tests with the bundled test settings (no extra env vars needed):
-   ```bash
-   pytest --maxfail=1
-   ```
-4. Collect coverage for specific apps or modules:
- ```bash
-  pytest --cov account --cov shop --cov ecommerce_api --cov-report term-missing
-  ```
-   A plain-text summary is printed to the terminal and also saved to
-   `trace_coverage_report.txt`.
-
-For more detailed workflows (including targeting individual tests), see
-`docs/TESTING.md`.
-
----
-
-## 🛠️ Debugging
-
-View logs:
+برای ساخت ایمیج‌ها و اجرای کانتینرها، دستور زیر را اجرا کنید:
 ```bash
-docker-compose logs -f <service_name>
+docker compose up --build
+```
+پس از اجرای موفق، سرویس‌ها در آدرس‌های زیر در دسترس خواهند بود:
+
+- **API Root:** `http://localhost:8000/api/v1/`
+- **Swagger UI:** `http://localhost:8000/api/v1/schema/swagger-ui/`
+- **ReDoc:** `http://localhost:8000/api/v1/schema/redoc/`
+- **Admin Panel:** `http://localhost:8000/admin/`
+- **Celery Monitoring (Flower):** `http://localhost:5555/`
+
+---
+### ۳. راه‌اندازی محیط پروداکشن (Production)
+
+محیط پروداکشن از `gunicorn` برای اجرای بهینه برنامه و `nginx` به عنوان وب‌سرور و پراکسی معکوس استفاده می‌کند.
+
+برای اجرای محیط شبیه به پروداکشن، از دستور زیر استفاده کنید که هر دو فایل `docker-compose.yml` و `docker-compose.prod.yml` را با هم ترکیب می‌کند:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+> در این حالت، برنامه از طریق پورت `80` (nginx) در دسترس خواهد بود.
+
+---
+### ۴. دستورات پرکاربرد Docker Compose
+
+در جدول زیر، لیستی از دستورات مفید برای مدیریت کانتینرها آمده است:
+
+| دستور                                     | توضیحات                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `docker compose up --build`                | ساخت ایمیج‌ها و اجرای کانتینرها.                                                 |
+| `docker compose up -d`                     | اجرای کانتینرها در پس‌زمینه (detached mode).                                    |
+| `docker compose down`                      | توقف و حذف کانتینرها، شبکه‌ها و volumeها.                                       |
+| `docker compose ps`                        | نمایش وضعیت کانتینرهای در حال اجرا.                                             |
+| `docker compose logs -f <service_name>`    | نمایش لاگ‌های یک سرویس خاص به صورت زنده. (مثال: `web` یا `celery_worker`)       |
+| `docker compose exec <service> <command>`  | اجرای یک دستور داخل یک کانتینر در حال اجرا. (مثال: `docker compose exec web sh`) |
+| `docker compose run --rm <service> <cmd>`  | اجرای یک کانتینر موقت برای یک دستور خاص و حذف آن پس از اتمام.                 |
+
+---
+
+## ✅ تست و پوشش‌دهی (Testing)
+
+برای اجرای تست‌ها در محیط داکر، از دستور `run` استفاده کنید. این دستور یک کانتینر موقت برای تست ایجاد و پس از اتمام آن را حذف می‌کند.
+
+```bash
+docker compose run --rm web python -m pytest --maxfail=1
 ```
 
-Open a shell inside a container:
+برای محاسبه coverage تست‌ها:
 ```bash
-docker-compose exec web sh
-```
-
-Use Django shell_plus:
-```bash
-docker-compose exec web python manage.py shell_plus
+docker compose run --rm web pytest --cov --cov-report term-missing
 ```
 
 ---
 
-## 🏗️ Architecture & Design Docs
-
-- High-Level Architecture: `./docs/ARCHITECTURE.md`
-- Database ERD: `./docs/DATABASE.md`
-- Order Creation Sequence: `./docs/ORDER_SEQUENCE.md`
-
----
-
-## 🧱 Project Structure
+## 🏗️ ساختار پروژه
 
 ```text
 .
-├── account/        # JWT auth, profiles, addresses, OTP/SMS
-├── cart/           # persistent cart logic
-├── chat/           # real-time support chat (Channels)
-├── coupons/        # discounts & promo codes
-├── docs/           # architecture + ERD + workflows
-├── ecommerce_api/  # settings, urls, ASGI/WSGI
-├── helm/           # kubernetes helm chart
-├── nginx/          # nginx configs
-├── orders/         # order lifecycle, history, status
-├── payment/        # payment gateways/integrations
-├── shipping/       # shipping methods & pricing
-├── shop/           # products, categories, reviews, search, tags
-├── sms/            # notifications, OTP
-├── .env.example
-├── docker-compose.yml
-├── Dockerfile
+├── account/        # ماژول احراز هویت، پروفایل و کاربران
+├── cart/           # منطق سبد خرید
+├── ...             # سایر ماژول‌های برنامه
+├── docs/           # مستندات پروژه
+├── nginx/          # تنظیمات Nginx برای پروداکشن
+├── .env.example    # فایل نمونه متغیرهای محیطی
+├── Dockerfile      # دستورالعمل ساخت ایمیج داکر
+├── docker-compose.yml # تنظیمات داکر برای محیط توسعه
+├── docker-compose.prod.yml # تنظیمات داکر برای محیط پروداکشن
 └── manage.py
 ```
-
 ---
 
-## 🧯 Production Notes (Checklist)
+## 🛡️ نکات مهم برای محیط پروداکشن نهایی
 
-Before going live:
-- Set `DEBUG=False` and configure `ALLOWED_HOSTS`
-- Use proper secrets management (Kubernetes Secrets / Vault / Docker Secrets)
-- Enforce HTTPS behind Nginx / Load Balancer
-- Use managed PostgreSQL + managed Redis for reliability
-- Offload static/media to object storage (e.g., S3) + CDN
-- Add CI/CD (lint, tests, build image, deploy)
-- Centralize logs + enable APM/tracing (OpenTelemetry)
-- Configure health checks and autoscaling
-
----
-
-## 🛡️ Licensing & Ownership
-
-- **Upstream MIT code (original project by Yousef M. Y. AlSabbah):** the baseline Django/DRF architecture and core commerce modules (e.g., `account`, `cart`, `shop`, `orders`, `coupons`, `shipping`, `payment`, `ecommerce_api`, and supporting assets) continue to be available under the MIT License. See `LICENSE` for full text and copyrights.
-- **Fork ownership (amirhossein-moloki):** all modifications, enhancements, deployment assets (Docker/Helm/Nginx), documentation updates, performance tuning, integrations, and business logic added after the fork are owned by **amirhossein-moloki**. Commercial distribution or resale of the fork is only permitted through amirhossein-moloki.
-- **Dual-path usage:**
-  - **Open-source use:** you may rely on the MIT-licensed portions under MIT terms (retain notices, no warranty).
-  - **Commercial use or resale:** requires a commercial license from amirhossein-moloki. See `COMMERCIAL-LICENSE.txt`.
-- **Practical safeguards against unauthorized resale:**
-  - Keep proprietary modules/configuration in private repositories; vendor only vetted, compiled Docker/OCI images when possible.
-  - Use environment-based feature flags to isolate proprietary workflows from the MIT core so they can be withheld in OSS releases.
-  - Watermark distributed artifacts (build metadata, license headers) and gate production features behind license keys or signed builds.
-  - Maintain contributor agreements (or DCO) for any third-party contributions to proprietary portions to preserve clean ownership.
-
+قبل از استقرار نهایی برنامه:
+- متغیر `DEBUG=False` را در فایل `.env` تنظیم کنید.
+- از مکانیزم‌های مدیریت Secret امن (مانند Docker Secrets یا Vault) استفاده کنید.
+- HTTPS را روی Nginx فعال کنید.
+- از دیتابیس و Redis مدیریت‌شده (Managed) برای پایداری بیشتر استفاده کنید.
+- فایل‌های استاتیک و مدیا را روی یک سرویس ذخیره‌سازی ابری (مثل S3) قرار دهید.

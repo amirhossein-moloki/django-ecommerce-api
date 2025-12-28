@@ -1,27 +1,27 @@
-version: '3.8'
+# docker-compose.yml (برای توسعه محلی)
+# برای اجرا از دستور `docker compose up --build` استفاده کنید.
+# برای محیط پروداکشن از دستور `docker compose -f docker-compose.yml -f docker-compose.prod.yml up` استفاده کنید.
 
 services:
   web:
-    build: .
-    image: ecommerce-api:latest
+    build:
+      context: .
+      args:
+        - DEV=true
+    image: ecommerce-api-dev:latest
     container_name: backend
-    entrypoint: /app/entrypoint.sh
-    command: >
-      sh -c "
-      gunicorn ecommerce_api.wsgi:application --bind 0.0.0.0:8000
-      "
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
+      - .:/app  # اتصال فولدر پروژه برای hot-reloading
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-    expose:
-      - 8000
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     depends_on:
       - database
       - cache
-    networks:
-      - default
 
   database:
     image: postgres:17-alpine
@@ -39,103 +39,64 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - default
 
   cache:
     image: redis:8.0-alpine
     container_name: cache
     ports:
       - "6379:6379"
-    networks:
-      - default
 
   celery_worker:
-    image: ecommerce-api:latest
+    build:
+      context: .
+      args:
+        - DEV=true
+    image: ecommerce-api-dev:latest
     container_name: celery_worker
     command: celery -A ecommerce_api worker -l info
+    volumes:
+      - .:/app
     env_file:
       - .env
     depends_on:
       - cache
       - database
-    networks:
-      - default
 
   celery_beat:
-    image: ecommerce-api:latest
+    build:
+      context: .
+      args:
+        - DEV=true
+    image: ecommerce-api-dev:latest
     container_name: celery_beat
     command: celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
     env_file:
       - .env
     depends_on:
       - cache
       - database
-    networks:
-      - default
 
   flower:
-    image: ecommerce-api:latest
+    build:
+      context: .
+      args:
+        - DEV=true
+    image: ecommerce-api-dev:latest
     container_name: flower
     command: celery -A ecommerce_api flower --address=0.0.0.0 --port=5555
     ports:
       - "5555:5555"
+    volumes:
+      - .:/app
     env_file:
       - .env
     depends_on:
       - cache
       - celery_worker
-    networks:
-      - default
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-      - certbot_www:/var/www/certbot
-      - letsencrypt:/etc/letsencrypt
-      - nginx_cache:/var/cache/nginx
-    environment:
-      DOMAIN: ${DOMAIN}
-    depends_on:
-      - web
-    networks:
-      - default
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: certbot
-    volumes:
-      - certbot_www:/var/www/certbot
-      - letsencrypt:/etc/letsencrypt
-    entrypoint: /bin/sh -c
-    command: >
-      "trap exit TERM;
-      certbot certonly --webroot -w /var/www/certbot
-      --email ${CERTBOT_EMAIL}
-      --agree-tos --no-eff-email
-      -d ${DOMAIN} -d www.${DOMAIN};
-      while :; do
-        certbot renew --webroot -w /var/www/certbot;
-        sleep 12h;
-      done"
-    networks:
-      - default
 
 volumes:
   database:
   static_volume:
   media_volume:
-  certbot_www:
-  letsencrypt:
-  nginx_cache:
-
-networks:
-  default:
-    driver: bridge
