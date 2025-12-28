@@ -16,6 +16,13 @@ set -e
 # schema is up-to-date with the application's models.
 python manage.py migrate
 
+# Collect static files in production.
+# The `DEV` environment variable is passed from the Dockerfile build arguments.
+if [ "$DEV" = "false" ]; then
+    echo "Collecting static files..."
+    python manage.py collectstatic --no-input
+fi
+
 # Execute the command passed to this script.
 # This allows the same entrypoint to be used for different services (web, celery, etc.)
 # by passing different commands in the docker-compose file.

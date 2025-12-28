@@ -45,10 +45,6 @@ services:
       - "6379:6379"
 
   celery_worker:
-    build:
-      context: .
-      args:
-        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: celery_worker
     command: celery -A ecommerce_api worker -l info
@@ -61,10 +57,6 @@ services:
       - database
 
   celery_beat:
-    build:
-      context: .
-      args:
-        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: celery_beat
     command: celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
@@ -77,10 +69,6 @@ services:
       - database
 
   flower:
-    build:
-      context: .
-      args:
-        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: flower
     command: celery -A ecommerce_api flower --address=0.0.0.0 --port=5555
