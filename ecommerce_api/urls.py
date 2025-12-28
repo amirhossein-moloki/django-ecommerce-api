@@ -60,14 +60,6 @@ urlpatterns = [
     path("health-check/", health_check, name="health-check"),
     path("metrics/", include("django_prometheus.urls")),
     path("", api_root, name="api-root"),  # Handle root path requests
-    path("auth/", include("account.urls", namespace="auth")),
-    path("sms/", include("sms.urls", namespace="sms")),
-    path("shipping/", include("shipping.urls", namespace="shipping")),
-    path(
-        "activate/<str:uid>/<str:token>/",
-        ActivateView.as_view(),
-        name="activate-direct",
-    ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/swagger-ui/",
@@ -89,6 +81,17 @@ urlpatterns = [
                     path("", include("cart.urls")),
                     path("", include("coupons.urls")),
                     path("chat/", include("chat.urls")),
+                    path("auth/", include("account.urls", namespace="auth")),
+                    path(
+                        "auth/activate/<str:uid>/<str:token>/",
+                        ActivateView.as_view(),
+                        name="activate-direct",
+                    ),
+                    path("sms/", include("sms.urls", namespace="sms")),
+                    path("shipping/", include("shipping.urls", namespace="shipping")),
+                    path("payment/", include("payment.urls")),
+                    path("social-auth/", include("social_django.urls", namespace="social")),
+                    path("integrations/", include("integrations.urls", namespace="integrations")),
                 ],
                 "api-v1",
             )
@@ -98,7 +101,6 @@ urlpatterns = [
         "api/v1/blog/",
         include(("blog.urls", "blog"), namespace="blog"),
     ),
-    path("payment/", include("payment.urls")),
     path("jet/", include("jet.urls", "jet")),
     path("jet/dashboard/", include("jet.dashboard.urls", "jet-dashboard")),
     path("admin/", admin.site.urls),
@@ -109,9 +111,6 @@ urlpatterns = [
         name="django.contrib.sitemaps.views.sitemap",
     ),
     path("feed/", TrendingProductsFeed(), name="product-feed"),
-    path("social-auth/", include("social_django.urls", namespace="social")),
-    # URLs for third-party integrations like Torob and Emalls
-    path("", include("integrations.urls", namespace="integrations")),
 ]
 
 if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
