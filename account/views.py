@@ -32,6 +32,7 @@ from .serializers import (
     CompleteProfileSerializer,
     RefreshTokenSerializer,
     UserProfileSerializer,
+    UsernamePasswordTokenObtainPairSerializer,
 )
 
 logger = getLogger(__name__)
@@ -276,6 +277,28 @@ class TokenDestroyView(TokenBlacklistView):
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
             raise
+
+
+class UsernamePasswordLoginView(APIView):
+    serializer_class = UsernamePasswordTokenObtainPairSerializer
+
+    @extend_schema(
+        operation_id="login_with_username_password",
+        description="Obtain a JWT token pair using username and password.",
+        tags=["User Authentication"],
+        request=UsernamePasswordTokenObtainPairSerializer,
+        responses={
+            200: OpenApiResponse(description="Successfully logged in."),
+            400: OpenApiResponse(description="Invalid credentials."),
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            {"message": "Successfully logged in", "data": serializer.validated_data},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ActivateView(View):
