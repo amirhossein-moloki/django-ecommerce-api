@@ -81,3 +81,5 @@ volumes:
   certbot_www:
   letsencrypt:
   nginx_cache:
+  static_volume:
+  media_volume:
