@@ -46,7 +46,7 @@ def convert_image_to_avif(image_field, max_dimension=1920, quality=50, speed=6):
     buffer.seek(0)
 
     # اسم فایل رو .avif می‌کنیم
-    original_name = getattr(image_field, 'name', 'untitled.avif')
+    original_name = getattr(image_field, "name", "untitled.avif")
     sanitized_name = get_sanitized_filename(original_name)
 
     # Ensure the final name has a .avif extension

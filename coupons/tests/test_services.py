@@ -1,4 +1,3 @@
-
 import pytest
 from decimal import Decimal
 from datetime import timedelta
@@ -73,7 +72,9 @@ class TestCouponService:
     def test_apply_coupon_max_usage_reached(self, mock_cart_class, mock_request):
         """Tests that ValueError is raised when max usage is reached."""
         CouponFactory(code="MAXED", max_usage=10, usage_count=10)
-        with pytest.raises(ValueError, match="This coupon has reached its usage limit."):
+        with pytest.raises(
+            ValueError, match="This coupon has reached its usage limit."
+        ):
             apply_coupon(mock_request, "MAXED")
 
     def test_apply_coupon_min_purchase_not_met(self, mock_cart_class, mock_request):

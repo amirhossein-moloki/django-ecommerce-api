@@ -10,11 +10,11 @@ class BaseAPITestCase(APITestCase):
         super().setUp()
         self.user = UserFactory()
         self.author_profile, _ = AuthorProfile.objects.get_or_create(
-            user=self.user, defaults={'display_name': self.user.username}
+            user=self.user, defaults={"display_name": self.user.username}
         )
         self.staff_user = UserFactory(is_staff=True)
         self.staff_author_profile, _ = AuthorProfile.objects.get_or_create(
-            user=self.staff_user, defaults={'display_name': self.staff_user.username}
+            user=self.staff_user, defaults={"display_name": self.staff_user.username}
         )
 
     def tearDown(self):
@@ -27,7 +27,7 @@ class BaseAPITestCase(APITestCase):
     def _authenticate(self, user=None):
         user_to_auth = user or self.user
         token = self._get_jwt_token(user_to_auth)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
     def _authenticate_as_staff(self):
         self._authenticate(self.staff_user)

@@ -9,14 +9,14 @@ User = get_user_model()
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
-        django_get_or_create = ('phone_number',)
+        django_get_or_create = ("phone_number",)
 
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
-    username = factory.Sequence(lambda n: f'testuser{n}')
-    phone_number = factory.Sequence(lambda n: f'+98912{n:07d}')
-    email = factory.LazyAttribute(lambda o: f'{o.username}@example.com')
-    password = factory.PostGenerationMethodCall('set_password', 'testpassword')
+    username = factory.Sequence(lambda n: f"testuser{n}")
+    phone_number = factory.Sequence(lambda n: f"+98912{n:07d}")
+    email = factory.LazyAttribute(lambda o: f"{o.username}@example.com")
+    password = factory.PostGenerationMethodCall("set_password", "testpassword")
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):

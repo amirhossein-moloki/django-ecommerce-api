@@ -15,6 +15,7 @@ class BaseFeedView(View):
     """
     A base view for handling common logic for Torob and Emalls feeds.
     """
+
     platform_name = None  # Should be 'torob' or 'emalls'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +27,7 @@ class BaseFeedView(View):
             raise Http404(f"{self.platform_name.capitalize()} feed is disabled.")
 
         # Validate the token
-        token = request.GET.get('token')
+        token = request.GET.get("token")
         if not token or str(settings.feed_token) != token:
             return HttpResponse("Forbidden: Invalid or missing token.", status=403)
 
@@ -34,23 +35,27 @@ class BaseFeedView(View):
         products = generate_product_feed_data(request)
 
         # Render XML content
-        xml_content = render_to_string(f'integrations/{self.platform_name}_feed.xml', {'products': products})
+        xml_content = render_to_string(
+            f"integrations/{self.platform_name}_feed.xml", {"products": products}
+        )
 
-        return HttpResponse(xml_content, content_type='application/xml')
+        return HttpResponse(xml_content, content_type="application/xml")
 
 
 class TorobFeedView(BaseFeedView):
     """
     Generates the XML feed for Torob.
     """
-    platform_name = 'torob'
+
+    platform_name = "torob"
 
 
 class EmallsFeedView(BaseFeedView):
     """
     Generates the XML feed for Emalls.
     """
-    platform_name = 'emalls'
+
+    platform_name = "emalls"
 
 
 class IntegrationToggleAPIView(APIView):
@@ -63,6 +68,7 @@ class IntegrationToggleAPIView(APIView):
         "enabled": true
     }
     """
+
     permission_classes = [IsAdminUser]
 
     def post(self, request, *args, **kwargs):

@@ -5,6 +5,7 @@ from .models import AuthorProfile
 
 User = get_user_model()
 
+
 @receiver(post_save, sender=User)
 def create_author_profile(sender, instance, created, **kwargs):
     """

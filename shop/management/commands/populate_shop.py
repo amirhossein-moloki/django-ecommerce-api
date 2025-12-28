@@ -177,7 +177,7 @@ class Command(BaseCommand):
 
             # Check if product already exists
             if Product.objects.filter(name=product_data["name"]).exists():
-                self.stdout.write(f'Product already exists: {product_data["name"]}')
+                self.stdout.write(f"Product already exists: {product_data['name']}")
                 continue
 
             # Create product

@@ -56,7 +56,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Use sync_to_async to safely access the product.user.id
         product_user_id = await sync_to_async(lambda: self.product.user.id)()
         user_ids = sorted([str(self.user.id), str(product_user_id)])
-        self.room_name = f'chat_product_{self.product_id}_users_{"_".join(user_ids)}'
+        self.room_name = f"chat_product_{self.product_id}_users_{'_'.join(user_ids)}"
         self.room_group_name = f"chat_{self.room_name}"
 
         # Join room group
