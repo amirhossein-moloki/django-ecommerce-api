@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Profile, Address
 
@@ -55,6 +56,34 @@ class RefreshTokenSerializer(serializers.Serializer):
     refresh = serializers.CharField(
         required=True, help_text="Refresh token to be blacklisted"
     )
+
+
+class UsernamePasswordTokenObtainPairSerializer(serializers.Serializer):
+    """
+    Serializer for obtaining a JWT token pair with username and password.
+    """
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        username = attrs.get("username")
+        password = attrs.get("password")
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No user with this username")
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Incorrect password")
+
+        if not user.is_active:
+            raise serializers.ValidationError("User is inactive")
+
+        refresh = RefreshToken.for_user(user)
+
+        return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
 
 class AddressSerializer(serializers.ModelSerializer):

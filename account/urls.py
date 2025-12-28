@@ -9,6 +9,7 @@ from .views import (
     RequestOTP,
     VerifyOTP,
     CompleteProfileView,
+    UsernamePasswordLoginView,
 )
 
 # Application namespace to avoid conflicts
@@ -36,4 +37,6 @@ urlpatterns = [
     path("request-otp/", RequestOTP.as_view(), name="request-otp"),
     path("verify-otp/", VerifyOTP.as_view(), name="verify-otp"),
     path("complete-profile/", CompleteProfileView.as_view(), name="complete-profile"),
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ USERNAME/PASSWORD LOGIN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    path("login/", UsernamePasswordLoginView.as_view(), name="username-password-login"),
 ]
