@@ -53,12 +53,14 @@ RUN addgroup --system django && \
 # کپی کردن پکیج‌های نصب شده پایتون از مرحله builder.
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-# کپی کردن کدهای برنامه به ایمیج نهایی.
-COPY . .
-
-# اطمینان از اجرایی بودن اسکریپت‌های entrypoint و wait-for-it.
+# کپی کردن اسکریپت‌های ورودی و اجرایی کردن آن‌ها.
+# این کار قبل از کپی کردن کل کد انجام می‌شود تا از کش لایه‌ها بهتر استفاده شود.
+COPY entrypoint.sh wait-for-it.sh ./
 RUN chmod +x /app/entrypoint.sh && \
     chmod +x /app/wait-for-it.sh
+
+# کپی کردن کدهای برنامه به ایمیج نهایی.
+COPY . .
 
 # تغییر مالکیت فایل‌های برنامه به کاربر غیر-root.
 RUN chown -R django:django /app
