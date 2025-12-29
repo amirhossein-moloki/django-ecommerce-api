@@ -11,7 +11,7 @@ services:
       args:
         - DEV=false
     image: ecommerce-api-prod:latest
-    container_name: backend_prod
+    container_name: ecommerce-backend-prod
     command: gunicorn ecommerce_api.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - static_volume:/app/staticfiles
@@ -27,20 +27,21 @@ services:
     command: celery -A ecommerce_api worker -l info
     volumes: []
     image: ecommerce-api-prod:latest
-    container_name: celery_worker_prod
+    container_name: ecommerce-celery-worker-prod
 
   celery_beat:
     command: celery -A ecommerce_api beat -l info
     volumes: []
     image: ecommerce-api-prod:latest
-    container_name: celery_beat_prod
+    container_name: ecommerce-celery-beat-prod
 
   flower:
+    container_name: ecommerce-flower-prod
     ports: []
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: nginx_prod
+    container_name: ecommerce-nginx-prod
     ports:
       - "80:80"
       - "443:443"
@@ -57,7 +58,7 @@ services:
 
   certbot:
     image: certbot/certbot:latest
-    container_name: certbot_prod
+    container_name: ecommerce-certbot-prod
     volumes:
       - certbot_www:/var/www/certbot
       - letsencrypt:/etc/letsencrypt

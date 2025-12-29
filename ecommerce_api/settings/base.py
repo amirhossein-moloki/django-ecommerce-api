@@ -158,6 +158,7 @@ THIRD_PARTY_APPS = [
 
 # Custom applications developed for this project
 CUSTOM_APPS = [
+    "analytics",  # Product and sales analytics
     "integrations",  # Integrations with third-party services like Torob and Emalls
     "common",  # Common utilities
     "shop",  # Shop application for managing products
