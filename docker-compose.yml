@@ -45,6 +45,8 @@ services:
   celery_worker:
     build:
       context: .
+      args:
+        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: ecommerce-celery-worker-dev
     command: celery -A ecommerce_api worker -l info
@@ -59,6 +61,8 @@ services:
   celery_beat:
     build:
       context: .
+      args:
+        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: ecommerce-celery-beat-dev
     command: celery -A ecommerce_api beat -l info
@@ -73,6 +77,8 @@ services:
   flower:
     build:
       context: .
+      args:
+        - DEV=true
     image: ecommerce-api-dev:latest
     container_name: ecommerce-flower-dev
     command: celery -A ecommerce_api flower --broker=${CELERY_BROKER_URL}
