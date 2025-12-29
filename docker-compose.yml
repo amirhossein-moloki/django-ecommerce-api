@@ -11,7 +11,7 @@ services:
       args:
         - DEV=true
     image: ecommerce-api-dev:latest
-    container_name: backend_dev
+    container_name: ecommerce-backend-dev
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -25,7 +25,7 @@ services:
 
   db:
     image: postgres:15-alpine
-    container_name: postgres_db
+    container_name: ecommerce-postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -37,13 +37,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis_cache
+    container_name: ecommerce-redis
 
   celery_worker:
     build:
       context: .
     image: ecommerce-api-dev:latest
-    container_name: celery_worker_dev
+    container_name: ecommerce-celery-worker-dev
     command: celery -A ecommerce_api worker -l info
     volumes:
       - .:/app
@@ -57,7 +57,7 @@ services:
     build:
       context: .
     image: ecommerce-api-dev:latest
-    container_name: celery_beat_dev
+    container_name: ecommerce-celery-beat-dev
     command: celery -A ecommerce_api beat -l info
     volumes:
       - .:/app
@@ -71,7 +71,7 @@ services:
     build:
       context: .
     image: ecommerce-api-dev:latest
-    container_name: flower_dev
+    container_name: ecommerce-flower-dev
     command: celery -A ecommerce_api flower --broker=${CELERY_BROKER_URL}
     ports:
       - "5555:5555"
