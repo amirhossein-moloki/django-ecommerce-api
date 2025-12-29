@@ -37,8 +37,10 @@ def get_env(name, default=None):
     ImproperlyConfigured exception.
     """
     value = os.getenv(name, default)
-    if value is None:
-        raise ImproperlyConfigured(f"Set the {name} environment variable")
+    if value is None or value == "":
+        if default is None:
+            raise ImproperlyConfigured(f"Set the {name} environment variable")
+        return default
     return value
 
 
