@@ -46,6 +46,7 @@ services:
     env_file:
       - .env
     environment:
+      - SECRET_KEY=${SECRET_KEY}
       - DB_HOST=db
       - DB_PORT=5432
       - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.production
@@ -83,12 +84,20 @@ services:
       context: .
       dockerfile: ./compose/django/Dockerfile
     container_name: celery_worker
-    command: celery -A ecommerce_api worker -l info
     env_file:
       - .env
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.production
+    entrypoint: []
+    command: sh -lc "celery -A ecommerce_api worker -l info"
     depends_on:
-      - redis
-      - web
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   # --- Celery Beat Scheduler ---
@@ -97,12 +106,20 @@ services:
       context: .
       dockerfile: ./compose/django/Dockerfile
     container_name: celery_beat
-    command: celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
       - .env
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DJANGO_SETTINGS_MODULE=ecommerce_api.settings.production
+    entrypoint: []
+    command: sh -lc "celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     depends_on:
-      - redis
-      - web
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
