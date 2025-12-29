@@ -49,7 +49,7 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
         blank=True,
     )
     currency = models.CharField(max_length=3, default="IRT")
-    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    discount_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0.0)
     payment_gateway = models.CharField(max_length=50, blank=True)
     payment_ref_id = models.CharField(max_length=100, blank=True)
     payment_status = models.CharField(
@@ -60,14 +60,14 @@ class Order(ExportModelOperationsMixin("order"), models.Model):
     )
     payment_track_id = models.CharField(max_length=100, blank=True)
     postex_shipment_id = models.CharField(max_length=100, blank=True)
-    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    shipping_cost = models.DecimalField(max_digits=18, decimal_places=2, default=0.0)
     shipping_label_url = models.URLField(blank=True)
     shipping_provider = models.CharField(max_length=50, blank=True)
     shipping_status = models.CharField(max_length=50, blank=True)
     shipping_tracking_code = models.CharField(max_length=100, blank=True)
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    total_payable = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    subtotal = models.DecimalField(max_digits=18, decimal_places=2, default=0.0)
+    tax_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0.0)
+    total_payable = models.DecimalField(max_digits=18, decimal_places=2, default=0.0)
     history = HistoricalRecords()
 
     # Define valid state transitions
@@ -188,7 +188,7 @@ class OrderItem(models.Model):
     )
     product_name = models.CharField(max_length=255)
     product_sku = models.CharField(max_length=100, blank=True, null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=18, decimal_places=2)
     quantity = models.PositiveSmallIntegerField(default=1)
 
     class Meta:
