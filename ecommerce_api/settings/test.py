@@ -17,11 +17,11 @@ MIDDLEWARE = [
     if middleware != "debug_toolbar.middleware.DebugToolbarMiddleware"
 ]
 
-# Use file-based database for tests to support async threads
+# Use in-memory database for tests to speed them up
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "test.sqlite3",
+        "NAME": ":memory:",
     }
 }
 
