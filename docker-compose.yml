@@ -19,6 +19,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: ecommerce_api.settings.development
+      DEBUG: "True"
     depends_on:
       - db
       - redis
@@ -54,6 +57,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: ecommerce_api.settings.development
+      DEBUG: "True"
     depends_on:
       - redis
       - db
@@ -70,6 +76,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: ecommerce_api.settings.development
+      DEBUG: "True"
     depends_on:
       - redis
       - db
@@ -86,6 +95,9 @@ services:
       - "5555:5555"
     env_file:
       - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: ecommerce_api.settings.development
+      DEBUG: "True"
     depends_on:
       - redis
       - celery_worker
