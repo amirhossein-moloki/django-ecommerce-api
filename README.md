@@ -110,7 +110,26 @@ docker compose up --build
 - **مستندات ReDoc:** `http://localhost:8000/api/schema/redoc/`
 - **مانیتورینگ Celery (Flower):** `http://localhost:5555/`
 
-### ۴. راه‌اندازی محیط پروداکشن (Production)
+### ۴. راه‌اندازی مانیتورینگ (اختیاری)
+
+این پروژه شامل یک پشته مانیتورینگ آماده با استفاده از **Prometheus** و **Grafana** است. برای راه‌اندازی آن، ابتدا شبکه داکر مورد نیاز را ایجاد کنید:
+
+```bash
+docker network create monitoring_net
+```
+
+سپس، سرویس‌های مانیتورینگ را در کنار سرویس‌های اصلی پروژه اجرا کنید:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d
+```
+
+پس از اجرای موفق، سرویس‌ها در آدرس‌های زیر در دسترس خواهند بود:
+
+- **Prometheus UI:** `http://localhost:9090/`
+- **Grafana UI:** `http://localhost:3000/` (نام کاربری و رمز عبور پیش‌فرض: `admin`)
+
+### ۵. راه‌اندازی محیط پروداکشن (Production)
 
 محیط پروداکشن با استفاده از فایل `docker-compose.prod.yml` تنظیمات پیش‌فرض توسعه را بازنویسی می‌کند و از `gunicorn` برای اجرای بهینه برنامه و `nginx` به عنوان وب‌سرور و پراکسی معکوس استفاده می‌کند.
 
