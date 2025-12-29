@@ -11,7 +11,7 @@ echo "PostgreSQL started"
 # Wait for Celery broker (Redis) to become available.
 if [ -n "${CELERY_BROKER_URL:-}" ]; then
   echo "Waiting for Celery broker to start..."
-  broker_host_port=$(python - <<'PY'
+  broker_host_port=$(python - <<'PY' 2>/dev/null || true
 import os
 from urllib.parse import urlparse
 
