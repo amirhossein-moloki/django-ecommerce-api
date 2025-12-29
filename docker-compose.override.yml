@@ -1,4 +1,0 @@
-networks:
-  monitoring_net:
-    driver: bridge
-    external: false
