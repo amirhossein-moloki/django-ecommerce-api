@@ -119,7 +119,7 @@ services:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     command: >
-      sh -c "rm -f /app/celerybeat.pid && celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+      sh -c "python manage.py migrate --noinput && rm -f /app/celerybeat.pid && celery -A ecommerce_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     depends_on:
       db:
         condition: service_healthy
