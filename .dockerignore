@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.venv/
+venv/
+
+# Project
+.env
+.env.test
+*.sqlite3
+media/
+static/
+
+# IDE
+.idea/
+.vscode/

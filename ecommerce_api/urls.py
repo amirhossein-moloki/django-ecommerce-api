@@ -107,8 +107,6 @@ urlpatterns = [
         "api/v1/blog/",
         include(("blog.urls", "blog"), namespace="blog"),
     ),
-    path("jet/", include("jet.urls", "jet")),
-    path("jet/dashboard/", include("jet.dashboard.urls", "jet-dashboard")),
     path("admin/", admin.site.urls),
     path(
         "sitemap.xml",
