@@ -13,7 +13,16 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Use python-dotenv to manage environment variables
-load_dotenv(str(BASE_DIR / ".env"))
+env_path = BASE_DIR / ".env"
+load_dotenv(str(env_path))
+if not env_path.exists():
+    settings_module = os.environ.get("DJANGO_SETTINGS_MODULE", "")
+    if (
+        settings_module.endswith(".development")
+        or settings_module.endswith(".test")
+        or not settings_module
+    ):
+        load_dotenv(str(BASE_DIR / ".env.example"))
 is_test_env = "test" in sys.argv or os.environ.get(
     "DJANGO_SETTINGS_MODULE", ""
 ).endswith(".test")
