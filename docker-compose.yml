@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # --- PostgreSQL Database ---
   db:
@@ -75,8 +73,9 @@ services:
       - certbot_certs:/etc/letsencrypt
       - certbot_webroot:/var/www/certbot
     environment:
-      - DOMAIN=${DOMAIN}
-      - EMAIL=${CERTBOT_EMAIL}
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${CERTBOT_EMAIL:-dev@example.com}
+      - CERTBOT_ENABLED=${CERTBOT_ENABLED:-false}
     depends_on:
       - web
     restart: unless-stopped

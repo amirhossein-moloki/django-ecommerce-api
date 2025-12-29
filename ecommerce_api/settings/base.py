@@ -165,6 +165,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",  # Cross-Origin Resource Sharing (CORS) headers
     "django_prometheus",  # Prometheus metrics for Django
     "django_ckeditor_5",  # CKEditor 5 for Django
+    "django_celery_beat",  # Celery beat scheduler integration
 ]
 
 # Custom applications developed for this project
