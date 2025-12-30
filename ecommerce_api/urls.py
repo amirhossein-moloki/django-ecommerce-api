@@ -107,6 +107,7 @@ urlpatterns = [
         "api/v1/blog/",
         include(("blog.urls", "blog"), namespace="blog"),
     ),
+    path("ckeditor5/", include("django_ckeditor_5.urls")),
     path("admin/", admin.site.urls),
     path(
         "sitemap.xml",
