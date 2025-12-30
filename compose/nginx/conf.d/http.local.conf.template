@@ -4,6 +4,11 @@ server {
 
     server_name ${DOMAIN};
 
+    # --- ACME Challenge ---
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
     # --- Static and Media Files ---
     location /static/ {
         alias /app/static/;
