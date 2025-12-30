@@ -9,7 +9,6 @@ from django.urls import reverse
 from PIL import Image
 
 from account.tests.factories import UserFactory
-from shop.models import Product, Category, Review
 from shop.tests.factories import CategoryFactory, ProductFactory, ReviewFactory
 
 pytestmark = pytest.mark.django_db

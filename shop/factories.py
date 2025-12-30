@@ -1,7 +1,7 @@
 import factory
 from decimal import Decimal
 from account.factories import UserFactory
-from .models import Category, Product, Review, ProductVariant, OptionValue
+from .models import Category, Product, Review, ProductVariant
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):
@@ -10,7 +10,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Category {n}")
     slug = factory.LazyAttribute(
-        lambda o: f'category-{o.name.lower().replace(" ", "-")}'
+        lambda o: f"category-{o.name.lower().replace(' ', '-')}"
     )
 
 

@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
-from .factories import UserFactory, ProductVariantFactory, CartItemFactory
+from .factories import UserFactory, ProductVariantFactory
 from cart.models import Cart, CartItem
 
 pytestmark = pytest.mark.django_db

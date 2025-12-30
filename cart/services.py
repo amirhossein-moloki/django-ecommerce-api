@@ -1,4 +1,3 @@
-from rest_framework.exceptions import ValidationError
 
 from shop.models import ProductVariant
 

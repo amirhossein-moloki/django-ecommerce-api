@@ -1,8 +1,7 @@
 import factory
 from decimal import Decimal
 from account.factories import AddressFactory, UserFactory
-from coupons.factories import CouponFactory
-from shop.factories import ProductFactory, ProductVariantFactory
+from shop.factories import ProductVariantFactory
 from .models import Order, OrderItem
 
 

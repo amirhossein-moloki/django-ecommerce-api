@@ -5,8 +5,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import ProductDailyMetrics
 from .serializers import ProductDailyMetricsSerializer, ProductPerformanceSerializer
-from django.db.models import Sum, F, Count
-from shop.models import Product
+from django.db.models import Sum, Count
 from orders.models import Order
 from account.models import UserAccount
 
@@ -22,17 +21,28 @@ class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
         """
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
-        total_revenue = ProductDailyMetrics.objects.aggregate(total_revenue=Sum("revenue"))["total_revenue"] or 0
+        total_revenue = (
+            ProductDailyMetrics.objects.aggregate(total_revenue=Sum("revenue"))[
+                "total_revenue"
+            ]
+            or 0
+        )
         total_orders = Order.objects.filter(status=Order.Status.PAID).count()
         total_customers = UserAccount.objects.count()
-        new_customers = UserAccount.objects.filter(date_joined__gte=thirty_days_ago).count()
+        new_customers = UserAccount.objects.filter(
+            date_joined__gte=thirty_days_ago
+        ).count()
 
-        return Response({"data": {
-            "total_revenue": total_revenue,
-            "total_orders": total_orders,
-            "total_customers": total_customers,
-            "new_customers": new_customers,
-        }})
+        return Response(
+            {
+                "data": {
+                    "total_revenue": total_revenue,
+                    "total_orders": total_orders,
+                    "total_customers": total_customers,
+                    "new_customers": new_customers,
+                }
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def sales_over_time(self, request):

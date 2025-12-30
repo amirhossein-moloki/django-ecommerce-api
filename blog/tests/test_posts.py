@@ -3,7 +3,6 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 
-from jalali_date import datetime2jalali
 
 from django.db.models.signals import post_save
 from blog.factories import (
@@ -14,7 +13,7 @@ from blog.factories import (
     MediaFactory,
     UserFactory,
 )
-from blog.models import Post, AuthorProfile
+from blog.models import Post
 from blog.signals import create_author_profile
 from blog.tests.base import BaseAPITestCase
 

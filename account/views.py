@@ -26,7 +26,7 @@ from rest_framework_simplejwt.views import (
 from sms.models import OTPCode
 from sms.providers import SmsIrProvider
 
-from .models import Profile, UserAccount
+from .models import UserAccount
 from .permissions import IsProfileIncomplete
 from .serializers import (
     CompleteProfileSerializer,

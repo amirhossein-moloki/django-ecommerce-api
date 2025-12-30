@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     replaces = [
         ("blog", "0001_initial"),
         ("blog", "0002_alter_comment_and_more"),

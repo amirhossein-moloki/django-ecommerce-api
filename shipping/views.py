@@ -21,7 +21,7 @@ class CityListAPIView(APIView):
                 message=f"Failed to get city list: {e}",
                 status_code=e.status_code or status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("An unexpected error occurred while fetching city list.")
             return ApiResponse.error(
                 message="An unexpected error occurred.",
@@ -73,7 +73,7 @@ class CalculateShippingCostAPIView(APIView):
                 status_code=e.status_code or status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception(
                 f"An unexpected error occurred while calculating shipping cost for order {order_id}."
             )

@@ -336,7 +336,6 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ("id", "post", "user", "parent", "content", "created_at", "status")
 
 
-from django.contrib.contenttypes.models import ContentType
 
 
 class ReactionSerializer(serializers.ModelSerializer):

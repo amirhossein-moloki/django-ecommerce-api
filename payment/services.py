@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from orders.models import Order
 from .gateways import ZibalGateway, ZibalGatewayError

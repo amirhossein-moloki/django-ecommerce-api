@@ -5,13 +5,12 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from blog.factories import UserFactory
-from blog.models import Post, Category, Tag, AuthorProfile, Media
+from blog.models import Post, AuthorProfile, Media
 
 User = get_user_model()
 
 
 class CreateRandomPostsTest(TestCase):
-
     def setUp(self):
         super().setUp()
 

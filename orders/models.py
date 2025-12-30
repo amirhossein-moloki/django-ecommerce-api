@@ -6,7 +6,6 @@ from django.db import models
 from django_prometheus.models import ExportModelOperationsMixin
 from simple_history.models import HistoricalRecords
 
-from coupons.models import Coupon
 from shop.models import ProductVariant
 from account.models import Address
 from django.core.exceptions import ValidationError
