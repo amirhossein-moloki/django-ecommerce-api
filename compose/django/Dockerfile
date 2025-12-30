@@ -50,6 +50,10 @@ RUN chmod +x /start.sh
 # Change ownership of the app directory
 RUN chown -R app_user:app_user /app
 
+# Ensure mount points exist with writable ownership for named volumes
+RUN mkdir -p /app/static /app/media && \
+    chown -R app_user:app_user /app/static /app/media
+
 # Switch to the non-root user
 USER app_user
 
