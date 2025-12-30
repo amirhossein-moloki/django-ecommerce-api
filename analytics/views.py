@@ -1,10 +1,14 @@
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import ProductDailyMetrics
 from .serializers import ProductDailyMetricsSerializer, ProductPerformanceSerializer
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Count
 from shop.models import Product
+from orders.models import Order
+from account.models import UserAccount
 
 
 class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -12,23 +16,47 @@ class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductDailyMetricsSerializer
 
     @action(detail=False, methods=["get"])
-    def overview(self, request):
-        start_date = request.query_params.get("start_date")
-        end_date = request.query_params.get("end_date")
+    def kpis(self, request):
+        """
+        Returns key performance indicators.
+        """
+        thirty_days_ago = timezone.now() - timedelta(days=30)
 
-        queryset = self.get_queryset()
-        if start_date:
-            queryset = queryset.filter(date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(date__lte=end_date)
+        total_revenue = ProductDailyMetrics.objects.aggregate(total_revenue=Sum("revenue"))["total_revenue"] or 0
+        total_orders = Order.objects.filter(status=Order.Status.PAID).count()
+        total_customers = UserAccount.objects.count()
+        new_customers = UserAccount.objects.filter(date_joined__gte=thirty_days_ago).count()
 
-        aggregates = queryset.aggregate(
-            total_revenue=Sum("revenue"),
-            total_profit=Sum("profit"),
-            total_units_sold=Sum("units_sold"),
+        return Response({"data": {
+            "total_revenue": total_revenue,
+            "total_orders": total_orders,
+            "total_customers": total_customers,
+            "new_customers": new_customers,
+        }})
+
+    @action(detail=False, methods=["get"])
+    def sales_over_time(self, request):
+        """
+        Returns sales data aggregated by date.
+        """
+        sales_data = (
+            ProductDailyMetrics.objects.values("date")
+            .annotate(daily_revenue=Sum("revenue"))
+            .order_by("date")
         )
+        return Response({"data": sales_data})
 
-        return Response(aggregates)
+    @action(detail=False, methods=["get"])
+    def order_status_breakdown(self, request):
+        """
+        Returns the count of orders for each status.
+        """
+        status_data = (
+            Order.objects.values("status")
+            .annotate(count=Count("status"))
+            .order_by("status")
+        )
+        return Response({"data": status_data})
 
     @action(detail=False, methods=["get"])
     def products(self, request):
@@ -67,4 +95,4 @@ class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = ProductPerformanceSerializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)
+        return Response({"data": serializer.data})

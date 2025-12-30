@@ -27,3 +27,10 @@ class ProductDailyMetrics(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.date}"
+
+
+class AnalyticsDashboard(ProductDailyMetrics):
+    class Meta:
+        proxy = True
+        verbose_name = "Analytics Dashboard"
+        verbose_name_plural = "Analytics Dashboard"
