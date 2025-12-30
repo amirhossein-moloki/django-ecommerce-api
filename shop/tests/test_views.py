@@ -6,11 +6,9 @@ from rest_framework.test import APIClient
 from account.tests.factories import UserFactory
 from orders.models import Order
 from orders.tests.factories import OrderFactory, OrderItemFactory
-from shop.models import Product
 from shop.tests.factories import (
     ProductFactory,
     CategoryFactory,
-    ReviewFactory,
     ProductVariantFactory,
 )
 

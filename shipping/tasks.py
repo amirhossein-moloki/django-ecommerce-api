@@ -57,7 +57,7 @@ def create_postex_shipment_task(order_id):
         # The task will be retried automatically due to autoretry_for
         raise
 
-    except Exception as e:
+    except Exception:
         logger.exception(
             f"An unexpected error occurred in create_postex_shipment_task for order {order_id}."
         )

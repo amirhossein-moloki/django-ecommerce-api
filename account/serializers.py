@@ -1,9 +1,8 @@
 from django.contrib.auth import get_user_model
-from django.db import transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Profile, Address
+from .models import Address
 
 User = get_user_model()
 

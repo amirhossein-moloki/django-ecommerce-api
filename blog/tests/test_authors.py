@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 
-from blog.factories import AuthorProfileFactory, UserFactory
+from blog.factories import AuthorProfileFactory
 from blog.models import AuthorProfile
 from blog.tests.base import BaseAPITestCase
 

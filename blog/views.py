@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 from django.utils import timezone
-from rest_framework import generics, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.filters import SearchFilter, OrderingFilter

@@ -11,11 +11,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django_ckeditor_5.fields import CKEditor5Field
-from django.utils.translation import gettext_lazy as _
-from urllib.parse import urlparse, urlunparse
 
 from common.utils.images import convert_image_to_avif
-from common.utils.files import get_sanitized_filename
 
 
 User = get_user_model()

@@ -4,7 +4,6 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from account.tests.factories import AddressFactory, UserFactory
-from cart.cart import Cart
 from orders.models import Order
 from orders.tests.factories import OrderFactory
 from shop.tests.factories import ProductVariantFactory

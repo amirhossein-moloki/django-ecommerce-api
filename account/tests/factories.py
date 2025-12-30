@@ -20,7 +20,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     last_name = factory.Faker("last_name")
     username = factory.LazyAttribute(
         lambda o: f"{o.first_name.lower()}{o.last_name.lower()}"
-        f"{fake.random_int(1,100)}"
+        f"{fake.random_int(1, 100)}"
     )
     email = factory.Faker("email")
     phone_number = factory.Sequence(lambda n: f"+989000000{n:03d}")

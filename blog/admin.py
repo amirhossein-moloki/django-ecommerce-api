@@ -1,7 +1,6 @@
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
-from django.db import transaction
 from jalali_date.admin import ModelAdminJalaliMixin
 from unfold.admin import ModelAdmin
 from .models import (

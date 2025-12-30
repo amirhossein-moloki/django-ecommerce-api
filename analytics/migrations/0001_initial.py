@@ -5,51 +5,82 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('shop', '0002_auto_20240726_1000'),
-        ('orders', '0003_remove_historicalorder_coupon_remove_order_coupon_and_more'),
+        ("shop", "0002_auto_20240726_1000"),
+        ("orders", "0003_remove_historicalorder_coupon_remove_order_coupon_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ProductDailyMetrics',
+            name="ProductDailyMetrics",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField()),
-                ('units_sold', models.PositiveIntegerField(default=0)),
-                ('revenue', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('profit', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='shop.product')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date", models.DateField()),
+                ("units_sold", models.PositiveIntegerField(default=0)),
+                (
+                    "revenue",
+                    models.DecimalField(decimal_places=2, default=0, max_digits=10),
+                ),
+                (
+                    "profit",
+                    models.DecimalField(decimal_places=2, default=0, max_digits=10),
+                ),
+                (
+                    "product",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="shop.product"
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Product Daily Metrics',
-                'unique_together': {('product', 'date')},
+                "verbose_name_plural": "Product Daily Metrics",
+                "unique_together": {("product", "date")},
             },
         ),
         migrations.CreateModel(
-            name='Refund',
+            name="Refund",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('reason', models.TextField()),
-                ('refund_date', models.DateTimeField(auto_now_add=True)),
-                ('refund_amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('order_item', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='orders.orderitem')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("reason", models.TextField()),
+                ("refund_date", models.DateTimeField(auto_now_add=True)),
+                ("refund_amount", models.DecimalField(decimal_places=2, max_digits=10)),
+                (
+                    "order_item",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="orders.orderitem",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='AnalyticsDashboard',
-            fields=[
-            ],
+            name="AnalyticsDashboard",
+            fields=[],
             options={
-                'verbose_name': 'Analytics Dashboard',
-                'verbose_name_plural': 'Analytics Dashboard',
-                'proxy': True,
-                'indexes': [],
-                'constraints': [],
+                "verbose_name": "Analytics Dashboard",
+                "verbose_name_plural": "Analytics Dashboard",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
-            bases=('analytics.productdailymetrics',),
+            bases=("analytics.productdailymetrics",),
         ),
     ]

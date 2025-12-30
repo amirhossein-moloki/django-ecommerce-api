@@ -10,17 +10,21 @@ from .models import (
     VariantOptionValue,
 )
 
+
 @admin.register(OptionType)
 class OptionTypeAdmin(ModelAdmin):
     pass
+
 
 @admin.register(OptionValue)
 class OptionValueAdmin(ModelAdmin):
     pass
 
+
 @admin.register(ProductVariant)
 class ProductVariantAdmin(ModelAdmin):
     pass
+
 
 @admin.register(VariantOptionValue)
 class VariantOptionValueAdmin(ModelAdmin):

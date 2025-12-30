@@ -5,9 +5,8 @@ from rest_framework.exceptions import ValidationError
 
 from account.models import Address
 from cart.cart import Cart
-from coupons.models import Coupon
 from orders.models import Order, OrderItem
-from shop.models import Product, ProductVariant
+from shop.models import ProductVariant
 from discounts.services import DiscountService
 
 

@@ -1,9 +1,7 @@
 import decimal
 
 from drf_spectacular.utils import extend_schema_field
-from decimal import Decimal
 from django.core.validators import MaxValueValidator
-from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from shop.serializers import ProductVariantSerializer

@@ -1,0 +1,89 @@
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
+    <!-- Total Revenue KPI -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Total Revenue</h3>
+        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">${{ kpis.total_revenue|floatformat:2 }}</p>
+    </div>
+
+    <!-- Total Orders KPI -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Total Orders</h3>
+        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ kpis.total_orders }}</p>
+    </div>
+
+    <!-- Total Customers KPI -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Total Customers</h3>
+        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ kpis.total_customers }}</p>
+    </div>
+
+    <!-- New Customers KPI -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">New Customers (30d)</h3>
+        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ kpis.new_customers }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 mt-6 lg:grid-cols-2">
+    <!-- Sales Over Time Chart -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Sales Over Time</h3>
+        <canvas id="salesChart"></canvas>
+    </div>
+
+    <!-- Top Selling Products Chart -->
+    <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Top 5 Selling Products</h3>
+        <canvas id="topProductsChart"></canvas>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Sales Chart
+        var salesCtx = document.getElementById('salesChart').getContext('2d');
+        var salesChart = new Chart(salesCtx, {
+            type: 'line',
+            data: {
+                labels: {{ chart_data.sales_per_month.labels|safe }},
+                datasets: [{
+                    label: 'Revenue',
+                    data: {{ chart_data.sales_per_month.data|safe }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Top Products Chart
+        var topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+        var topProductsChart = new Chart(topProductsCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_data.top_products.labels|safe }},
+                datasets: [{
+                    label: 'Units Sold',
+                    data: {{ chart_data.top_products.data|safe }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>

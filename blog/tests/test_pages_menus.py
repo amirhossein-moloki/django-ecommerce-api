@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 
-from blog.factories import PageFactory, MenuFactory, MenuItemFactory
+from blog.factories import PageFactory, MenuFactory
 from blog.tests.base import BaseAPITestCase
 
 
