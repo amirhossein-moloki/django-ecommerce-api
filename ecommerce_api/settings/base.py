@@ -254,7 +254,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
@@ -476,13 +476,13 @@ CELERY_BEAT_SCHEDULE = {
 
 # Session cookie settings
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = get_env_bool("SESSION_COOKIE_SECURE", True)
+SESSION_COOKIE_SECURE = get_env_bool("SESSION_COOKIE_SECURE", not DEBUG)
 SESSION_COOKIE_AGE = 1209600
 SESSION_SAVE_EVERY_REQUEST = True
 
 # CSRF settings
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = get_env_bool("CSRF_COOKIE_SECURE", True)
+CSRF_COOKIE_SECURE = get_env_bool("CSRF_COOKIE_SECURE", not DEBUG)
 
 # OpenTelemetry settings
 OTEL_SERVICE_NAME = get_env("OTEL_SERVICE_NAME", "ecommerce-api")
