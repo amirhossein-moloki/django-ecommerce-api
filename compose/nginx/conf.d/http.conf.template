@@ -5,8 +5,10 @@ server {
     server_name ${DOMAIN};
 
     # Serve the Let's Encrypt ACME challenge
-    location /.well-known/acme-challenge/ {
+    location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
     }
 
     # Redirect all other HTTP traffic to HTTPS

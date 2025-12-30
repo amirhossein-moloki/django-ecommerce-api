@@ -4,6 +4,13 @@ server {
 
     server_name ${DOMAIN};
 
+    # Serve the Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
     # --- Static and Media Files ---
     location /static/ {
         alias /app/static/;
