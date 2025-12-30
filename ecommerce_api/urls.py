@@ -117,12 +117,13 @@ urlpatterns = [
     path("feed/", TrendingProductsFeed(), name="product-feed"),
 ]
 
-if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
-    from debug_toolbar.toolbar import debug_toolbar_urls
-
-    urlpatterns += debug_toolbar_urls()
-
+if settings.DEBUG:
     from django.conf.urls.static import static
 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+    if "debug_toolbar" in settings.INSTALLED_APPS:
+        from debug_toolbar.toolbar import debug_toolbar_urls
+
+        urlpatterns += debug_toolbar_urls()

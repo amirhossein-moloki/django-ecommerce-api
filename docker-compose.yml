@@ -80,6 +80,22 @@ services:
       - web
     restart: unless-stopped
 
+  # --- Certbot (Let's Encrypt) ---
+  certbot:
+    image: certbot/certbot:v2.10.0
+    container_name: certbot
+    profiles: ["certbot"]
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - nginx
+    entrypoint: >
+      sh -c "certbot certonly --webroot -w /var/www/certbot
+      --email ${CERTBOT_EMAIL:-dev@example.com}
+      --agree-tos --no-eff-email -d ${DOMAIN:-localhost}"
+    restart: "no"
+
   # --- Celery Worker ---
   celery_worker:
     build:
