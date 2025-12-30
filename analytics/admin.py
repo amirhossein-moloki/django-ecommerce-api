@@ -1,9 +1,46 @@
 from django.contrib import admin
+from django.urls import path
+from django.shortcuts import render
 from unfold.admin import ModelAdmin
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
-from .models import Refund, ProductDailyMetrics
+from .models import Refund, ProductDailyMetrics, AnalyticsDashboard
+
+
+@admin.register(AnalyticsDashboard)
+class AnalyticsDashboardAdmin(ModelAdmin):
+    def get_urls(self):
+        # Get the default URLs from the parent class
+        urls = super().get_urls()
+
+        # Define custom URLs
+        custom_urls = [
+            path(
+                "dashboard/",
+                self.admin_site.admin_view(self.dashboard_view),
+                name="analytics_dashboard",
+            ),
+        ]
+
+        # The custom URL is placed at the beginning of the list to ensure
+        # it is matched before any default URLs.
+        return custom_urls + urls
+
+    def dashboard_view(self, request):
+        """
+        Custom admin view to render the analytics dashboard.
+        """
+        # Prepare context data for the template
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Analytics Dashboard",
+            "subtitle": "A comprehensive overview of your store's performance.",
+            # Additional context variables can be added here if needed
+        }
+
+        # Render the custom dashboard template
+        return render(request, "admin/analytics_dashboard.html", context)
 
 
 @admin.register(Refund)
