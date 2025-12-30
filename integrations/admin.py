@@ -1,9 +1,10 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from .models import IntegrationSettings
 
 
 @admin.register(IntegrationSettings)
-class IntegrationSettingsAdmin(admin.ModelAdmin):
+class IntegrationSettingsAdmin(ModelAdmin):
     """
     Admin configuration for the IntegrationSettings model.
     """

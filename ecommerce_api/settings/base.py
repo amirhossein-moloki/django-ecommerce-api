@@ -139,6 +139,9 @@ CORS_EXPOSE_HEADERS = ["csrftoken", "sessionid"]
 
 # Core Django applications provided by the framework
 DJANGO_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",  # Admin interface for managing the application
     "django.contrib.auth",  # Authentication framework
     "django.contrib.contenttypes",  # Content type system for permissions

@@ -108,3 +108,4 @@ django-jalali-date==2.0.0
 pillow-avif-plugin==1.5.2
 Faker==19.3.1
 gunicorn==20.1.0
+django-unfold
