@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import Order, OrderItem
 
@@ -14,7 +15,7 @@ class OrderItemInline(admin.TabularInline):
 
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(ModelAdmin):
     """
     Admin configuration for managing the Order model in the Django admin interface.
 

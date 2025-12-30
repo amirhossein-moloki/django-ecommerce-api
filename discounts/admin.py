@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from .models import Discount, DiscountRule, UserDiscountUsage
 
 
@@ -14,7 +15,7 @@ class DiscountRuleInline(admin.TabularInline):
 
 
 @admin.register(Discount)
-class DiscountAdmin(admin.ModelAdmin):
+class DiscountAdmin(ModelAdmin):
     """
     Admin configuration for the Discount model.
     """
@@ -35,7 +36,7 @@ class DiscountAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserDiscountUsage)
-class UserDiscountUsageAdmin(admin.ModelAdmin):
+class UserDiscountUsageAdmin(ModelAdmin):
     """
     Admin configuration for the UserDiscountUsage model.
     Provides a read-only view of user-specific discount usage.

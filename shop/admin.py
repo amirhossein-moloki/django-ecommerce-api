@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import (
     Category,
@@ -9,14 +10,25 @@ from .models import (
     VariantOptionValue,
 )
 
-admin.site.register(OptionType)
-admin.site.register(OptionValue)
-admin.site.register(ProductVariant)
-admin.site.register(VariantOptionValue)
+@admin.register(OptionType)
+class OptionTypeAdmin(ModelAdmin):
+    pass
+
+@admin.register(OptionValue)
+class OptionValueAdmin(ModelAdmin):
+    pass
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(ModelAdmin):
+    pass
+
+@admin.register(VariantOptionValue)
+class VariantOptionValueAdmin(ModelAdmin):
+    pass
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(ModelAdmin):
     list_display = ("name", "slug")
     search_fields = ("name",)
     prepopulated_fields = {"slug": ("name",)}
@@ -28,7 +40,7 @@ class ProductVariantInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ModelAdmin):
     list_display = ("name", "category", "slug")
     list_filter = ("category", "tags")
     search_fields = ("name", "description", "category__name", "tags__name")

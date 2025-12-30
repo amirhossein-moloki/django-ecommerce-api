@@ -1,15 +1,23 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from unfold.admin import ModelAdmin
 
 from .models import Profile, UserAccount
 
 
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+
+
 # Extend the base UserAdmin to customize for UserAccount
 @admin.register(UserAccount)
-class UserAccountAdmin(BaseUserAdmin):
+class UserAccountAdmin(BaseUserAdmin, ModelAdmin):
     """
     Admin view for the UserAccount model with enhanced visibility and control over user details.
     """
+
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
 
     # Fields to display in the user list
     list_display = ("id", "email", "username", "is_active", "is_staff", "date_joined")
@@ -91,7 +99,7 @@ class UserAccountAdmin(BaseUserAdmin):
 
 # Register the ProfileAdmin as well
 @admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
+class ProfileAdmin(ModelAdmin):
     """
     Admin view for the Profile model with limited edit permissions.
     """

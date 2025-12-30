@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.db import transaction
 from jalali_date.admin import ModelAdminJalaliMixin
+from unfold.admin import ModelAdmin
 from .models import (
     AuthorProfile,
     Category,
@@ -27,7 +28,7 @@ from .forms import MediaAdminForm, PageAdminForm, PostAdminForm
 
 
 @admin.register(Media)
-class MediaAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+class MediaAdmin(ModelAdminJalaliMixin, ModelAdmin):
     form = MediaAdminForm
     list_display = (
         "title",
@@ -84,13 +85,13 @@ class MediaAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
 
 
 @admin.register(AuthorProfile)
-class AuthorProfileAdmin(admin.ModelAdmin):
+class AuthorProfileAdmin(ModelAdmin):
     list_display = ("display_name", "user")
     search_fields = ("display_name", "user__username")
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(ModelAdmin):
     list_display = ("name", "slug", "parent", "order")
     list_filter = ("parent",)
     search_fields = ("name",)
@@ -98,14 +99,14 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagAdmin(ModelAdmin):
     list_display = ("name", "slug")
     search_fields = ("name",)
     prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(Series)
-class SeriesAdmin(admin.ModelAdmin):
+class SeriesAdmin(ModelAdmin):
     list_display = ("title", "slug", "order_strategy")
     search_fields = ("title",)
     prepopulated_fields = {"slug": ("title",)}
@@ -131,7 +132,7 @@ class PostMediaInline(admin.TabularInline):
 
 
 @admin.register(Post)
-class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+class PostAdmin(ModelAdminJalaliMixin, ModelAdmin):
     form = PostAdminForm
     list_display = (
         "title",
@@ -183,27 +184,27 @@ class PostAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
 
 
 @admin.register(Revision)
-class RevisionAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+class RevisionAdmin(ModelAdminJalaliMixin, ModelAdmin):
     list_display = ("post", "editor", "created_at")
     list_filter = ("editor",)
     search_fields = ("post__title",)
 
 
 @admin.register(Comment)
-class CommentAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+class CommentAdmin(ModelAdminJalaliMixin, ModelAdmin):
     list_display = ("user", "post", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("user__username", "content")
 
 
 @admin.register(Reaction)
-class ReactionAdmin(admin.ModelAdmin):
+class ReactionAdmin(ModelAdmin):
     list_display = ("user", "reaction", "content_object", "created_at")
     list_filter = ("reaction",)
 
 
 @admin.register(Page)
-class PageAdmin(admin.ModelAdmin):
+class PageAdmin(ModelAdmin):
     form = PageAdminForm
     list_display = ("title", "slug", "status", "published_at")
     list_filter = ("status",)
@@ -217,7 +218,7 @@ class MenuItemInline(admin.TabularInline):
 
 
 @admin.register(Menu)
-class MenuAdmin(admin.ModelAdmin):
+class MenuAdmin(ModelAdmin):
     list_display = ("name", "location")
     list_filter = ("location",)
     inlines = [MenuItemInline]
