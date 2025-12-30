@@ -155,6 +155,7 @@ DJANGO_APPS = [
 
 # Third-party applications installed via pip
 THIRD_PARTY_APPS = [
+    "jalali_date",
     "taggit",  # Tagging library for Django
     "drf_spectacular",  # OpenAPI schema generation for Django REST Framework
     "django_filters",  # Filtering support for Django REST Framework
