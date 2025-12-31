@@ -34,8 +34,8 @@ graph TD
 -   **استراتژی:**
     -   **Point-in-Time-Recovery (PITR):** تمام تغییرات دیتابیس (`WAL`ها) به‌محض نوشته شدن، به‌صورت مداوم به S3 ارسال می‌شوند. این کار `RPO` را به چند دقیقه کاهش می‌دهد.
     -   **Full Base Backup:** یک بکاپ کامل از کل دیتابیس به‌صورت روزانه گرفته می‌شود تا نقطه شروعی برای بازیابی باشد.
--   **کانفیگ:** `config/walg_config.json`
--   **اسکریپت:** `scripts/run_db_backup.sh`
+-   **کانفیگ:** `backup/config/walg_config.json`
+-   **اسکریپت:** `backup/scripts/run_db_backup.sh`
 
 ### ۲. بکاپ فایل‌ها (Media Assets)
 
@@ -44,7 +44,7 @@ graph TD
     -   **Incremental & Deduplicated:** بکاپ‌ها به‌صورت افزایشی هستند (فقط تغییرات جدید ارسال می‌شوند) و با استفاده از Deduplication، از ذخیره داده‌های تکراری جلوگیری می‌شود که حجم و هزینه را کاهش می‌دهد.
     -   **End-to-End Encryption:** تمام فایل‌ها قبل از خروج از سرور با یک رمز عبور قوی رمزنگاری می‌شوند.
 -   **کانفیگ:** از طریق متغیرهای محیطی (`.env`)
--   **اسکریپت:** `scripts/run_files_backup.sh`
+-   **اسکریپت:** `backup/scripts/run_files_backup.sh`
 
 ---
 
@@ -64,23 +64,23 @@ graph TD
 
 3.  **تنظیم متغیرهای محیطی:**
     *   یک فایل Service Account در Google Cloud Console ایجاد کرده و کلید JSON آن را دانلود کنید.
-    *   یک فایل در مسیر `/etc/backup.env` ایجاد کرده و تمام متغیرهای محیطی را طبق نمونه در `config/backup.cron` در آن قرار دهید. مسیر فایل Service Account را در `GOOGLE_APPLICATION_CREDENTIALS` مشخص کنید.
+    *   یک فایل در مسیر `/etc/backup.env` ایجاد کرده و تمام متغیرهای محیطی را طبق نمونه در `backup/config/backup.cron` در آن قرار دهید. مسیر فایل Service Account را در `GOOGLE_APPLICATION_CREDENTIALS` مشخص کنید.
     *   **مهم:** دسترسی هر دو فایل (`/etc/backup.env` و فایل JSON) را به شدت محدود کنید: `chmod 400 /path/to/service_account.json` و `chmod 600 /etc/backup.env`.
 
 4.  **مقداردهی اولیه Restic:**
     *   برای اولین بار، اسکریپت بکاپ فایل‌ها را به‌صورت دستی اجرا کنید تا مخزن Restic ساخته شود:
         ```bash
-        . /etc/backup.env; /usr/local/bin/run_files_backup.sh
+        . /etc/backup.env; /path/to/project/backup/scripts/run_files_backup.sh
         ```
 
 5.  **ایجاد اولین Base Backup دیتابیس:**
     *   اسکریپت بکاپ دیتابیس را نیز برای اولین بار دستی اجرا کنید:
         ```bash
-        . /etc/backup.env; /usr/local/bin/run_db_backup.sh
+        . /etc/backup.env; /path/to/project/backup/scripts/run_db_backup.sh
         ```
 
 6.  **زمان‌بندی Cronjob:**
-    *   فایل `config/backup.cron` را بررسی کرده و پس از اطمینان از صحت مسیرها و متغیرها، آن را به `crontab` کاربر `root` اضافه کنید:
+    *   فایل `backup/config/backup.cron` را بررسی کرده و پس از اطمینان از صحت مسیرها و متغیرها، آن را به `crontab` کاربر `root` اضافه کنید:
         ```bash
         crontab /path/to/project/backup/config/backup.cron
         ```

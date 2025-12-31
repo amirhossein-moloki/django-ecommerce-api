@@ -3,8 +3,8 @@
 This project ships with pytest configuration that automatically sets the test
 settings module (`ecommerce_api.settings.test`), applies migrations at session
 start, and flushes the database between individual tests. Coverage is collected
-using Python's built-in `trace` module via the `--cov` flag rather than the
-`coverage` package.
+via `pytest-cov` using the default `--cov` addopts defined in `pytest.ini`, with
+exclusions configured in `.coveragerc`.
 
 ## Prerequisites (local)
 - Python 3.11+
@@ -29,9 +29,8 @@ pip install -r requirements-dev.txt
   ```
 
 ## Collecting coverage
-The `--cov` flag accepts one or more paths to trace. Reports are printed to the
-terminal (default `term-missing`) and also written to `trace_coverage_report.txt`
-for later inspection.
+The `--cov` flag accepts one or more paths to measure. Reports are printed to the
+terminal (default `term-missing`).
 
 ```bash
 pytest --cov account --cov shop --cov ecommerce_api --cov-report term-missing
@@ -41,18 +40,15 @@ pytest --cov account --cov shop --cov ecommerce_api --cov-report term-missing
 If you prefer containers, ensure the stack is up and the `web` service has
 pytest installed:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 - Run tests inside the container:
   ```bash
-  docker-compose exec web pytest --maxfail=1
+  docker compose exec web pytest --maxfail=1
   ```
 - Collect coverage inside the container:
   ```bash
-  docker-compose exec web pytest \
+  docker compose exec web pytest \
     --cov account --cov shop --cov ecommerce_api --cov-report term-missing
-  ```
-
-The coverage summary and `trace_coverage_report.txt` behave the same inside
-Docker.
+```
