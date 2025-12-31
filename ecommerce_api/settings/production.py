@@ -1,8 +1,30 @@
 from .base import *
 
 # Production-specific settings
+# -----------------------------------------------------------------------------
+# SECURITY SETTINGS
+# Ensure the application is served securely in a production environment.
+# -----------------------------------------------------------------------------
 
+# Force SSL redirection.
+# The 'SECURE_PROXY_SSL_HEADER' tells Django to trust the X-Forwarded-Proto
+# header from the proxy (Nginx), which is crucial for correct HTTPS detection.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True
+
+# Mark session and CSRF cookies as secure.
+# This ensures they are only sent over HTTPS connections, mitigating the
+# risk of session hijacking via man-in-the-middle attacks.
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# HTTP Strict Transport Security (HSTS)
+# Instructs browsers to always connect to the site via HTTPS for the next year.
+# This reduces the impact of SSL-stripping attacks.
+# The `includeSubDomains` and `preload` directives enhance this protection.
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 USE_X_FORWARDED_HOST = True
 
 # Session settings for production
