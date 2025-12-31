@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This document provides a comprehensive guide for developers and DevOps engineers involved in the Hypex E-commerce API project. It includes a summary of the initial security audit, instructions for setting up a local development environment, and a detailed walkthrough of the CI/CD pipeline for deploying the application to Kubernetes.
+This document provides a practical guide for developers and DevOps engineers working on the Hypex E-commerce API. It summarizes key audit fixes, documents local development options, and outlines the production Docker Compose deployment path that matches this repository.
 
 ## 2. Security Audit Summary
 
@@ -15,165 +15,91 @@ An audit of the project was conducted to identify security vulnerabilities and a
 -   **Separation of Dependencies**: Development-specific dependencies have been moved to `requirements-dev.txt` to avoid installing them in the production image.
 -   **`.gitignore` Added**: A `.gitignore` file has been added to prevent sensitive files like `.env` and build artifacts from being committed.
 
-For a more detailed breakdown of the audit, please see the `CODE_REVIEW_REPORT.md` file.
-
 ## 3. Local Development Setup
 
-The local development environment is managed by Docker Compose.
+You can develop either directly on your machine (recommended for faster feedback) or with Docker Compose (production-like).
+
+### Option A: Local Python Environment
+
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/amirhossein-moloki/django-ecommerce-api.git
+    cd django-ecommerce-api
+    ```
+
+2.  **Create and Configure Environment File**
+    ```bash
+    cp .env.example .env
+    ```
+    Update `.env` with development values, especially `DEBUG=True`, `DJANGO_SETTINGS_MODULE=ecommerce_api.settings.development`, and local SMTP settings.
+
+3.  **Install Dependencies and Run**
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements-dev.txt
+    python manage.py migrate
+    python manage.py runserver
+    ```
+
+### Option B: Docker Compose (Production-Like)
+
+1.  **Create Environment File**
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Build and Run the Services**
+    ```bash
+    docker compose up --build
+    ```
+
+The API will be available at `http://localhost` (or `https://<DOMAIN>` when Certbot is enabled).
+
+## 4. Deployment Guide (Docker Compose)
 
 ### Prerequisites
 
 -   Docker
 -   Docker Compose
+-   A domain name (only required if you enable SSL)
 
 ### Steps
 
-1.  **Clone the Repository**
+1.  **Configure Environment Variables**
+    Update `.env` with production values, at minimum:
+    - `SECRET_KEY`
+    - `DEBUG=False`
+    - `ALLOWED_HOSTS`
+    - `DOMAIN`
+    - `CERTBOT_EMAIL`
+    - `CERTBOT_ENABLED=true` (only when using a real domain)
+
+2.  **Start the Stack**
     ```bash
-    git clone https://github.com/m-h-s/E-commerce-api.git
-    cd E-commerce-api
+    docker compose up --build -d
     ```
 
-2.  **Create Environment File**
-    Copy the example environment file.
+3.  **Verify Health**
     ```bash
-    cp .env.example .env
-    ```
-    Update the `.env` file with your local configuration. For local development, the default values should work.
-
-3.  **Build and Run the Services**
-    Use the `docker-compose.dev.yml` file to build and run the development containers.
-    ```bash
-    docker-compose -f docker-compose.dev.yml up --build
+    docker compose ps
+    docker compose logs -f nginx
     ```
 
-    The application will be available at `http://localhost:8000`.
+## 5. CI/CD Notes
 
-## 4. CI/CD Pipeline Overview
-
-The project uses GitHub Actions for continuous integration and continuous deployment.
-
-### CI Pipeline (`.github/workflows/ci.yml`)
-
-The CI pipeline is triggered on every pull request to the `main` branch. It performs the following checks:
-
--   **Linting and Formatting**: Enforces code style with `ruff` and `black`.
--   **Security Analysis**: Scans for vulnerabilities with `bandit` and `pip-audit`.
--   **Testing**: Runs the `pytest` test suite.
--   **Docker Image Build & Scan**: Builds the production Docker image and scans it for OS vulnerabilities with `trivy`.
--   **Docker Image Build & Scan**: Builds the production Docker image and scans it for OS vulnerabilities with `trivy`.
-
-### Staging Deployment Pipeline (`.github/workflows/cd.yml`)
-
-This pipeline is triggered on every push to the `main` branch. Its purpose is to automatically deploy the latest version of the application to the staging environment.
-
--   **Build and Push Image**: Builds a new Docker image and pushes it to GHCR, tagged with the commit SHA.
--   **Deploy to Staging**: Deploys the newly built image to the `staging` namespace in Kubernetes.
-
-### Production Deployment Pipeline (`.github/workflows/release.yml`)
-
-This pipeline is triggered only when a new release is published on GitHub. This ensures that production deployments are intentional and tied to a specific version.
-
--   **Build and Push Image**: Builds a new Docker image and pushes it to GHCR, tagged with the release version (e.g., `v1.0.1`).
--   **Deploy to Production**: Deploys the newly built image to the `production` namespace in Kubernetes.
-
-## 5. Deployment Guide
-
-### Prerequisites
-
--   An Amazon EKS cluster
--   `kubectl` configured to connect to your cluster
--   `helm` v3+
-
-### Step 1: Configure GitHub Secrets
-
-The CI/CD pipeline requires the following secrets to be set in your GitHub repository's settings (`Settings > Secrets and variables > Actions`):
-
--   `AWS_ROLE_TO_ASSUME`: IAM role ARN that GitHub Actions assumes via OIDC.
--   `AWS_REGION`: AWS region that hosts the EKS cluster (e.g., `us-east-1`).
--   `EKS_CLUSTER_NAME`: Name of the target EKS cluster.
-
-To enable OIDC, create an IAM OIDC identity provider for `token.actions.githubusercontent.com` and an IAM role with a trust policy that scopes access to this repository/environment. Attach EKS permissions (e.g., `eks:DescribeCluster`) and any required Kubernetes RBAC mappings for deployment.
-
-### Step 2: Create Kubernetes Secrets
-
-The application requires several secrets to be present in the Kubernetes cluster. You can create them using `kubectl`.
-
-First, create a `secrets.yaml` file with your secret values:
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: django-secrets
-type: Opaque
-stringData:
-  SECRET_KEY: "your-super-secret-key"
-  DATABASE_URL: "postgres://user:password@host:port/db"
-  REDIS_URL: "redis://host:port/0"
-  GOOGLE_OAUTH2_KEY: "your-google-oauth2-key"
-  GOOGLE_OAUTH2_SECRET: "your-google-oauth2-secret"
-```
-
-Apply this to each namespace where you will deploy the application:
-```bash
-kubectl apply -f secrets.yaml --namespace staging
-kubectl apply -f secrets.yaml --namespace production
-```
-
-### Step 3: Automated Deployment
-
--   **To Staging**: Push your changes to the `main` branch.
--   **To Production**: Create a new release on the GitHub repository.
-
-### Step 4: Manual Deployment (Optional)
-
-You can also deploy the application manually using Helm.
-
-```bash
-# For Staging
-helm upgrade --install staging-ecommerce-api ./helm \
-  --namespace staging \
-  --create-namespace \
-  --set image.repository=ghcr.io/your-repo/ecommerce-api \
-  --set image.tag=your-image-tag \
-  --set ingress.hosts[0].host=staging.your-domain.com
-
-# For Production
-helm upgrade --install prod-ecommerce-api ./helm \
-  --namespace production \
-  --create-namespace \
-  --set image.repository=ghcr.io/your-repo/ecommerce-api \
-  --set image.tag=your-image-tag \
-  --set ingress.hosts[0].host=your-domain.com
-```
+This repository does not include CI/CD workflows by default. If you need automated builds/deployments, add GitHub Actions (or your platform of choice) that:
+- runs linting and tests (`pytest`),
+- builds the Docker images, and
+- deploys to your target environment.
 
 ## 6. Post-Deployment Checklist
 
--   [ ] **Verify Pods**: Check that all pods are running (`kubectl get pods -n <namespace>`).
--   [ ] **Check Logs**: Inspect the logs for any errors (`kubectl logs -f <pod-name> -n <namespace>`).
--   [ ] **Test Ingress**: Ensure the application is accessible via the configured domain.
--   [ ] **Run Smoke Tests**: Perform basic checks to confirm the core functionality is working.
+-   [ ] **Verify containers**: `docker compose ps` shows all services healthy.
+-   [ ] **Check logs**: `docker compose logs -f web` for application errors.
+-   [ ] **Test endpoints**: verify core API endpoints and admin login.
+-   [ ] **Background tasks**: confirm `celery_worker` and `celery_beat` are running.
 
-## 7. Improving Health Probes
+## 7. Certificate Renewal
 
-For more reliable health checks in Kubernetes, it is recommended to create a dedicated health check endpoint (e.g., `/healthz`) that does not perform any database queries. This ensures that the application is marked as healthy even if the database is temporarily unavailable, preventing cascading failures.
-
-Once this endpoint is created, you can update the `helm/templates/deployment.yaml` file to use it for the liveness and readiness probes:
-
-```yaml
-livenessProbe:
-  httpGet:
-    path: /healthz  # Update this path
-    port: http
-readinessProbe:
-  httpGet:
-    path: /healthz  # Update this path
-    port: http
-```
-
-## 8. TODO for Project Owner
-
--   [ ] Update the `helm/values.yaml` and `.github/workflows/cd.yml` files with your actual domain names.
--   [ ] Configure GitHub Actions OIDC for AWS and store `AWS_ROLE_TO_ASSUME`, `AWS_REGION`, and `EKS_CLUSTER_NAME` secrets.
--   [ ] Create the `django-secrets` secret in your Kubernetes cluster with your production credentials.
--   [ ] Configure your DNS to point your domain to the Ingress controller's external IP address.
+When `CERTBOT_ENABLED=true`, the Nginx container installs a cron job to renew certificates nightly and reload Nginx on success. You can confirm renewal activity in the Nginx container logs.

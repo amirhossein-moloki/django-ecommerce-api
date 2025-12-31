@@ -4,11 +4,11 @@ First off, thank you for considering contributing to the Hypex E-commerce API! I
 
 ## Where do I go from here?
 
-If you've noticed a bug or have a feature request, [make one](https://github.com/m-h-s/E-commerce-api/issues/new)! It's generally best if you get confirmation of your bug or approval for your feature request this way before starting to code.
+If you've noticed a bug or have a feature request, [make one](https://github.com/amirhossein-moloki/django-ecommerce-api/issues/new)! It's generally best if you get confirmation of your bug or approval for your feature request this way before starting to code.
 
 ### Fork & create a branch
 
-If this is something you think you can fix, then [fork the repo](https://github.com/m-h-s/E-commerce-api/fork) and create a branch with a descriptive name.
+If this is something you think you can fix, then [fork the repo](https://github.com/amirhossein-moloki/django-ecommerce-api/fork) and create a branch with a descriptive name.
 
 A good branch name would be (where issue #38 is the ticket you're working on):
 
@@ -21,7 +21,7 @@ git checkout -b 38-add-a-bigger-button
 Make sure you're running the test suite locally before you start making changes.
 
 ```bash
-docker-compose exec web pytest
+docker compose exec web pytest
 ```
 
 ### Implement your fix or feature
@@ -33,20 +33,20 @@ At this point, you're ready to make your changes! Feel free to ask for help; eve
 At this point, you should switch back to your master branch and make sure it's up to date with the latest upstream version of the code.
 
 ```bash
-git remote add upstream git@github.com:m-h-s/E-commerce-api.git
-git checkout master
-git pull upstream master
+git remote add upstream git@github.com:amirhossein-moloki/django-ecommerce-api.git
+git checkout main
+git pull upstream main
 ```
 
 Then update your feature branch from your local copy of master, and push it!
 
 ```bash
 git checkout 38-add-a-bigger-button
-git rebase master
+git rebase main
 git push --force-with-lease origin 38-add-a-bigger-button
 ```
 
-Finally, go to GitHub and [make a Pull Request](https://github.com/m-h-s/E-commerce-api/compare)
+Finally, go to GitHub and [make a Pull Request](https://github.com/amirhossein-moloki/django-ecommerce-api/compare)
 
 ### Keeping your Pull Request updated
 

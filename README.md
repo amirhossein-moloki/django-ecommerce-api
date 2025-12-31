@@ -10,7 +10,7 @@ This project provides a complete, multi-container Docker setup for deploying the
 ## ✨ Key Features of this Deployment
 
 - **🚀 Fully Containerized:** All services (Django, Nginx, PostgreSQL, Redis, Celery) run in isolated Docker containers.
-- **🔒 Automated SSL:** Nginx is configured to automatically obtain and renew SSL certificates from Let's Encrypt using Certbot. No manual SSL management is needed.
+- **🔒 Automated SSL:** Nginx can automatically obtain and renew SSL certificates from Let's Encrypt using Certbot when `CERTBOT_ENABLED=true` and `DOMAIN`/`CERTBOT_EMAIL` are set.
 - **⚡ High Performance:** Nginx serves static and media files directly, while Gunicorn and Daphne run the Django application, providing a high-performance, scalable setup.
 - **🔄 Idempotent Startup:** The startup scripts are designed to be idempotent. You can run them multiple times without causing issues. The system will configure itself correctly whether it's the first run or a restart.
 - **📈 Production-Ready:** Includes Celery workers and a beat scheduler for background tasks, health checks for services, and a secure-by-default Nginx configuration.
@@ -19,7 +19,7 @@ This project provides a complete, multi-container Docker setup for deploying the
 
 This setup consists of the following services:
 
-- **`nginx`**: The reverse proxy that handles all incoming HTTP and HTTPS traffic. It is responsible for SSL termination, serving static/media files, and routing requests to the Django application.
+- **`nginx`**: The reverse proxy that handles all incoming HTTP and HTTPS traffic. It is responsible for SSL termination (when Certbot is enabled), serving static/media files, and routing requests to the Django application.
 - **`web`**: The Django application service, running both Gunicorn (for WSGI) and Daphne (for ASGI/Channels) servers.
 - **`db`**: The PostgreSQL database for data persistence.
 - **`redis`**: The Redis server, used for caching and as a message broker for Celery.
@@ -58,8 +58,9 @@ Now, open the `.env` file with a text editor and **update the following critical
 - **`SECRET_KEY`**: Generate a new, strong secret key. You can use an online generator or a command-line tool.
 - **`DEBUG`**: Set this to `False` for production.
 - **`ALLOWED_HOSTS`**: Set this to your domain name (e.g., `api.yourdomain.com`).
-- **`DOMAIN`**: **This is crucial.** Set this to your fully qualified domain name (e.g., `api.yourdomain.com`).
+- **`DOMAIN`**: **This is crucial when SSL is enabled.** Set this to your fully qualified domain name (e.g., `api.yourdomain.com`).
 - **`CERTBOT_EMAIL`**: Set this to your email address. Let's Encrypt will use this to send you important notifications about your certificate.
+- **`CERTBOT_ENABLED`**: Set to `true` to enable automatic certificate provisioning/renewal. For local development, keep this `false`.
 - **Database and Redis settings**: The default values are fine for Docker Compose, as the services will be linked.
 
 Example `.env` configuration:
@@ -71,6 +72,7 @@ ALLOWED_HOSTS=api.yourdomain.com
 
 DOMAIN=api.yourdomain.com
 CERTBOT_EMAIL=your-email@yourdomain.com
+CERTBOT_ENABLED=true
 # ... other settings
 ```
 
@@ -97,7 +99,7 @@ You can monitor the logs to see the progress, especially for the initial certifi
 sudo docker compose logs -f nginx
 ```
 
-Once the process is complete, you should be able to access your API at `https://yourdomain.com`.
+Once the process is complete, you should be able to access your API at `https://yourdomain.com`. For local development, set `CERTBOT_ENABLED=false` and use `http://localhost` instead.
 
 ## 🔄 Day-to-Day Management
 
@@ -138,7 +140,7 @@ sudo docker compose exec web python manage.py shell
 
 ## 🔐 SSL Certificate Renewal
 
-The `nginx` container includes a cron job that runs daily to automatically renew your SSL certificate. No manual intervention is required. You can verify that the renewal process is working by checking the cron logs within the Nginx container.
+When `CERTBOT_ENABLED=true`, the `nginx` container includes a cron job that runs daily to automatically renew your SSL certificate. No manual intervention is required. You can verify that the renewal process is working by checking the cron logs within the Nginx container.
 
 ##  volume Management
 
