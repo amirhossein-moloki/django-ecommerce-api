@@ -54,7 +54,8 @@ You can develop either directly on your machine (recommended for faster feedback
     docker compose up --build
     ```
 
-The API will be available at `http://localhost` (or `https://<DOMAIN>` when Certbot is enabled).
+    The API will be available at `http://localhost` (or `https://<DOMAIN>` when Certbot is enabled).
+    Docker Compose uses service names like `web`, `nginx`, `db`, and `redis`, while the containers are named `django_web`, `nginx_proxy`, `postgres_db`, and `redis_cache` for easier identification with `docker ps`.
 
 ## 4. Deployment Guide (Docker Compose)
 

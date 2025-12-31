@@ -19,12 +19,12 @@ This project provides a complete, multi-container Docker setup for deploying the
 
 This setup consists of the following services:
 
-- **`nginx`**: The reverse proxy that handles all incoming HTTP and HTTPS traffic. It is responsible for SSL termination (when Certbot is enabled), serving static/media files, and routing requests to the Django application.
-- **`web`**: The Django application service, running both Gunicorn (for WSGI) and Daphne (for ASGI/Channels) servers.
-- **`db`**: The PostgreSQL database for data persistence.
-- **`redis`**: The Redis server, used for caching and as a message broker for Celery.
-- **`celery_worker`**: A Celery worker process for executing asynchronous background tasks.
-- **`celery_beat`**: The Celery beat scheduler for running periodic tasks.
+- **`nginx`** (`nginx_proxy`): The reverse proxy that handles all incoming HTTP and HTTPS traffic. It is responsible for SSL termination (when Certbot is enabled), serving static/media files, and routing requests to the Django application.
+- **`web`** (`django_web`): The Django application service, running both Gunicorn (for WSGI) and Daphne (for ASGI/Channels) servers.
+- **`db`** (`postgres_db`): The PostgreSQL database for data persistence.
+- **`redis`** (`redis_cache`): The Redis server, used for caching and as a message broker for Celery.
+- **`celery_worker`** (`celery_worker`): A Celery worker process for executing asynchronous background tasks.
+- **`celery_beat`** (`celery_beat`): The Celery beat scheduler for running periodic tasks.
 
 ##  Prerequisites
 
