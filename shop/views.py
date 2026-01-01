@@ -315,7 +315,7 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             "tags",
             "reviews",
             "variants",
-            "variants__option_values__option_value__option_type",
+            "variants__variant_options__option_value__option_type",
         )
         .annotate(price=Min("variants__price"))
     )
