@@ -57,6 +57,11 @@ class TestProductViewSet:
         assert response.status_code == 200
         assert response.data["slug"] == product.slug
 
+    def test_retrieve_non_existent_product(self, api_client):
+        url = reverse("api-v1:product-detail", kwargs={"slug": "non-existent-slug"})
+        response = api_client.get(url)
+        assert response.status_code == 404
+
     def test_create_product(self, api_client):
         user = UserFactory()
         category = CategoryFactory()
