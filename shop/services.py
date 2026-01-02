@@ -13,7 +13,7 @@ def get_product_detail(slug: str):
     if cached_data:
         return cached_data
 
-    product = Product.objects.get(slug=slug)
+    product = get_object_or_404(Product, slug=slug)
     cache.set(cache_key, product, 60 * 60)  # 1 hour
     return product
 
