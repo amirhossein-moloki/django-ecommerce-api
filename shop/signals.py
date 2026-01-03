@@ -10,6 +10,7 @@ def invalidate_category_cache(sender, instance, **kwargs):
     """
     Invalidate the category list cache when a category is saved or deleted.
     """
+    # This key is simple and doesn't need a pattern.
     cache.delete("category_list")
 
 
@@ -17,9 +18,18 @@ def invalidate_category_cache(sender, instance, **kwargs):
 def invalidate_product_cache(sender, instance, **kwargs):
     """
     Invalidate product-related caches when a product is saved or deleted.
+
+    - Deletes the specific cache for the product's detail view.
+    - Deletes all versions of the product list cache using a pattern.
+      This is crucial to ensure that any filtered or sorted list view
+      is also invalidated.
     """
-    cache.delete("product_list")
-    cache.delete(f"product_{instance.slug}")
+    # Invalidate the detail view cache for this specific product
+    cache.delete(f"product_detail_{instance.slug}")
+
+    # Invalidate all product list caches (covers all query param variations)
+    # The key pattern is defined in caching.py as "product_list:*"
+    cache.delete_pattern("product_list:*")
 
 
 @receiver(post_save, sender=Review)
