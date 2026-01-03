@@ -588,20 +588,6 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Returns the queryset for categories. Caching is handled in the `list` method.
+        Returns the queryset for categories.
         """
         return Category.objects.all()
-
-    def list(self, request, *args, **kwargs):
-        """
-        Lists all categories with caching.
-        - Caches the entire category list for 24 hours.
-        """
-        cache_key = "category_list"
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data)
-
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 60 * 60 * 24)  # 24 hours
-        return response
