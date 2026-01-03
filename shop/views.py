@@ -1,6 +1,5 @@
 from logging import getLogger
 
-from django.core.cache import cache
 from django.db.models import Min
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import (
@@ -23,11 +22,13 @@ from rest_framework.response import Response
 from ecommerce_api.core.mixins import PaginationMixin
 from ecommerce_api.core.permissions import IsOwnerOrStaff
 from shop.filters import ProductFilter, ProductSearchFilterBackend
+from .caching import generate_product_list_cache_key
 from .models import Product, Category
 from .recommender import Recommender
 from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
 from .serializers import ReviewSerializer
 from . import services
+from django.core.cache import cache
 
 logger = getLogger(__name__)
 
@@ -352,10 +353,10 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Handles the creation of a new product, associating it with the authenticated user.
+        Cache invalidation is handled by signals.
         """
         try:
             serializer.save(user=self.request.user)
-            cache.delete("product_list")
             logger.info("Product created by user id: %s", self.request.user.id)
         except ValidationError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -408,48 +409,51 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """
         Handles the update of a product.
+        Cache invalidation is handled by signals.
         """
         serializer.save()
-        cache.delete(f"product_{serializer.instance.slug}")
-        cache.delete("product_list")
 
     def perform_destroy(self, instance):
         """
         Handles the deletion of a product.
+        Cache invalidation is handled by signals.
         """
-        cache.delete(f"product_{instance.slug}")
-        cache.delete("product_list")
         instance.delete()
 
     def list(self, request, *args, **kwargs):
         """
-        Lists all products with caching.
-        - Caches the entire product list for 5 minutes.
-        - **Note:** This caching strategy will be improved to be more granular.
+        Lists all products with a robust caching strategy.
+        - The cache key is generated based on a sorted and hashed representation of query parameters
+          to ensure consistency.
+        - Cache invalidation is handled by signals on Product model changes.
         """
-        # A more granular caching strategy will be implemented in the caching step.
-        query_params = request.query_params.urlencode()
-        cache_key = f"product_list_{query_params}"
+        cache_key = generate_product_list_cache_key(request.query_params)
         cached_data = cache.get(cache_key)
+
         if cached_data:
             return Response(cached_data)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 60 * 5)  # 5 minutes
+        # Cache the serialized data for 5 minutes
+        cache.set(cache_key, response.data, 60 * 5)
         return response
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Retrieves a single product by its slug.
-        - Delegates the retrieval logic to the `services.get_product_detail` function.
+        Retrieves a single product by its slug, with caching.
+        - Caches the serialized product detail data for 1 hour.
+        - Cache invalidation is handled by signals.
         """
         slug = kwargs.get("slug")
-        cache_key = f"product_{slug}"
+        cache_key = f"product_detail_{slug}"
         cached_data = cache.get(cache_key)
+
         if cached_data:
             return Response(cached_data)
+
         product = services.get_product_detail(slug)
         serializer = self.get_serializer(product)
+        # Cache the serialized data
         cache.set(cache_key, serializer.data, 60 * 60)  # 1 hour
         return Response(serializer.data)
 
@@ -584,6 +588,20 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Caches the queryset for 24 hours.
+        Returns the queryset for categories. Caching is handled in the `list` method.
         """
-        return cache.get_or_set("category_list", Category.objects.all(), 60 * 60 * 24)
+        return Category.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        """
+        Lists all categories with caching.
+        - Caches the entire category list for 24 hours.
+        """
+        cache_key = "category_list"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 60 * 60 * 24)  # 24 hours
+        return response

@@ -1,4 +1,3 @@
-from django.core.cache import cache
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -8,13 +7,10 @@ from .models import Product, Review, Category
 
 
 def get_product_detail(slug: str):
-    cache_key = f"product_detail_{slug}"
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        return cached_data
-
+    """
+    Retrieves a product by its slug. Caching is handled at the view layer.
+    """
     product = get_object_or_404(Product, slug=slug)
-    cache.set(cache_key, product, 60 * 60)  # 1 hour
     return product
 
 
