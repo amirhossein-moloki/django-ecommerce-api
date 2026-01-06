@@ -13,17 +13,25 @@ from .models import (
 
 @admin.register(OptionType)
 class OptionTypeAdmin(ModelAdmin):
-    pass
+    search_fields = ("name",)
 
 
 @admin.register(OptionValue)
 class OptionValueAdmin(ModelAdmin):
-    pass
+    search_fields = ("value",)
+    autocomplete_fields = ("option_type",)
+
+
+class VariantOptionValueInline(admin.TabularInline):
+    model = VariantOptionValue
+    extra = 1
+    autocomplete_fields = ("option_value",)
 
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(ModelAdmin):
-    pass
+    inlines = [VariantOptionValueInline]
+    autocomplete_fields = ("product",)
 
 
 @admin.register(VariantOptionValue)
