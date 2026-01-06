@@ -81,7 +81,7 @@ urlpatterns = [
                     path("", include("cart.urls")),
                     path("", include("coupons.urls")),
                     path("chat/", include("chat.urls")),
-                    path("auth/", include("account.urls", namespace="auth")),
+                    path("auth/", include("account.urls")),
                     path(
                         "auth/activate/<str:uid>/<str:token>/",
                         ActivateView.as_view(),

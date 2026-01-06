@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from .models import Address
 
 
-class UserFactory(factory.django.DjangoModelFactory):
+class UserAccountFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = get_user_model()
 
@@ -22,7 +22,7 @@ class UserFactory(factory.django.DjangoModelFactory):
         self.set_password(password)
 
 
-class AdminUserFactory(UserFactory):
+class AdminUserFactory(UserAccountFactory):
     is_staff = True
     is_superuser = True
 
@@ -31,7 +31,7 @@ class AddressFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Address
 
-    user = factory.SubFactory(UserFactory)
+    user = factory.SubFactory(UserAccountFactory)
     province = "Test Province"
     city = "Test City"
     postal_code = factory.Faker("zipcode")
