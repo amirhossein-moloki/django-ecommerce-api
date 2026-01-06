@@ -29,7 +29,26 @@ def invalidate_product_cache(sender, instance, **kwargs):
 
     # Invalidate all product list caches (covers all query param variations)
     # The key pattern is defined in caching.py as "product_list:*"
-    cache.delete_pattern("product_list:*")
+    delete_pattern = getattr(cache, "delete_pattern", None)
+    if callable(delete_pattern):
+        delete_pattern("product_list:*")
+        return
+
+    iter_keys = getattr(cache, "iter_keys", None)
+    if callable(iter_keys):
+        keys = list(iter_keys("product_list:*"))
+        if keys:
+            cache.delete_many(keys)
+        return
+
+    keys = getattr(cache, "keys", None)
+    if callable(keys):
+        pattern_keys = keys("product_list:*")
+        if pattern_keys:
+            cache.delete_many(pattern_keys)
+        return
+
+    cache.clear()
 
 
 @receiver(post_save, sender=Review)
