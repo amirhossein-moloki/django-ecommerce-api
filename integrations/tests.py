@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
-from account.factories import UserFactory
+from account.factories import UserAccountFactory as UserFactory
 from shop.factories import ProductFactory, ProductVariantFactory
 from .models import IntegrationSettings
 from .services import generate_product_feed_data

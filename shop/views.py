@@ -30,6 +30,7 @@ from .serializers import (
     CategorySerializer,
     ProductDetailSerializer,
     ProductRecommendationSerializer,
+    ProductListSerializer,
 )
 from .serializers import ReviewSerializer
 from . import services
@@ -350,9 +351,12 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
         """
         Returns the serializer class to be used for the current action.
         - For the 'retrieve' action, it uses the `ProductDetailSerializer` to include more details.
+        - For the 'list' action, it uses the `ProductListSerializer` for a lightweight representation.
         """
         if self.action == "retrieve":
             return ProductDetailSerializer
+        if self.action == "list":
+            return ProductListSerializer
         return super().get_serializer_class()
 
     def perform_create(self, serializer):
@@ -598,4 +602,3 @@ class CategoryViewSet(PaginationMixin, viewsets.ModelViewSet):
         Returns the queryset for categories.
         """
         return Category.objects.all()
-
