@@ -1,6 +1,6 @@
 import factory
 from decimal import Decimal
-from account.factories import UserFactory
+from account.factories import UserAccountFactory as UserFactory
 from .models import Category, Product, Review, ProductVariant
 
 

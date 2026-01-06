@@ -235,6 +235,35 @@ class ProductSerializer(serializers.ModelSerializer):
         return [{"name": key, "values": list(value)} for key, value in options.items()]
 
 
+class ProductListSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField()
+    stock = serializers.SerializerMethodField()
+    variants = ProductVariantSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "name",
+            "slug",
+            "thumbnail",
+            "price",
+            "stock",
+            "variants",
+        ]
+
+    def get_price(self, obj):
+        first_variant = obj.variants.first()
+        if first_variant:
+            return first_variant.price
+        return None
+
+    def get_stock(self, obj):
+        first_variant = obj.variants.first()
+        if first_variant:
+            return first_variant.stock
+        return None
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source="user.username")
 

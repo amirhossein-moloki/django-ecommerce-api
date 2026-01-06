@@ -1,5 +1,6 @@
 from chat.models import Message
-from shop.factories import ProductFactory, UserFactory
+from shop.factories import ProductFactory
+from account.factories import UserAccountFactory as UserFactory
 import factory
 
 
