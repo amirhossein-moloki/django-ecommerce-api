@@ -25,7 +25,12 @@ from shop.filters import ProductFilter, ProductSearchFilterBackend
 from .caching import generate_product_list_cache_key
 from .models import Product, Category
 from .recommender import Recommender
-from .serializers import ProductSerializer, CategorySerializer, ProductDetailSerializer
+from .serializers import (
+    ProductSerializer,
+    CategorySerializer,
+    ProductDetailSerializer,
+    ProductRecommendationSerializer,
+)
 from .serializers import ReviewSerializer
 from . import services
 from django.core.cache import cache
@@ -387,7 +392,9 @@ class ProductViewSet(PaginationMixin, viewsets.ModelViewSet):
             recommender = Recommender()
             # It expects a list of products, even if it's just one
             recommended_products = recommender.suggest_products_for([product])
-            serializer = self.get_serializer(recommended_products, many=True)
+            serializer = ProductRecommendationSerializer(
+                recommended_products, many=True, context={"request": request}
+            )
             return Response(serializer.data)
         except Product.DoesNotExist:
             return Response(
