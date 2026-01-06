@@ -29,11 +29,14 @@ from sms.providers import SmsIrProvider
 from .models import UserAccount
 from .permissions import IsProfileIncomplete
 from .serializers import (
+    AddressSerializer,
     CompleteProfileSerializer,
     RefreshTokenSerializer,
     UserProfileSerializer,
     UsernamePasswordTokenObtainPairSerializer,
 )
+from .models import Address
+from rest_framework import viewsets
 
 logger = getLogger(__name__)
 
@@ -439,3 +442,23 @@ class CompleteProfileView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddressViewSet(viewsets.ModelViewSet):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.addresses.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def set_default(self, request, pk=None):
+        address = self.get_object()
+        address.is_default = True
+        address.save()
+        return Response(
+            {"status": "address set to default"}, status=status.HTTP_200_OK
+        )

@@ -99,6 +99,7 @@ class AddressSerializer(serializers.ModelSerializer):
             "full_address",
             "receiver_name",
             "receiver_phone",
+            "is_default",
         ]
 
 

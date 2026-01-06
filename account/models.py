@@ -147,6 +147,12 @@ class Address(models.Model):
     full_address = models.TextField()
     receiver_name = models.CharField(max_length=100)
     receiver_phone = models.CharField(max_length=15)
+    is_default = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.full_address}, {self.city}, {self.province}"
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            self.user.addresses.exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
