@@ -42,6 +42,46 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         }
 
 
+class ProductRecommendationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for product recommendations, representing a product
+    by its first variant.
+    """
+
+    variant_id = serializers.UUIDField(
+        source="variants.first.variant_id", read_only=True
+    )
+    sku = serializers.CharField(source="variants.first.sku", read_only=True)
+    price = serializers.DecimalField(
+        source="variants.first.price", max_digits=10, decimal_places=2, read_only=True
+    )
+    stock = serializers.IntegerField(source="variants.first.stock", read_only=True)
+    image = serializers.ImageField(
+        source="variants.first.image", use_url=True, read_only=True, allow_null=True
+    )
+    options = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "variant_id",
+            "sku",
+            "price",
+            "stock",
+            "image",
+            "options",
+        ]
+
+    def get_options(self, obj):
+        first_variant = obj.variants.first()
+        if first_variant:
+            return {
+                vov.option_value.option_type.name: vov.option_value.value
+                for vov in first_variant.variant_options.all()
+            }
+        return {}
+
+
 class CategorySerializer(serializers.ModelSerializer):
     slug = serializers.ReadOnlyField()
 
@@ -235,7 +275,7 @@ class ProductDetailSerializer(ProductSerializer):
             .prefetch_related("tags")
             .distinct()[:10]
         )
-        return SimpleProductSerializer(
+        return ProductRecommendationSerializer(
             suggested_products, many=True, context=self.context
         ).data
 
