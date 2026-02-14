@@ -20,7 +20,7 @@ class Profile(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
     balance = models.DecimalField(
-        max_digits=10,
+        max_digits=18,
         decimal_places=2,
         default=0.0,
         help_text="User's current balance.",
